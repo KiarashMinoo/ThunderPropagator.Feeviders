@@ -1,0 +1,58 @@
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using RapidStreamer.Application.Channels;
+using RapidStreamer.Application.Feeders;
+using RapidStreamer.Infrastructure.Extensions;
+
+namespace RapidStreamer.Feeders.UdpClient
+{
+    public static class UdpClientFeederExtensions
+    {
+        public static IServiceCollection AddUdpClientFeeder<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration>
+            (this IServiceCollection services, IConfigurationRoot configuration, string sectionName)
+            where TChannel : class, IChannel
+            where TUdpClientFeederMessage : UdpClientFeederMessage
+            where TUdpClientFeederConfiguration : UdpClientFeederConfiguration, new()
+        {
+            TUdpClientFeederConfiguration udpClientFeederConfiguration = new();
+            configuration.GetSection(sectionName).Bind(udpClientFeederConfiguration);
+            services.TryAddSingleton(udpClientFeederConfiguration);
+
+            services.AddChannelFeeder<TChannel,
+                UdpClientFeeder<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration>,
+                TUdpClientFeederMessage,
+                TUdpClientFeederConfiguration>();
+
+            return services;
+        }
+
+        public static IServiceCollection AddUdpClientFeederResolver<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration>
+            (this IServiceCollection services)
+            where TChannel : class, IChannel
+            where TUdpClientFeederMessage : UdpClientFeederMessage
+            where TUdpClientFeederConfiguration : UdpClientFeederConfiguration, new()
+        {
+            services.AddChannelFeederResolver<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration>(
+                (serviceProvider, channel, udpClientFeederConfiguration, feederHandler) =>
+                    new UdpClientFeeder<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration>(channel, udpClientFeederConfiguration, feederHandler, serviceProvider));
+
+            return services;
+        }
+
+        public static IApplicationBuilder UseUdpClientFeederResolver<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration>
+            (this IApplicationBuilder app, Guid channelKey, TUdpClientFeederConfiguration udpClientFeederConfiguration)
+            where TChannel : class, IChannel
+            where TUdpClientFeederMessage : UdpClientFeederMessage
+            where TUdpClientFeederConfiguration : UdpClientFeederConfiguration
+        {
+            var udpClientFeederManager = app.ApplicationServices.GetRequiredService<IFeederManager<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration>>();
+
+            udpClientFeederManager.UseFeeder(channelKey, udpClientFeederConfiguration, app.ApplicationServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping);
+
+            return app;
+        }
+    }
+}

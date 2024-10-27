@@ -1,0 +1,58 @@
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using RapidStreamer.Application.Channels;
+using RapidStreamer.Application.Feeders;
+using RapidStreamer.Infrastructure.Extensions;
+
+namespace RapidStreamer.Feeders.Kafka
+{
+    public static class KafkaFeederExtensions
+    {
+        public static IServiceCollection AddKafkaFeeder<TChannel, TKafkaFeederMessage, TKafkaFeederConfiguration>
+            (this IServiceCollection services, IConfigurationRoot configuration, string sectionName)
+            where TChannel : class, IChannel
+            where TKafkaFeederMessage : KafkaFeederMessage, new()
+            where TKafkaFeederConfiguration : KafkaFeederConfiguration, new()
+        {
+            TKafkaFeederConfiguration kafkaFeederConfiguration = new();
+            configuration.GetSection(sectionName).Bind(kafkaFeederConfiguration);
+            services.TryAddSingleton(kafkaFeederConfiguration);
+
+            services.AddChannelFeeder<TChannel,
+                KafkaFeeder<TChannel, TKafkaFeederMessage, TKafkaFeederConfiguration>,
+                TKafkaFeederMessage,
+                TKafkaFeederConfiguration>();
+
+            return services;
+        }
+
+        public static IServiceCollection AddKafkaFeederResolver<TChannel, TKafkaFeederMessage, TKafkaFeederConfiguration>
+            (this IServiceCollection services)
+            where TChannel : class, IChannel
+            where TKafkaFeederMessage : KafkaFeederMessage, new()
+            where TKafkaFeederConfiguration : KafkaFeederConfiguration, new()
+        {
+            services.AddChannelFeederResolver<TChannel, TKafkaFeederMessage, TKafkaFeederConfiguration>(
+                (serviceProvider, channel, kafkaFeederConfiguration, feederHandler) =>
+                    new KafkaFeeder<TChannel, TKafkaFeederMessage, TKafkaFeederConfiguration>(channel, kafkaFeederConfiguration, feederHandler, serviceProvider));
+
+            return services;
+        }
+
+        public static IApplicationBuilder UseKafkaFeederResolver<TChannel, TKafkaFeederMessage, TKafkaFeederConfiguration>
+            (this IApplicationBuilder app, Guid channelKey, TKafkaFeederConfiguration kafkaFeederConfiguration)
+            where TChannel : class, IChannel
+            where TKafkaFeederMessage : KafkaFeederMessage
+            where TKafkaFeederConfiguration : KafkaFeederConfiguration
+        {
+            var kafkaFeederManager = app.ApplicationServices.GetRequiredService<IFeederManager<TChannel, TKafkaFeederMessage, TKafkaFeederConfiguration>>();
+
+            kafkaFeederManager.UseFeeder(channelKey, kafkaFeederConfiguration, app.ApplicationServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping);
+
+            return app;
+        }
+    }
+}

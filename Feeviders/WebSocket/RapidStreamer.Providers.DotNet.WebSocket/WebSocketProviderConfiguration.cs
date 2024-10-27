@@ -1,0 +1,13 @@
+﻿using RapidStreamer.Providers.DotNet.SharedKernel;
+
+namespace RapidStreamer.Providers.DotNet.WebSocket
+{
+    public abstract class WebSocketProviderConfiguration : AbstractProviderConfiguration
+    {
+        public required string Endpoint
+        {
+            get => Get<string>()!;
+            set => Set(value);
+        }
+    }
+}

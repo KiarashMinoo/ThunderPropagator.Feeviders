@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <NoWarn>$(NoWarn);1591</NoWarn>
+        <Configurations>Debug;Release;Cluster</Configurations>
+        <EnablePreviewFeatures>true</EnablePreviewFeatures>
+        <Platforms>AnyCPU;ARM32;ARM64;x86;x64</Platforms>
+        <Version>1.0.0.0</Version>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <IsPackable>true</IsPackable>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Description>Redefining real time data streaming; effortless, blazingly fast and cloud-native for maximum impact</Description>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>RapidStreamer.png</PackageIcon>
+        <Copyright>2024</Copyright>
+        <Title>RapidStreamer</Title>
+        <Authors>RapidStreamer </Authors>
+        <Description>Redefining real time data streaming; effortless, blazingly fast and cloud-native for maximum impact</Description>
+        <PackageProjectUrl>www.rapidstreamer.com</PackageProjectUrl>
+        <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage</TargetsForTfmSpecificBuildOutput>
+    </PropertyGroup>
+
+    <Target DependsOnTargets="ResolveReferences" Name="CopyProjectReferencesToPackage">
+        <ItemGroup>
+            <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths-&gt;WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))" />
+        </ItemGroup>
+    </Target>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Feeders.SharedKernel\RapidStreamer.Feeders.SharedKernel.csproj" />
+    </ItemGroup>
+
+
+    <ItemGroup>
+        <None Include="..\..\..\RapidStreamer.png">
+            <Pack>True</Pack>
+            <PackagePath></PackagePath>
+            <Link>RapidStreamer.png</Link>
+        </None>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="..\..\..\README.md">
+            <Pack>True</Pack>
+            <PackagePath></PackagePath>
+            <Link>README.png</Link>
+        </None>
+    </ItemGroup>
+
+</Project>

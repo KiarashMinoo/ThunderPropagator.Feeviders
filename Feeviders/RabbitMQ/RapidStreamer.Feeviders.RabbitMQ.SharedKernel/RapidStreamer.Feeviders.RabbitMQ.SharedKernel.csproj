@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <Configurations>Debug;Release;Cluster</Configurations>
+        <Platforms>AnyCPU;ARM32;ARM64;x86;x64</Platforms>
+        <Version>1.0.0.0</Version>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
+        <PackageReference Include="RapidStreamer.BuildingBlocks" Version="1.0.34" />
+    </ItemGroup>
+
+</Project>
