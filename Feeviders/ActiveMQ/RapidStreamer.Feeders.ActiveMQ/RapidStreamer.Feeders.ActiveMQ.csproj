@@ -39,13 +39,16 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Feeders.SharedKernel\RapidStreamer.Feeders.SharedKernel.csproj"/>
-        <ProjectReference Include="..\RapidStreamer.Feeviders.ActiveMQ.SharedKernel\RapidStreamer.Feeviders.ActiveMQ.SharedKernel.csproj"/>
+        <ProjectReference Include="..\RapidStreamer.Feeviders.ActiveMQ.SharedKernel\RapidStreamer.Feeviders.ActiveMQ.SharedKernel.csproj">
+            <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+            <IncludeAssets>RapidStreamer.Feeviders.ActiveMQ.SharedKernel.dll</IncludeAssets>
+        </ProjectReference>
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Apache.NMS" Version="2.1.0"/>
         <PackageReference Include="Apache.NMS.ActiveMQ" Version="2.1.0"/>
+        <PackageReference Include="RapidStreamer" Version="1.0.10" />
     </ItemGroup>
 
     <ItemGroup>

@@ -15,8 +15,7 @@ namespace RapidStreamer.Feeders.RedisPubSub
 #if !DEBUG
         sealed
 #endif
-        class RedisPubSubFeeder<TChannel, TRedisPubSubFeederMessage, TRedisPubSubFeederConfiguration> :
-        DelegativeFeeder<TChannel, TRedisPubSubFeederMessage, TRedisPubSubFeederConfiguration>
+        class RedisPubSubFeeder<TChannel, TRedisPubSubFeederMessage, TRedisPubSubFeederConfiguration> : DelegativeFeeder<TChannel, TRedisPubSubFeederMessage, TRedisPubSubFeederConfiguration>
         where TChannel : class, IChannel
         where TRedisPubSubFeederMessage : RedisPubSubFeederMessage
         where TRedisPubSubFeederConfiguration : RedisPubSubFeederConfiguration

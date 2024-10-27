@@ -40,11 +40,14 @@
 
     <ItemGroup>
         <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
+        <PackageReference Include="RapidStreamer" Version="1.0.10" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Feeders.SharedKernel\RapidStreamer.Feeders.SharedKernel.csproj" />
-        <ProjectReference Include="..\RapidStreamer.Feeviders.RabbitMQ.SharedKernel\RapidStreamer.Feeviders.RabbitMQ.SharedKernel.csproj" />
+        <ProjectReference Include="..\RapidStreamer.Feeviders.RabbitMQ.SharedKernel\RapidStreamer.Feeviders.RabbitMQ.SharedKernel.csproj" >
+            <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+            <IncludeAssets>RapidStreamer.Feeviders.RabbitMQ.SharedKernel.dll</IncludeAssets>
+        </ProjectReference>
     </ItemGroup>
 
     <ItemGroup>

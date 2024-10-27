@@ -39,8 +39,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Feeders.SharedKernel\RapidStreamer.Feeders.SharedKernel.csproj" />
-        <ProjectReference Include="..\RapidStreamer.Feeviders.TcpSocket.SharedKernel\RapidStreamer.Feeviders.TcpSocket.SharedKernel.csproj" />
+        <ProjectReference Include="..\RapidStreamer.Feeviders.TcpSocket.SharedKernel\RapidStreamer.Feeviders.TcpSocket.SharedKernel.csproj" >
+            <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+            <IncludeAssets>RapidStreamer.Feeviders.TcpSocket.SharedKernel.dll</IncludeAssets>
+        </ProjectReference>
     </ItemGroup>
 
     <ItemGroup>
@@ -57,6 +59,10 @@
             <PackagePath></PackagePath>
             <Link>README.png</Link>
         </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="RapidStreamer" Version="1.0.10" />
     </ItemGroup>
 
 </Project>

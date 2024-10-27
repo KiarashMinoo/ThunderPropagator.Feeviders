@@ -43,10 +43,16 @@
         <PackageReference Include="Confluent.SchemaRegistry" Version="2.6.0"/>
         <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.6.0"/>
         <PackageReference Include="Confluent.SchemaRegistry.Serdes.Json" Version="2.6.0"/>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
+        <PackageReference Include="OpenTelemetry.Api" Version="1.9.0" />
+        <PackageReference Include="RapidStreamer.BuildingBlocks" Version="1.0.36" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel.csproj"/>
+        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel.csproj">
+            <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+            <IncludeAssets>RapidStreamer.Providers.DotNet.SharedKernel.dll</IncludeAssets>
+        </ProjectReference>
     </ItemGroup>
 
     <ItemGroup>

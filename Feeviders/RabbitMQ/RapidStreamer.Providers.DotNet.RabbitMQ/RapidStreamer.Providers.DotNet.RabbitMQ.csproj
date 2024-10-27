@@ -39,12 +39,24 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+        <PackageReference Include="OpenTelemetry.Api" Version="1.9.0" />
         <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
+        <PackageReference Include="RapidStreamer.BuildingBlocks" Version="1.0.36" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel.csproj" />
-        <ProjectReference Include="..\RapidStreamer.Feeviders.RabbitMQ.SharedKernel\RapidStreamer.Feeviders.RabbitMQ.SharedKernel.csproj" />
+        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel.csproj"  >
+            <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+            <IncludeAssets>RapidStreamer.Providers.DotNet.SharedKernel.dll</IncludeAssets>
+        </ProjectReference>
+        <ProjectReference Include="..\RapidStreamer.Feeviders.RabbitMQ.SharedKernel\RapidStreamer.Feeviders.RabbitMQ.SharedKernel.csproj" >
+            <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+            <IncludeAssets>RapidStreamer.Feeviders.RabbitMQ.SharedKernel.dll</IncludeAssets>
+        </ProjectReference>
     </ItemGroup>
 
     <ItemGroup>
@@ -61,6 +73,10 @@
             <PackagePath></PackagePath>
             <Link>README.png</Link>
         </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Reference Include="Microsoft.Extensions.Logging.Abstractions" />
     </ItemGroup>
 
 </Project>
