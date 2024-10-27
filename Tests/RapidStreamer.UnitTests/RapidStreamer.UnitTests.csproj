@@ -8,7 +8,7 @@
         <Configurations>Debug;Release;Cluster</Configurations>
         <EnablePreviewFeatures>true</EnablePreviewFeatures>
         <Platforms>AnyCPU;ARM32;ARM64;x86;x64</Platforms>
-        <Version>1.0.0.0</Version>
+        <Version>1.0.1.0</Version>
     </PropertyGroup>
 
     <ItemGroup>
