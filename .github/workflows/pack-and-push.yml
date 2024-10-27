@@ -59,7 +59,29 @@ jobs:
           dotnet clean 
           dotnet build -c Debug
           
-          dotnet pack ./RapidStreamer.Infrastructure/RapidStreamer.Infrastructure.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
+          dotnet pack ./Feeviders/ActiveMQ/RapidStreamer.Feeders.ActiveMQ/RapidStreamer.Feeders.ActiveMQ.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
+          dotnet pack ./Feeviders/ActiveMQ/RapidStreamer.Providers.DotNet.ActiveMQ/RapidStreamer.Providers.DotNet.ActiveMQ.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
+
+          dotnet pack ./Feeviders/Kafka/RapidStreamer.Feeders.Kafka/RapidStreamer.Feeders.Kafka.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
+          dotnet pack ./Feeviders/Kafka/RapidStreamer.Providers.DotNet.Kafka/RapidStreamer.Providers.DotNet.Kafka.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
+
+          dotnet pack ./Feeviders/RabbitMQ/RapidStreamer.Feeders.RabbitMQ/RapidStreamer.Feeders.RabbitMQ.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
+          dotnet pack ./Feeviders/RabbitMQ/RapidStreamer.Providers.DotNet.RabbitMQ/RapidStreamer.Providers.DotNet.RabbitMQ.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
+
+          dotnet pack ./Feeviders/RedisPubSub/RapidStreamer.Feeders.RedisPubSub/RapidStreamer.Feeders.RedisPubSub.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
+          dotnet pack ./Feeviders/RedisPubSub/RapidStreamer.Providers.DotNet.RedisPubSub/RapidStreamer.Providers.DotNet.RedisPubSub.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
+
+          dotnet pack ./Feeviders/TcpSocket/RapidStreamer.Feeders.TcpSocket/RapidStreamer.Feeders.TcpSocket.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
+          dotnet pack ./Feeviders/TcpSocket/RapidStreamer.Providers.DotNet.TcpSocket/RapidStreamer.Providers.DotNet.TcpSocket.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
+
+          dotnet pack ./Feeviders/UdpClient/RapidStreamer.Feeders.UdpClient/RapidStreamer.Feeders.UdpClient.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
+          dotnet pack ./Feeviders/UdpClient/RapidStreamer.Providers.DotNet.UdpClient/RapidStreamer.Providers.DotNet.UdpClient.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
+
+          dotnet pack ./Feeviders/WebApi/RapidStreamer.Feeders.WebApi/RapidStreamer.Feeders.WebApi.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
+          dotnet pack ./Feeviders/WebApi/RapidStreamer.Providers.DotNet.WebApi/RapidStreamer.Providers.DotNet.WebApi.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
+
+          dotnet pack ./Feeviders/WebSocket/RapidStreamer.Feeders.WebSocket/RapidStreamer.Feeders.WebSocket.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
+          dotnet pack ./Feeviders/WebSocket/RapidStreamer.Providers.DotNet.WebSocket/RapidStreamer.Providers.DotNet.WebSocket.csproj -c Debug -o ${{ env.ArtifactsDirectory }}      
 
       - uses: actions/upload-artifact@v3
         with:
