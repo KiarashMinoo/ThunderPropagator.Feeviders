@@ -10,6 +10,10 @@
         <Version>1.0.2.0</Version>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    </PropertyGroup>
+
     <ItemGroup>
         <PackageReference Include="OpenTelemetry.Api" Version="1.9.0"/>
         <PackageReference Include="RapidStreamer" Version="1.0.7"/>

@@ -30,9 +30,13 @@
 
     <Target DependsOnTargets="ResolveReferences" Name="CopyProjectReferencesToPackage">
         <ItemGroup>
-            <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths-&gt;WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))" />
+            <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths->WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))"/>
         </ItemGroup>
     </Target>
+
+    <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    </PropertyGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel.csproj" />

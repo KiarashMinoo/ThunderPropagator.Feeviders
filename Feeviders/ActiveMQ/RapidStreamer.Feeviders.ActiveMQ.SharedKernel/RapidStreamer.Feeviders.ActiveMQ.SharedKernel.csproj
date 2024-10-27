@@ -9,9 +9,9 @@
         <Version>1.0.2.0</Version>
     </PropertyGroup>
 
-    <ItemGroup>
-
-    </ItemGroup>
+    <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Apache.NMS" Version="2.1.0" />

@@ -9,6 +9,10 @@
         <Version>1.0.2.0</Version>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    </PropertyGroup>
+
     <ItemGroup>
         <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
         <PackageReference Include="RapidStreamer.BuildingBlocks" Version="1.0.34" />
