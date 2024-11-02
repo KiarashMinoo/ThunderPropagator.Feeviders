@@ -42,7 +42,7 @@ jobs:
           dotnet clean
           dotnet build -c Debug
           
-          dotnet pack ./Feeviders/**/*.csproj -c Debug -o ${{ env.ArtifactsDirectory }}                                                          
+          dotnet pack -c Debug -o ${{ env.ArtifactsDirectory }}                                                          
 
       - run: |
           git config user.name "Kiarash Minoo"
