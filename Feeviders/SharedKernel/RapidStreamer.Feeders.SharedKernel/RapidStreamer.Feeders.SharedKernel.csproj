@@ -39,7 +39,7 @@
     
     <ItemGroup>
         <PackageReference Include="OpenTelemetry.Api" Version="1.9.0"/>
-        <PackageReference Include="RapidStreamer" Version="1.0.24"/>
+        <PackageReference Include="RapidStreamer" Version="1.0.26" />
     </ItemGroup>
 
 </Project>

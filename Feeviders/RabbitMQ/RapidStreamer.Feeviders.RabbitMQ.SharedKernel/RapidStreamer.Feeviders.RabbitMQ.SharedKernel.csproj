@@ -39,7 +39,7 @@
 
     <ItemGroup>
         <PackageReference Include="RabbitMQ.Client" Version="6.8.1"/>
-        <PackageReference Include="RapidStreamer.BuildingBlocks" Version="1.0.50" />
+        <PackageReference Include="RapidStreamer.BuildingBlocks" Version="1.0.51" />
     </ItemGroup>
 
 </Project>
