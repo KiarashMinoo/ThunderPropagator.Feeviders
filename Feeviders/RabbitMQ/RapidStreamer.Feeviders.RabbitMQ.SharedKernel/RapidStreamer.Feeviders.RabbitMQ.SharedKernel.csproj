@@ -1,12 +1,31 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <OutputType>Library</OutputType>
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <NoWarn>$(NoWarn);1591</NoWarn>
         <Configurations>Debug;Release;Cluster</Configurations>
+        <EnablePreviewFeatures>true</EnablePreviewFeatures>
         <Platforms>AnyCPU;ARM32;ARM64;x86;x64</Platforms>
         <Version>1.0.3.0</Version>
+    </PropertyGroup>
+
+    <PropertyGroup Label="nuget">
+        <IsPackable>true</IsPackable>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Authors>RapidStreamer</Authors>
+        <Description>Redefining real time data streaming; effortless, blazingly fast and cloud-native for maximum impact</Description>
+        <Copyright>Copyright ©2024 RapidStreamer Corporation</Copyright>
+        <PackageProjectUrl>https://www.rapidstreamer.com</PackageProjectUrl>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+        <RepositoryUrl>https://github.com/KAB-TEAM/RapidStreamer.BuildingBlocks</RepositoryUrl>
+        <PackageTags>Real-Time Data Streaming, Blazingly Fast, Cloud-Native, Data Streaming, Effortless Performance, High Impact, Real-Time Processing, Fast Data Pipelines, Cloud Solutions, Streaming Technology</PackageTags>
+        <PackageIcon>RapidStreamer.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <AvoidCycleErrorOnSelfReference>true</AvoidCycleErrorOnSelfReference>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
@@ -14,8 +33,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
-        <PackageReference Include="RapidStreamer.BuildingBlocks" Version="1.0.36" />
+        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath=""/>
+        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath=""/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="RabbitMQ.Client" Version="6.8.1"/>
+        <PackageReference Include="RapidStreamer.BuildingBlocks" Version="1.0.50" />
     </ItemGroup>
 
 </Project>

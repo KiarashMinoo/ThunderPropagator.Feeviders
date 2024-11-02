@@ -1,4 +1,5 @@
-﻿using Apache.NMS;
+﻿using System;
+using Apache.NMS;
 using RapidStreamer.Feeviders.ActiveMQ.SharedKernel;
 using RapidStreamer.Providers.DotNet.SharedKernel;
 

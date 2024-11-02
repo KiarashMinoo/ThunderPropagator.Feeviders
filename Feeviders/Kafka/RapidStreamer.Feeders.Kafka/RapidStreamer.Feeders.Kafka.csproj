@@ -13,53 +13,39 @@
         <Version>1.0.3.0</Version>
     </PropertyGroup>
 
-    <PropertyGroup>
+    <PropertyGroup Label="nuget">
         <IsPackable>true</IsPackable>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Authors>RapidStreamer</Authors>
         <Description>Redefining real time data streaming; effortless, blazingly fast and cloud-native for maximum impact</Description>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <Copyright>Copyright ©2024 RapidStreamer Corporation</Copyright>
+        <PackageProjectUrl>https://www.rapidstreamer.com</PackageProjectUrl>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+        <RepositoryUrl>https://github.com/KAB-TEAM/RapidStreamer.BuildingBlocks</RepositoryUrl>
+        <PackageTags>Real-Time Data Streaming, Blazingly Fast, Cloud-Native, Data Streaming, Effortless Performance, High Impact, Real-Time Processing, Fast Data Pipelines, Cloud Solutions, Streaming Technology</PackageTags>
         <PackageIcon>RapidStreamer.png</PackageIcon>
-        <Copyright>2024</Copyright>
-        <Title>RapidStreamer</Title>
-        <Authors>RapidStreamer </Authors>
-        <Description>Redefining real time data streaming; effortless, blazingly fast and cloud-native for maximum impact</Description>
-        <PackageProjectUrl>www.rapidstreamer.com</PackageProjectUrl>
-        <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage</TargetsForTfmSpecificBuildOutput>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <AvoidCycleErrorOnSelfReference>true</AvoidCycleErrorOnSelfReference>
     </PropertyGroup>
-
-    <Target DependsOnTargets="ResolveReferences" Name="CopyProjectReferencesToPackage">
-        <ItemGroup>
-            <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths->WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))"/>
-        </ItemGroup>
-    </Target>
 
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
         <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Confluent.Kafka" Version="2.6.0" />
-        <PackageReference Include="Confluent.SchemaRegistry" Version="2.6.0" />
-        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.6.0" />
-        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Json" Version="2.6.0" />
-        <PackageReference Include="RapidStreamer" Version="1.0.10" />
+        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath=""/>
+        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath=""/>
     </ItemGroup>
 
     <ItemGroup>
-        <None Include="..\..\..\RapidStreamer.png">
-            <Pack>True</Pack>
-            <PackagePath></PackagePath>
-            <Link>RapidStreamer.png</Link>
-        </None>
+        <PackageReference Include="Confluent.Kafka" Version="2.6.0"/>
+        <PackageReference Include="Confluent.SchemaRegistry" Version="2.6.0"/>
+        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.6.0"/>
+        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Json" Version="2.6.0"/>
     </ItemGroup>
 
     <ItemGroup>
-        <None Include="..\..\..\README.md">
-            <Pack>True</Pack>
-            <PackagePath></PackagePath>
-            <Link>README.png</Link>
-        </None>
+      <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Feeders.SharedKernel\RapidStreamer.Feeders.SharedKernel.csproj" />
     </ItemGroup>
 
 </Project>

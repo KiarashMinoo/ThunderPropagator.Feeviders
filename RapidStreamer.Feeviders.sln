@@ -79,6 +79,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{439743E4
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RapidStreamer.UnitTests", "Tests\RapidStreamer.UnitTests\RapidStreamer.UnitTests.csproj", "{7F681CD7-ADD2-4795-B516-91D4D146E78E}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{4B11E663-85B1-457F-AB3E-6ED3797BA738}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{8584B253-4E84-4DCE-AA1C-90BA89BDBF3E}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\pack-and-push.yml = .github\workflows\pack-and-push.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Cluster|Any CPU = Cluster|Any CPU
@@ -794,6 +801,8 @@ Global
 		{F036C1A3-00E7-4723-8D40-CFC8C3AB9E80} = {9C71F3E1-25EF-4DE3-A4CF-440F49721F01}
 		{3B19D6AB-3D31-465E-BEA3-3C0D026BDE9C} = {20597F72-BCE3-4902-9F9D-08240F81ACC5}
 		{7F681CD7-ADD2-4795-B516-91D4D146E78E} = {439743E4-C249-48C5-8CB7-BA8F23B04731}
+		{4B11E663-85B1-457F-AB3E-6ED3797BA738} = {1ACE9E2E-4250-4D9A-8079-07D839222B67}
+		{8584B253-4E84-4DCE-AA1C-90BA89BDBF3E} = {4B11E663-85B1-457F-AB3E-6ED3797BA738}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {3D6B7E96-5169-4380-ADCD-B781CDCE795C}

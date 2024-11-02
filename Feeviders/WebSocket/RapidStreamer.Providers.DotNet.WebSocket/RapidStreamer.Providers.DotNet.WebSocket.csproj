@@ -13,59 +13,32 @@
         <Version>1.0.3.0</Version>
     </PropertyGroup>
 
-    <PropertyGroup>
+    <PropertyGroup Label="nuget">
         <IsPackable>true</IsPackable>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Description>Redefining real time data streaming; effortless, blazingly fast and cloud-native for maximum impact</Description>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageIcon>RapidStreamer.png</PackageIcon>
-        <Copyright>2024</Copyright>
-        <Title>RapidStreamer</Title>
         <Authors>RapidStreamer</Authors>
         <Description>Redefining real time data streaming; effortless, blazingly fast and cloud-native for maximum impact</Description>
-        <PackageProjectUrl>www.rapidstreamer.com</PackageProjectUrl>
-        <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage</TargetsForTfmSpecificBuildOutput>
+        <Copyright>Copyright ©2024 RapidStreamer Corporation</Copyright>
+        <PackageProjectUrl>https://www.rapidstreamer.com</PackageProjectUrl>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+        <RepositoryUrl>https://github.com/KAB-TEAM/RapidStreamer.BuildingBlocks</RepositoryUrl>
+        <PackageTags>Real-Time Data Streaming, Blazingly Fast, Cloud-Native, Data Streaming, Effortless Performance, High Impact, Real-Time Processing, Fast Data Pipelines, Cloud Solutions, Streaming Technology</PackageTags>
+        <PackageIcon>RapidStreamer.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <AvoidCycleErrorOnSelfReference>true</AvoidCycleErrorOnSelfReference>
     </PropertyGroup>
-
-    <Target DependsOnTargets="ResolveReferences" Name="CopyProjectReferencesToPackage">
-        <ItemGroup>
-            <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths->WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))"/>
-        </ItemGroup>
-    </Target>
 
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
         <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel.csproj">
-            <ReferenceOutputAssembly>true</ReferenceOutputAssembly>
-            <IncludeAssets>RapidStreamer.Providers.DotNet.SharedKernel.dll</IncludeAssets>
-        </ProjectReference>
+        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath=""/>
+        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath=""/>
     </ItemGroup>
 
     <ItemGroup>
-        <None Include="..\..\..\RapidStreamer.png">
-            <Pack>True</Pack>
-            <PackagePath></PackagePath>
-            <Link>RapidStreamer.png</Link>
-        </None>
-    </ItemGroup>
-
-    <ItemGroup>
-        <None Include="..\..\..\README.md">
-            <Pack>True</Pack>
-            <PackagePath></PackagePath>
-            <Link>README.png</Link>
-        </None>
-    </ItemGroup>
-
-    <ItemGroup>
-      <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
-      <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-      <PackageReference Include="OpenTelemetry.Api" Version="1.9.0" />
-      <PackageReference Include="RapidStreamer.BuildingBlocks" Version="1.0.36" />
+        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel.csproj"/>
     </ItemGroup>
 
 </Project>
