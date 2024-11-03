@@ -7,9 +7,9 @@
         <Nullable>enable</Nullable>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <NoWarn>$(NoWarn);1591</NoWarn>
-        <Configurations>Debug;Release;Cluster</Configurations>
+        <Configurations>Debug;Release</Configurations>
         <EnablePreviewFeatures>true</EnablePreviewFeatures>
-        <Platforms>AnyCPU;ARM32;ARM64;x86;x64</Platforms>
+        <Platforms>AnyCPU;x86;x64</Platforms>
         <Version>1.0.9.0</Version>
     </PropertyGroup>
 
@@ -21,13 +21,54 @@
         <Copyright>Copyright ©2024 RapidStreamer Corporation</Copyright>
         <PackageProjectUrl>https://www.rapidstreamer.com</PackageProjectUrl>
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-        <RepositoryUrl>https://github.com/KAB-TEAM/RapidStreamer.BuildingBlocks</RepositoryUrl>
+        <RepositoryUrl>https://github.com/KAB-TEAM/RapidStreamer.Feeviders</RepositoryUrl>
         <PackageTags>Real-Time Data Streaming, Blazingly Fast, Cloud-Native, Data Streaming, Effortless Performance, High Impact, Real-Time Processing, Fast Data Pipelines, Cloud Solutions, Streaming Technology</PackageTags>
         <PackageIcon>RapidStreamer.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <AvoidCycleErrorOnSelfReference>true</AvoidCycleErrorOnSelfReference>
     </PropertyGroup>
 
+    <Choose>
+        <When Condition="'$(Configuration)'=='Debug'">
+            <Choose>
+                <When Condition="'$(Platform)'=='x86'">
+                    <PropertyGroup>
+                        <PackageId>>$(RootNameSpace).Debug.x86</PackageId>
+                    </PropertyGroup>
+                </When>
+                <When Condition="'$(Platform)'=='x64'">
+                    <PropertyGroup>
+                        <PackageId>>$(RootNameSpace).Debug.x64</PackageId>
+                    </PropertyGroup>
+                </When>
+                <Otherwise>
+                    <PropertyGroup>
+                        <PackageId>$(RootNameSpace).Debug</PackageId>
+                    </PropertyGroup>
+                </Otherwise>
+            </Choose>
+        </When>
+        <Otherwise>
+            <Choose>
+                <When Condition="'$(Platform)'=='x86'">
+                    <PropertyGroup>
+                        <PackageId>>$(RootNameSpace).x86</PackageId>
+                    </PropertyGroup>
+                </When>
+                <When Condition="'$(Platform)'=='x64'">
+                    <PropertyGroup>
+                        <PackageId>>$(RootNameSpace).x64</PackageId>
+                    </PropertyGroup>
+                </When>
+                <Otherwise>
+                    <PropertyGroup>
+                        <PackageId>$(RootNameSpace)</PackageId>
+                    </PropertyGroup>
+                </Otherwise>
+            </Choose>
+        </Otherwise>
+    </Choose>
+    
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
         <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     </PropertyGroup>

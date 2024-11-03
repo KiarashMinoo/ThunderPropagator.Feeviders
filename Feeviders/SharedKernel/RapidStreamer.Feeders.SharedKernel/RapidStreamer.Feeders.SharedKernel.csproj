@@ -7,9 +7,9 @@
         <Nullable>enable</Nullable>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <NoWarn>$(NoWarn);1591</NoWarn>
-        <Configurations>Debug;Release;Cluster</Configurations>
+        <Configurations>Debug;Release</Configurations>
         <EnablePreviewFeatures>true</EnablePreviewFeatures>
-        <Platforms>AnyCPU;ARM32;ARM64;x86;x64</Platforms>
+        <Platforms>AnyCPU;x86;x64</Platforms>
         <Version>1.0.9.0</Version>
     </PropertyGroup>
 
@@ -21,25 +21,83 @@
         <Copyright>Copyright ©2024 RapidStreamer Corporation</Copyright>
         <PackageProjectUrl>https://www.rapidstreamer.com</PackageProjectUrl>
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-        <RepositoryUrl>https://github.com/KAB-TEAM/RapidStreamer.BuildingBlocks</RepositoryUrl>
+        <RepositoryUrl>https://github.com/KAB-TEAM/RapidStreamer.Feeviders</RepositoryUrl>
         <PackageTags>Real-Time Data Streaming, Blazingly Fast, Cloud-Native, Data Streaming, Effortless Performance, High Impact, Real-Time Processing, Fast Data Pipelines, Cloud Solutions, Streaming Technology</PackageTags>
         <PackageIcon>RapidStreamer.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <AvoidCycleErrorOnSelfReference>true</AvoidCycleErrorOnSelfReference>
     </PropertyGroup>
 
+    <Choose>
+        <When Condition="'$(Configuration)'=='Debug'">
+            <Choose>
+                <When Condition="'$(Platform)'=='x86'">
+                    <PropertyGroup>
+                        <PackageId>>$(RootNameSpace).Debug.x86</PackageId>
+                    </PropertyGroup>
+                    <ItemGroup>
+                        <PackageReference Include="RapidStreamer.Debug.x86" Version="1.0.37"/>
+                    </ItemGroup>
+                </When>
+                <When Condition="'$(Platform)'=='x64'">
+                    <PropertyGroup>
+                        <PackageId>>$(RootNameSpace).Debug.x64</PackageId>
+                    </PropertyGroup>
+                    <ItemGroup>
+                        <PackageReference Include="RapidStreamer.Debug.x64" Version="1.0.37"/>
+                    </ItemGroup>
+                </When>
+                <Otherwise>
+                    <PropertyGroup>
+                        <PackageId>$(RootNameSpace).Debug</PackageId>
+                    </PropertyGroup>
+                    <ItemGroup>
+                        <PackageReference Include="RapidStreamer.Debug" Version="1.0.37"/>
+                    </ItemGroup>
+                </Otherwise>
+            </Choose>
+        </When>
+        <Otherwise>
+            <Choose>
+                <When Condition="'$(Platform)'=='x86'">
+                    <PropertyGroup>
+                        <PackageId>>$(RootNameSpace).x86</PackageId>
+                    </PropertyGroup>
+                    <ItemGroup>
+                        <PackageReference Include="RapidStreamer.x86" Version="1.0.37"/>
+                    </ItemGroup>
+                </When>
+                <When Condition="'$(Platform)'=='x64'">
+                    <PropertyGroup>
+                        <PackageId>>$(RootNameSpace).x64</PackageId>
+                    </PropertyGroup>
+                    <ItemGroup>
+                        <PackageReference Include="RapidStreamer.x64" Version="1.0.37"/>
+                    </ItemGroup>
+                </When>
+                <Otherwise>
+                    <PropertyGroup>
+                        <PackageId>$(RootNameSpace)</PackageId>
+                    </PropertyGroup>
+                    <ItemGroup>
+                        <PackageReference Include="RapidStreamer" Version="1.0.37"/>
+                    </ItemGroup>
+                </Otherwise>
+            </Choose>
+        </Otherwise>
+    </Choose>
+
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
         <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath="" />
-        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath="" />
+        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath=""/>
+        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath=""/>
     </ItemGroup>
-    
+
     <ItemGroup>
-        <PackageReference Include="OpenTelemetry.Api" Version="1.9.0" />
-        <PackageReference Include="RapidStreamer" Version="1.0.33" />
+        <PackageReference Include="OpenTelemetry.Api" Version="1.9.0"/>
     </ItemGroup>
 
 </Project>
