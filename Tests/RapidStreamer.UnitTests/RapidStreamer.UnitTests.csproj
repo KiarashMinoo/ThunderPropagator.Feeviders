@@ -8,7 +8,7 @@
         <Configurations>Debug;Release</Configurations>
         <EnablePreviewFeatures>true</EnablePreviewFeatures>
         <Platforms>AnyCPU;x86;x64</Platforms>
-        <Version>1.0.10.0</Version>
+        <Version>1.0.11.0</Version>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
