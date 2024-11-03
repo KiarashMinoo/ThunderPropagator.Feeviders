@@ -33,7 +33,7 @@
             <Choose>
                 <When Condition="'$(Platform)'=='x86'">
                     <PropertyGroup>
-                        <PackageId>>$(RootNameSpace).Debug.x86</PackageId>
+                        <PackageId>$(RootNameSpace).Debug.x86</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
                         <PackageReference Include="RapidStreamer.Debug.x86" Version="1.0.37"/>
@@ -41,7 +41,7 @@
                 </When>
                 <When Condition="'$(Platform)'=='x64'">
                     <PropertyGroup>
-                        <PackageId>>$(RootNameSpace).Debug.x64</PackageId>
+                        <PackageId>$(RootNameSpace).Debug.x64</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
                         <PackageReference Include="RapidStreamer.Debug.x64" Version="1.0.37"/>
@@ -61,7 +61,7 @@
             <Choose>
                 <When Condition="'$(Platform)'=='x86'">
                     <PropertyGroup>
-                        <PackageId>>$(RootNameSpace).x86</PackageId>
+                        <PackageId>$(RootNameSpace).x86</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
                         <PackageReference Include="RapidStreamer.x86" Version="1.0.37"/>
@@ -69,7 +69,7 @@
                 </When>
                 <When Condition="'$(Platform)'=='x64'">
                     <PropertyGroup>
-                        <PackageId>>$(RootNameSpace).x64</PackageId>
+                        <PackageId>$(RootNameSpace).x64</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
                         <PackageReference Include="RapidStreamer.x64" Version="1.0.37"/>
