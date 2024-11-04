@@ -105,21 +105,29 @@ namespace RapidStreamer.Feeders.Kafka
 
         protected override async Task<bool> HandleExceptionAsync(Exception exception, CancellationToken cancellationToken = default)
         {
-            if (exception is KafkaException kafkaException)
+            var awaitness = 10;
+            switch (exception)
             {
-                ReportHealth(kafkaException.Error.IsFatal ? HealthStatus.Unhealthy : HealthStatus.Degraded, kafkaException);
+                case ConsumeException consumeException when consumeException.Error.Code == ErrorCode.UnknownTopicOrPart:
+                    ReportHealth(HealthStatus.Unhealthy, consumeException);
+                    awaitness = 60;
+                    break;
+                case KafkaException kafkaException:
+                {
+                    ReportHealth(kafkaException.Error.IsFatal ? HealthStatus.Unhealthy : HealthStatus.Degraded, kafkaException);
 
-                object topicNames = _kafkaFeederConfiguration.TopicNames;
-                Logger.LogError(kafkaException, "error has occured while consuming messages on topics {Topics}, Error = {Error}.", topicNames, kafkaException.Error);
+                    object topicNames = _kafkaFeederConfiguration.TopicNames;
+                    Logger.LogError(kafkaException, "error has occured while consuming messages on topics {Topics}, Error = {Error}.", topicNames, kafkaException.Error);
+                    break;
+                }
+                default:
+                    ReportHealth(HealthStatus.Unhealthy, exception);
+
+                    Logger.LogError(exception, "error has occured while consuming messages on topics {Topics}.", (object)_kafkaFeederConfiguration.TopicNames);
+                    break;
             }
-            else
-            {
-                ReportHealth(HealthStatus.Unhealthy, exception);
 
-                Logger.LogError(exception, "error has occured while consuming messages on topics {Topics}.", (object)_kafkaFeederConfiguration.TopicNames);
-            }
-
-            await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(awaitness), cancellationToken);
             return true;
         }
 
