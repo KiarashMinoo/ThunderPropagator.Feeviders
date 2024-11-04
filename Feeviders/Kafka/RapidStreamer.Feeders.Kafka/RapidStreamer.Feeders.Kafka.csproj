@@ -28,6 +28,12 @@
         <AvoidCycleErrorOnSelfReference>true</AvoidCycleErrorOnSelfReference>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(Configuration)'=='Release'">
+        <DebugSymbols>False</DebugSymbols>
+        <DebugType>None</DebugType>
+        <DefineConstants/>
+    </PropertyGroup>
+
     <Choose>
         <When Condition="'$(Configuration)'=='Debug'">
             <Choose>
