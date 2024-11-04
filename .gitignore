@@ -53,3 +53,5 @@ redis_data/
 logs/
 
 data/
+
+artifacts/
