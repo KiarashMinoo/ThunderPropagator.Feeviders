@@ -81,38 +81,53 @@ namespace RapidStreamer.Feeders.Kafka
         {
             var consumeResult = _consumer.Consume(cancellationToken);
 
-            var message = consumeResult?.Message.Value;
-
-            if (consumeResult is not null && message is not null)
+            if (consumeResult is not null)
             {
+                if (consumeResult.IsPartitionEOF)
+                {
+                    Logger.LogInformation("Reached end of topic {Topic}, partition {Partition}, offset {consumeResult.Offset}.", consumeResult.Topic, consumeResult.Partition, consumeResult.Offset);
+
+                    await Task.Yield();
+                }
+
+                else
+                {
+                    var message = consumeResult.Message.Value;
+
+                    if (message is not null)
+                    {
 #if DEBUG
-                ActivityContext? activityContext = null;
-                if (consumeResult.Message.Headers.TryGetLastBytes(nameof(Activity), out var activityContextBytes) && activityContextBytes is not null)
-                    activityContext = activityContextBytes.FromNJsonBytes<ActivityContext>();
+                        ActivityContext? activityContext = null;
+                        if (consumeResult.Message.Headers.TryGetLastBytes(nameof(Activity), out var activityContextBytes) && activityContextBytes is not null)
+                            activityContext = activityContextBytes.FromNJsonBytes<ActivityContext>();
 
-                Baggage? baggage = null;
-                if (consumeResult.Message.Headers.TryGetLastBytes(nameof(Baggage), out var baggageBytes) && baggageBytes is not null)
-                    baggage = baggageBytes.FromNJsonBytes<Baggage>();
+                        Baggage? baggage = null;
+                        if (consumeResult.Message.Headers.TryGetLastBytes(nameof(Baggage), out var baggageBytes) && baggageBytes is not null)
+                            baggage = baggageBytes.FromNJsonBytes<Baggage>();
 
-                yield return new FeederReceivedMessage<TKafkaFeederMessage>(message,
-                    activityContext,
-                    baggage,
-                    new Dictionary<string, object?>
-                    {
-                        { nameof(consumeResult.Topic), consumeResult.Topic },
-                        { nameof(consumeResult.Offset), consumeResult.Offset },
-                    });
+                        yield return new FeederReceivedMessage<TKafkaFeederMessage>(message,
+                            activityContext,
+                            baggage,
+                            new Dictionary<string, object?>
+                            {
+                                { nameof(consumeResult.Topic), consumeResult.Topic },
+                                { nameof(consumeResult.Offset), consumeResult.Offset },
+                            });
 #else
-                yield return new FeederReceivedMessage<TKafkaFeederMessage>(message,
-                    arguments: new Dictionary<string, object?>
-                    {
-                        { nameof(consumeResult.Topic), consumeResult.Topic },
-                        { nameof(consumeResult.Offset), consumeResult.Offset },
-                    });
+                        yield return new FeederReceivedMessage<TKafkaFeederMessage>(message,
+                            arguments: new Dictionary<string, object?>
+                            {
+                                { nameof(consumeResult.Topic), consumeResult.Topic },
+                                { nameof(consumeResult.Offset), consumeResult.Offset },
+                            });
 #endif
+                    }
+                    else
+                        await Task.Yield();
+                }
             }
-
-            await Task.Yield();
+            else
+                await Task.Yield();
         }
 
         protected override async Task<bool> HandleExceptionAsync(Exception exception, CancellationToken cancellationToken = default)
