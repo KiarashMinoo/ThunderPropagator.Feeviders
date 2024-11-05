@@ -213,7 +213,7 @@ namespace RapidStreamer.Feeders.TcpSocket
                 }
 
                 authentication = authentication.Replace(Constants.Authentication, string.Empty);
-                var authenticationParts = authentication.Split(Constants.Separator, StringSplitOptions.RemoveEmptyEntries);
+                var authenticationParts = authentication.Split(Constants.Separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                 if (authenticationParts.Length != 2 || !authenticationParts[0].StartsWith(Constants.Username) || !authenticationParts[1].StartsWith(Constants.Password))
                 {
                     Logger.LogError(nameof(InvalidCredentialException));

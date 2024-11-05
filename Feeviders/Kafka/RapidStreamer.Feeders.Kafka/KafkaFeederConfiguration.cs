@@ -15,7 +15,7 @@ namespace RapidStreamer.Feeders.Kafka
 
         public string[] TopicNames
         {
-            get => Get("topic.names")?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? [];
+            get => Get("topic.names")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
             set => Set("topic.names", string.Join(',', value));
         }
 
@@ -49,7 +49,7 @@ namespace RapidStreamer.Feeders.Kafka
 
         public string[]? MetadataReferences
         {
-            get => Get("metadata.references")?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? [];
+            get => Get("metadata.references")?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
             set
             {
                 if (value is not null)
