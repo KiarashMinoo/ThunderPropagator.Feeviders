@@ -49,9 +49,25 @@ namespace RapidStreamer.Feeders.RabbitMQ
                 {
 #if DEBUG
                     var parentContext = _propagator.Extract(default, eventArgs.BasicProperties, ExtractTraceContextFromBasicProperties);
-                    await ReceiveAsync(eventArgs.Body.ToArray(), parentContext.ActivityContext, parentContext.Baggage);
+                    await ReceiveAsync(eventArgs.Body.ToArray(),
+                        parentContext.ActivityContext,
+                        parentContext.Baggage,
+                        new Dictionary<string, object?>
+                        {
+                            { nameof(eventArgs.Exchange), eventArgs.Exchange },
+                            { nameof(eventArgs.ConsumerTag), eventArgs.ConsumerTag },
+                            { nameof(eventArgs.DeliveryTag), eventArgs.DeliveryTag },
+                            { nameof(eventArgs.RoutingKey), eventArgs.RoutingKey },
+                        });
 #else
-                    await ReceiveAsync(eventArgs.Body.ToArray());
+                    await ReceiveAsync(eventArgs.Body.ToArray(),
+                        arguments: new Dictionary<string, object?>
+                        {
+                            { nameof(eventArgs.Exchange), eventArgs.Exchange },
+                            { nameof(eventArgs.ConsumerTag), eventArgs.ConsumerTag },
+                            { nameof(eventArgs.DeliveryTag), eventArgs.DeliveryTag },
+                            { nameof(eventArgs.RoutingKey), eventArgs.RoutingKey },
+                        });
 #endif
 
                     ReportHealth(HealthStatus.Healthy);

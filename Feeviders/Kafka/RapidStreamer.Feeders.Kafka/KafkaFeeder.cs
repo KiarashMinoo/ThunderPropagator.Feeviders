@@ -94,9 +94,21 @@ namespace RapidStreamer.Feeders.Kafka
                 if (consumeResult.Message.Headers.TryGetLastBytes(nameof(Baggage), out var baggageBytes) && baggageBytes is not null)
                     baggage = baggageBytes.FromNJsonBytes<Baggage>();
 
-                yield return new FeederReceivedMessage<TKafkaFeederMessage>(message, activityContext, baggage);
+                yield return new FeederReceivedMessage<TKafkaFeederMessage>(message,
+                    activityContext,
+                    baggage,
+                    new Dictionary<string, object?>
+                    {
+                        { nameof(consumeResult.Topic), consumeResult.Topic },
+                        { nameof(consumeResult.Offset), consumeResult.Offset },
+                    });
 #else
-                yield return message;
+                yield return new FeederReceivedMessage<TKafkaFeederMessage>(message,
+                    arguments: new Dictionary<string, object?>
+                    {
+                        { nameof(consumeResult.Topic), consumeResult.Topic },
+                        { nameof(consumeResult.Offset), consumeResult.Offset },
+                    });
 #endif
             }
 

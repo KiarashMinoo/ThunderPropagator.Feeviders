@@ -39,7 +39,7 @@ namespace RapidStreamer.Feeders.WebSocket
 #if DEBUG
                 var activityContext = webSocketFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
                 var baggage = webSocketFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
-                await ReceiveAsync(webSocketFeederMessage, activityContext, baggage, cancellationToken);
+                await ReceiveAsync(webSocketFeederMessage, activityContext, baggage, cancellationToken: cancellationToken);
 #else
                 await ReceiveAsync(webSocketFeederMessage, cancellationToken: cancellationToken);
 #endif
