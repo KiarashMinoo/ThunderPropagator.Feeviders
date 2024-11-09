@@ -9,7 +9,7 @@ namespace RapidStreamer.Feeviders.RabbitMQ.SharedKernel
 #endif
         class RabbitMQFeederConnectionFactory : DisposableObject
     {
-        public static IConnection CreateConnection(IRabbitMQFeeviderConfiguration configuration)
+        public static Task<IConnection> CreateConnectionAsync(IRabbitMQFeeviderConfiguration configuration, CancellationToken cancellationToken = default)
         {
             var factory = new ConnectionFactory
             {
@@ -22,9 +22,6 @@ namespace RapidStreamer.Feeviders.RabbitMQ.SharedKernel
 
             if (configuration.AutomaticRecoveryEnabled != null)
                 factory.AutomaticRecoveryEnabled = configuration.AutomaticRecoveryEnabled.Value;
-
-            if (configuration.DispatchConsumersAsync != null)
-                factory.DispatchConsumersAsync = configuration.DispatchConsumersAsync.Value;
 
             if (configuration.ConsumerDispatchConcurrency != null)
                 factory.ConsumerDispatchConcurrency = configuration.ConsumerDispatchConcurrency.Value;
@@ -74,10 +71,43 @@ namespace RapidStreamer.Feeviders.RabbitMQ.SharedKernel
             if (!string.IsNullOrWhiteSpace(configuration.ClientProvidedName))
                 factory.ClientProvidedName = configuration.ClientProvidedName;
 
-            if (configuration.MaxMessageSize != null)
-                factory.MaxMessageSize = configuration.MaxMessageSize.Value;
+            if (configuration.EndpointResolverFactory != null)
+                factory.EndpointResolverFactory = configuration.EndpointResolverFactory;
 
-            return factory.CreateConnection();
+            if (configuration.Ssl != null)
+                factory.Ssl = configuration.Ssl;
+
+            if (configuration.TopologyRecoveryFilter != null)
+                factory.TopologyRecoveryFilter = configuration.TopologyRecoveryFilter;
+
+            if (configuration.TopologyRecoveryExceptionHandler != null)
+                factory.TopologyRecoveryExceptionHandler = configuration.TopologyRecoveryExceptionHandler;
+
+            if (configuration.ClientProperties != null)
+                factory.ClientProperties = configuration.ClientProperties;
+
+            if (configuration.CredentialsProvider != null)
+                factory.CredentialsProvider = configuration.CredentialsProvider;
+
+            if (configuration.MaxInboundMessageBodySize != null)
+                factory.MaxInboundMessageBodySize = configuration.MaxInboundMessageBodySize.Value;
+
+            return factory.CreateConnectionAsync(cancellationToken);
+        }
+
+        internal static async Task<(IConnection, IChannel)> InitializeChannelAsync(RabbitMQFeeviderConfiguration configuration, CancellationToken cancellationToken = default)
+        {
+            var connection = await CreateConnectionAsync(configuration, cancellationToken);
+            var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
+
+            await channel.QueueDeclareAsync(configuration.Queue,
+                configuration.Durable,
+                configuration.Exclusive,
+                configuration.AutoDelete,
+                configuration.Arguments,
+                cancellationToken: cancellationToken);
+
+            return (connection, channel);
         }
     }
 }

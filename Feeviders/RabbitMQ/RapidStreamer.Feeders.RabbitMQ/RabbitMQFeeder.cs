@@ -3,11 +3,12 @@ using Microsoft.Extensions.Logging;
 using OpenTelemetry.Context.Propagation;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using RapidStreamer.Application.Channels;
 using RapidStreamer.Application.Feeders;
 using RapidStreamer.Feeviders.RabbitMQ.SharedKernel;
 using System.Reflection;
 using System.Text;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace RapidStreamer.Feeders.RabbitMQ
 {
@@ -16,13 +17,13 @@ namespace RapidStreamer.Feeders.RabbitMQ
         sealed
 #endif
         class RabbitMQFeeder<TChannel, TRabbitMQFeederMessage, TRabbitMQFeederConfiguration> : DelegativeFeeder<TChannel, TRabbitMQFeederMessage, TRabbitMQFeederConfiguration>
-        where TChannel : class, IChannel
+        where TChannel : class, RapidStreamer.Application.Channels.IChannel
         where TRabbitMQFeederMessage : RabbitMQFeederMessage
         where TRabbitMQFeederConfiguration : RabbitMQFeederConfiguration
     {
-        private readonly IModel _channel;
-        private readonly IConnection _connection;
-        private readonly AsyncEventingBasicConsumer _consumer;
+        private IChannel? _channel;
+        private IConnection? _connection;
+        private AsyncEventingBasicConsumer? _consumer;
 
         private readonly TextMapPropagator _propagator = Propagators.DefaultTextMapPropagator;
 
@@ -32,23 +33,30 @@ namespace RapidStreamer.Feeders.RabbitMQ
             IServiceProvider serviceProvider)
             : base(channel, rabbitMqFeederConfiguration, feederHandler, serviceProvider)
         {
-            _connection = RabbitMQFeederConnectionFactory.CreateConnection(rabbitMqFeederConfiguration);
-            _channel = _connection.CreateModel();
+            var applicationLifetime = serviceProvider.GetRequiredService<IHostApplicationLifetime>();
 
-            _channel.QueueDeclare(rabbitMqFeederConfiguration.Queue,
-                rabbitMqFeederConfiguration.Durable,
-                rabbitMqFeederConfiguration.Exclusive,
-                rabbitMqFeederConfiguration.AutoDelete,
-                rabbitMqFeederConfiguration.Arguments);
+            new Thread(Start).Start(applicationLifetime.ApplicationStopping);
+
+            HealthName = $"feeder_{nameof(RabbitMQ)}_{rabbitMqFeederConfiguration.Queue}";
+            HealthTags = [.. HealthTags, nameof(RabbitMQ), rabbitMqFeederConfiguration.Queue];
+        }
+
+        private async void Start(object? state)
+        {
+            if (state is not CancellationToken cancellationToken)
+                cancellationToken = default;
+
+            (_connection, _channel) = await RabbitMQFeederConnectionFactory.InitializeChannelAsync(FeederConfiguration, cancellationToken);
 
             _consumer = new AsyncEventingBasicConsumer(_channel);
 
-            _consumer.Received += async (_, eventArgs) =>
+            _consumer.ReceivedAsync += async (_, eventArgs) =>
             {
                 try
                 {
 #if DEBUG
                     var parentContext = _propagator.Extract(default, eventArgs.BasicProperties, ExtractTraceContextFromBasicProperties);
+
                     await ReceiveAsync(eventArgs.Body.ToArray(),
                         parentContext.ActivityContext,
                         parentContext.Baggage,
@@ -58,7 +66,8 @@ namespace RapidStreamer.Feeders.RabbitMQ
                             { nameof(eventArgs.ConsumerTag), eventArgs.ConsumerTag },
                             { nameof(eventArgs.DeliveryTag), eventArgs.DeliveryTag },
                             { nameof(eventArgs.RoutingKey), eventArgs.RoutingKey },
-                        });
+                        },
+                        cancellationToken);
 #else
                     await ReceiveAsync(eventArgs.Body.ToArray(),
                         arguments: new Dictionary<string, object?>
@@ -67,7 +76,8 @@ namespace RapidStreamer.Feeders.RabbitMQ
                             { nameof(eventArgs.ConsumerTag), eventArgs.ConsumerTag },
                             { nameof(eventArgs.DeliveryTag), eventArgs.DeliveryTag },
                             { nameof(eventArgs.RoutingKey), eventArgs.RoutingKey },
-                        });
+                        }, 
+                        cancellationToken);
 #endif
 
                     ReportHealth(HealthStatus.Healthy);
@@ -76,30 +86,25 @@ namespace RapidStreamer.Feeders.RabbitMQ
                 {
                     ReportHealth(HealthStatus.Unhealthy, exception);
 
-                    Logger.LogError(exception, "error has occured while consuming messages on Queue {Queue}.", rabbitMqFeederConfiguration.Queue);
+                    Logger.LogError(exception, "error has occured while consuming messages on Queue {Queue}.", FeederConfiguration.Queue);
                 }
             };
 
-            _channel.BasicConsume(rabbitMqFeederConfiguration.Queue,
-                rabbitMqFeederConfiguration.AutoAck,
-                _consumer);
+            await _channel.BasicConsumeAsync(FeederConfiguration.Queue, FeederConfiguration.AutoAck, _consumer, cancellationToken: cancellationToken);
 
-            Logger.LogInformation("{Name}/{ChannelName} on Queue {Queue} has configured.", GetType().GetTypeInfo().Name, channel.Metadata.ChannelName,
-                rabbitMqFeederConfiguration.Queue);
-
-            HealthName = $"feeder_{nameof(RabbitMQ)}_{rabbitMqFeederConfiguration.Queue}";
-            HealthTags = [.. HealthTags, nameof(RabbitMQ), rabbitMqFeederConfiguration.Queue];
+            Logger.LogInformation(
+                "{Name}/{ChannelName} on Queue {Queue} has configured.",
+                GetType().GetTypeInfo().Name,
+                Channel.Metadata.ChannelName,
+                FeederConfiguration.Queue);
         }
 
-        private IEnumerable<string> ExtractTraceContextFromBasicProperties(IBasicProperties props, string key)
+        private IEnumerable<string> ExtractTraceContextFromBasicProperties(IReadOnlyBasicProperties props, string key)
         {
             try
             {
-                if (props.Headers.TryGetValue(key, out var value))
-                {
-                    var bytes = value as byte[];
-                    return new[] { Encoding.UTF8.GetString(bytes!) };
-                }
+                if (props.Headers?.TryGetValue(key, out var value) == true && value is byte[] bytes)
+                    return [Encoding.UTF8.GetString(bytes)];
             }
             catch (Exception ex)
             {
@@ -109,18 +114,26 @@ namespace RapidStreamer.Feeders.RabbitMQ
             return [];
         }
 
-        protected override Task StopAsync(CancellationToken cancellationToken = default)
+        protected override async Task StopAsync(CancellationToken cancellationToken = default)
         {
-            _channel.Close();
-            _connection.Close();
+            if (_channel is not null)
+                await _channel.CloseAsync(cancellationToken: cancellationToken);
 
-            return base.StopAsync(cancellationToken);
+            if (_connection is not null)
+                await _connection.CloseAsync(cancellationToken: cancellationToken);
+
+            await base.StopAsync(cancellationToken);
         }
 
-        protected override void DisposeManagedResources()
+        protected override async ValueTask DisposeManagedResourcesAsync()
         {
-            _channel.Dispose();
-            _connection.Dispose();
+            await StopAsync();
+
+            if (_channel is not null)
+                await _channel.DisposeAsync();
+
+            if (_connection is not null)
+                await _connection.DisposeAsync();
         }
     }
 }

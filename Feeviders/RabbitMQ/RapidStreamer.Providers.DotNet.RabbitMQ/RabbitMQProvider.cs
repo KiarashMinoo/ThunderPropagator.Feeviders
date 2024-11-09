@@ -3,6 +3,8 @@ using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
 using System.Diagnostics;
 #endif
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using RapidStreamer.Feeviders.RabbitMQ.SharedKernel;
@@ -19,29 +21,31 @@ namespace RapidStreamer.Providers.DotNet.RabbitMQ
         where TRabbitMQProviderConfiguration : RabbitMQProviderConfiguration
     {
         private readonly TRabbitMQProviderConfiguration _rabbitMQProviderConfiguration;
-        private readonly IConnection _connection;
-        private readonly IModel _channel;
+        private IConnection? _connection;
+        private IChannel? _channel;
 
         public RabbitMQProvider(TRabbitMQProviderConfiguration rabbitMQProviderConfiguration, IServiceProvider serviceProvider)
             : base(serviceProvider)
         {
             _rabbitMQProviderConfiguration = rabbitMQProviderConfiguration;
 
-            _connection = RabbitMQFeederConnectionFactory.CreateConnection(_rabbitMQProviderConfiguration);
-            _channel = _connection.CreateModel();
+            var applicationLifetime = serviceProvider.GetRequiredService<IHostApplicationLifetime>();
 
-            _channel.QueueDeclare(_rabbitMQProviderConfiguration.Queue,
-                _rabbitMQProviderConfiguration.Durable,
-                _rabbitMQProviderConfiguration.Exclusive,
-                _rabbitMQProviderConfiguration.AutoDelete,
-                _rabbitMQProviderConfiguration.Arguments);
+            _ = Task.Run(async () => (_connection, _channel) = await RabbitMQFeederConnectionFactory.InitializeChannelAsync(_rabbitMQProviderConfiguration, applicationLifetime.ApplicationStopping));
         }
 
-        protected override Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)
+        protected override async Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)
         {
+            if (_channel is null)
+                return;
+
             try
             {
-                var channelProperties = _channel.CreateBasicProperties();
+                var channelProperties = new BasicProperties
+                {
+                    ContentType = "application/json",
+                    DeliveryMode = DeliveryModes.Persistent
+                };
 
 #if DEBUG
                 if (Activity.Current?.Context is not null)
@@ -50,7 +54,7 @@ namespace RapidStreamer.Providers.DotNet.RabbitMQ
                     {
                         try
                         {
-                            properties.Headers ??= new Dictionary<string, object>();
+                            properties.Headers ??= new Dictionary<string, object?>();
                             properties.Headers[key] = value;
                         }
                         catch (Exception ex)
@@ -61,9 +65,12 @@ namespace RapidStreamer.Providers.DotNet.RabbitMQ
                 }
 #endif
 
-                _channel.BasicPublish(_rabbitMQProviderConfiguration.Exchange, _rabbitMQProviderConfiguration.RoutingKey, body: bytes, basicProperties: channelProperties);
-
-                return Task.CompletedTask;
+                await _channel.BasicPublishAsync(_rabbitMQProviderConfiguration.Exchange,
+                    _rabbitMQProviderConfiguration.RoutingKey,
+                    body: new ReadOnlyMemory<byte>(bytes),
+                    basicProperties: channelProperties,
+                    cancellationToken: cancellationToken,
+                    mandatory: true);
             }
             catch (Exception exception)
             {
@@ -74,13 +81,19 @@ namespace RapidStreamer.Providers.DotNet.RabbitMQ
             }
         }
 
-        protected override void DisposeManagedResources()
+        protected override async ValueTask DisposeManagedResourcesAsync()
         {
-            _channel.Close();
-            _connection.Close();
+            if (_channel is not null)
+                await _channel.CloseAsync();
 
-            _channel.Dispose();
-            _connection.Dispose();
+            if (_connection is not null)
+                await _connection.CloseAsync();
+
+            if (_channel is not null)
+                await _channel.DisposeAsync();
+
+            if (_connection is not null)
+                await _connection.DisposeAsync();
         }
     }
 }
