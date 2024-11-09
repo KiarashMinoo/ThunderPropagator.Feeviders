@@ -176,7 +176,7 @@ namespace RapidStreamer.Feeviders.RabbitMQ.SharedKernel
         }
 
         //
-        public required string Queue
+        public string Queue
         {
             get => Get<string>()!;
             set => Set(value);
