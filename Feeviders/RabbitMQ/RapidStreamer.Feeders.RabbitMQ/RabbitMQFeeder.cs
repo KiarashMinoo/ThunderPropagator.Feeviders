@@ -76,8 +76,8 @@ namespace RapidStreamer.Feeders.RabbitMQ
                             { nameof(eventArgs.ConsumerTag), eventArgs.ConsumerTag },
                             { nameof(eventArgs.DeliveryTag), eventArgs.DeliveryTag },
                             { nameof(eventArgs.RoutingKey), eventArgs.RoutingKey },
-                        }, 
-                        cancellationToken);
+                        },
+                        cancellationToken: cancellationToken);
 #endif
 
                     ReportHealth(HealthStatus.Healthy);
