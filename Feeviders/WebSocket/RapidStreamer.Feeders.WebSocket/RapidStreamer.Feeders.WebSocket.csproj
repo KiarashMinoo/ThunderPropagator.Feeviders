@@ -11,14 +11,6 @@
         <Version>1.0.26.0</Version>
         <LangVersion>latestmajor</LangVersion>
         <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
-    </PropertyGroup>
-
-    <PropertyGroup Condition="'$(TargetFramework)'=='.NET8'">
-        <EnablePreviewFeatures>true</EnablePreviewFeatures>
-        <GenerateRequiresPreviewFeaturesAttribute>False</GenerateRequiresPreviewFeaturesAttribute>
-    </PropertyGroup>
-
-    <PropertyGroup Condition="'$(TargetFramework)'=='.NET9'">
         <EnablePreviewFeatures>true</EnablePreviewFeatures>
         <GenerateRequiresPreviewFeaturesAttribute>False</GenerateRequiresPreviewFeaturesAttribute>
     </PropertyGroup>
