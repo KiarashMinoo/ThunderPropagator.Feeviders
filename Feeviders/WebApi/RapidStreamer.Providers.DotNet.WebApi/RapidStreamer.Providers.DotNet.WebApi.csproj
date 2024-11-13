@@ -2,7 +2,6 @@
 
     <PropertyGroup>
         <OutputType>Library</OutputType>
-        <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -11,6 +10,8 @@
         <EnablePreviewFeatures>true</EnablePreviewFeatures>
         <Platforms>AnyCPU;x86;x64</Platforms>
         <Version>1.0.25.0</Version>
+        <LangVersion>latestmajor</LangVersion>
+        <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)'=='Release'">
@@ -89,7 +90,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="8.10.0" />
+      <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="9.0.0" />
     </ItemGroup>
     
 </Project>

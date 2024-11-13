@@ -2,15 +2,25 @@
 
     <PropertyGroup>
         <OutputType>Library</OutputType>
-        <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <NoWarn>$(NoWarn);1591</NoWarn>
         <Configurations>Debug;Release</Configurations>
-        <EnablePreviewFeatures>true</EnablePreviewFeatures>
         <Platforms>AnyCPU;x86;x64</Platforms>
         <Version>1.0.25.0</Version>
+        <LangVersion>latestmajor</LangVersion>
+        <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(TargetFramework)'=='.NET8'">
+        <EnablePreviewFeatures>true</EnablePreviewFeatures>
+        <GenerateRequiresPreviewFeaturesAttribute>False</GenerateRequiresPreviewFeaturesAttribute>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(TargetFramework)'=='.NET9'">
+        <EnablePreviewFeatures>true</EnablePreviewFeatures>
+        <GenerateRequiresPreviewFeaturesAttribute>False</GenerateRequiresPreviewFeaturesAttribute>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)'=='Release'">
@@ -42,7 +52,7 @@
                         <PackageId>$(RootNameSpace).Debug.x86</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.Debug.x86" Version="1.0.48"/>
+                        <PackageReference Include="RapidStreamer.Debug.x86" Version="1.0.51"/>
                     </ItemGroup>
                 </When>
                 <When Condition="'$(Platform)'=='x64'">
@@ -50,7 +60,7 @@
                         <PackageId>$(RootNameSpace).Debug.x64</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.Debug.x64" Version="1.0.48"/>
+                        <PackageReference Include="RapidStreamer.Debug.x64" Version="1.0.51"/>
                     </ItemGroup>
                 </When>
                 <Otherwise>
@@ -58,7 +68,7 @@
                         <PackageId>$(RootNameSpace).Debug</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.Debug" Version="1.0.48"/>
+                        <PackageReference Include="RapidStreamer.Debug" Version="1.0.51"/>
                     </ItemGroup>
                 </Otherwise>
             </Choose>
@@ -70,7 +80,7 @@
                         <PackageId>$(RootNameSpace).x86</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.x86" Version="1.0.48"/>
+                        <PackageReference Include="RapidStreamer.x86" Version="1.0.51"/>
                     </ItemGroup>
                 </When>
                 <When Condition="'$(Platform)'=='x64'">
@@ -78,7 +88,7 @@
                         <PackageId>$(RootNameSpace).x64</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.x64" Version="1.0.48"/>
+                        <PackageReference Include="RapidStreamer.x64" Version="1.0.51"/>
                     </ItemGroup>
                 </When>
                 <Otherwise>
@@ -86,7 +96,7 @@
                         <PackageId>$(RootNameSpace)</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer" Version="1.0.48"/>
+                        <PackageReference Include="RapidStreamer" Version="1.0.51"/>
                     </ItemGroup>
                 </Otherwise>
             </Choose>
@@ -103,7 +113,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="OpenTelemetry.Api" Version="1.9.0"/>
+        <PackageReference Include="OpenTelemetry.Api" Version="1.10.0" />
     </ItemGroup>
 
 </Project>
