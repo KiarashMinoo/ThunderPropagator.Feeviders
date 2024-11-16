@@ -8,7 +8,7 @@
         <NoWarn>$(NoWarn);1591</NoWarn>
         <Configurations>Debug;Release</Configurations>
         <EnablePreviewFeatures>true</EnablePreviewFeatures>
-        <Platforms>AnyCPU;x86;x64</Platforms>
+        <Platforms>AnyCPU;x86;x64;ARM64</Platforms>
         <Version>1.0.27.0</Version>
         <LangVersion>latestmajor</LangVersion>
         <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
@@ -17,7 +17,7 @@
     <PropertyGroup Condition="'$(Configuration)'=='Release'">
         <DebugSymbols>False</DebugSymbols>
         <DebugType>None</DebugType>
-        <DefineConstants/>
+        <DefineConstants />
     </PropertyGroup>
 
     <PropertyGroup Label="nuget">
@@ -38,6 +38,11 @@
     <Choose>
         <When Condition="'$(Configuration)'=='Debug'">
             <Choose>
+                <When Condition="'$(Platform)'=='ARM64'">
+                    <PropertyGroup>
+                        <PackageId>$(RootNameSpace).Debug.ARM64</PackageId>
+                    </PropertyGroup>
+                </When>
                 <When Condition="'$(Platform)'=='x86'">
                     <PropertyGroup>
                         <PackageId>$(RootNameSpace).Debug.x86</PackageId>
@@ -57,6 +62,11 @@
         </When>
         <Otherwise>
             <Choose>
+                <When Condition="'$(Platform)'=='ARM64'">
+                    <PropertyGroup>
+                        <PackageId>$(RootNameSpace).ARM64</PackageId>
+                    </PropertyGroup>
+                </When>
                 <When Condition="'$(Platform)'=='x86'">
                     <PropertyGroup>
                         <PackageId>$(RootNameSpace).x86</PackageId>
@@ -81,8 +91,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath=""/>
-        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath=""/>
+        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath="" />
+        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath="" />
     </ItemGroup>
 
     <ItemGroup>

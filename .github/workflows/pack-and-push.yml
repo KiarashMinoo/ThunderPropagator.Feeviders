@@ -27,7 +27,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: | 
+          dotnet-version: |
             8.0.x
             9.0.x
 
@@ -48,6 +48,9 @@ jobs:
           dotnet clean          
           
           #Debug          
+          dotnet build --nologo -c Debug /p:Platform=ARM64
+          dotnet pack  --nologo -c Debug /p:Platform=ARM64 -o ${{ env.ArtifactsDirectory }}
+          
           dotnet build --nologo -c Debug /p:Platform=x64
           dotnet pack  --nologo -c Debug /p:Platform=x64 -o ${{ env.ArtifactsDirectory }}
           
@@ -58,6 +61,9 @@ jobs:
           dotnet pack  --nologo -c Debug -o ${{ env.ArtifactsDirectory }}
           
           #Release          
+          dotnet build --nologo -c Release /p:Platform=ARM64
+          dotnet pack  --nologo -c Release /p:Platform=ARM64 -o ${{ env.ArtifactsDirectory }}    
+          
           dotnet build --nologo -c Release /p:Platform=x64
           dotnet pack  --nologo -c Release /p:Platform=x64 -o ${{ env.ArtifactsDirectory }}                                                          
           
