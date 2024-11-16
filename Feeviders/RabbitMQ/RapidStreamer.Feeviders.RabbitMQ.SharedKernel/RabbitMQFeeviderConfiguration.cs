@@ -1,4 +1,5 @@
 ﻿using System.Security.Authentication;
+using NJsonSchema.Annotations;
 using RabbitMQ.Client;
 using RapidStreamer.BuildingBlocks.Application;
 using RapidStreamer.BuildingBlocks.Application.Helpers;
@@ -61,6 +62,7 @@ namespace RapidStreamer.Feeviders.RabbitMQ.SharedKernel
             set => Set(value);
         }
 
+        [JsonSchemaIgnore]
         public Func<IEnumerable<AmqpTcpEndpoint>, IEndpointResolver>? EndpointResolverFactory
         {
             get => Get<Func<IEnumerable<AmqpTcpEndpoint>, IEndpointResolver>>();
@@ -97,12 +99,14 @@ namespace RapidStreamer.Feeviders.RabbitMQ.SharedKernel
             set => Set(value);
         }
 
+        [JsonSchemaIgnore]
         public TopologyRecoveryFilter? TopologyRecoveryFilter
         {
             get => Get<TopologyRecoveryFilter>();
             set => Set(value);
         }
 
+        [JsonSchemaIgnore]
         public TopologyRecoveryExceptionHandler? TopologyRecoveryExceptionHandler
         {
             get => Get<TopologyRecoveryExceptionHandler>();
