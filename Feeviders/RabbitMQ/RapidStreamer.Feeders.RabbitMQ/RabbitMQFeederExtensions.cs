@@ -21,7 +21,10 @@ namespace RapidStreamer.Feeders.RabbitMQ
             configuration.GetSection(sectionName).Bind(rabbitMqFeederConfiguration);
             services.TryAddSingleton(rabbitMqFeederConfiguration);
 
-            services.AddChannelFeeder<TChannel, RabbitMQFeeder<TChannel, TRabbitMQFeederMessage, TRabbitMQFeederConfiguration>, TRabbitMQFeederMessage, TRabbitMQFeederConfiguration>();
+            services.AddChannelFeeder<TChannel,
+                RabbitMQFeeder<TChannel, TRabbitMQFeederMessage, TRabbitMQFeederConfiguration>,
+                TRabbitMQFeederMessage,
+                TRabbitMQFeederConfiguration>();
 
             return services;
         }
@@ -32,9 +35,11 @@ namespace RapidStreamer.Feeders.RabbitMQ
             where TRabbitMQFeederMessage : RabbitMQFeederMessage
             where TRabbitMQFeederConfiguration : RabbitMQFeederConfiguration, new()
         {
-            services.AddChannelFeederResolver<TChannel, TRabbitMQFeederMessage, TRabbitMQFeederConfiguration>(
-                (serviceProvider, channel, rabbitMqFeederConfiguration, feederHandler) =>
-                    new RabbitMQFeeder<TChannel, TRabbitMQFeederMessage, TRabbitMQFeederConfiguration>(channel, rabbitMqFeederConfiguration, feederHandler, serviceProvider));
+            services.AddChannelFeederResolver<TChannel,
+                RabbitMQFeeder<TChannel, TRabbitMQFeederMessage, TRabbitMQFeederConfiguration>,
+                TRabbitMQFeederMessage,
+                TRabbitMQFeederConfiguration>((serviceProvider, channel, rabbitMqFeederConfiguration, feederHandler) =>
+                new RabbitMQFeeder<TChannel, TRabbitMQFeederMessage, TRabbitMQFeederConfiguration>(channel, rabbitMqFeederConfiguration, feederHandler, serviceProvider));
 
             return services;
         }

@@ -37,9 +37,11 @@ namespace RapidStreamer.Feeders.WebSocket
             where TWebSocketFeederMessage : WebSocketFeederMessage
             where TWebSocketFeederConfiguration : WebSocketFeederConfiguration, new()
         {
-            services.AddChannelFeederResolver<TChannel, TWebSocketFeederMessage, TWebSocketFeederConfiguration>(
-                (serviceProvider, channel, webSocketFeederConfiguration, feederHandler) =>
-                    new WebSocketFeeder<TChannel, TWebSocketFeederMessage, TWebSocketFeederConfiguration>(channel, webSocketFeederConfiguration, feederHandler, serviceProvider));
+            services.AddChannelFeederResolver<TChannel,
+                WebSocketFeeder<TChannel, TWebSocketFeederMessage, TWebSocketFeederConfiguration>,
+                TWebSocketFeederMessage,
+                TWebSocketFeederConfiguration>((serviceProvider, channel, webSocketFeederConfiguration, feederHandler) =>
+                new WebSocketFeeder<TChannel, TWebSocketFeederMessage, TWebSocketFeederConfiguration>(channel, webSocketFeederConfiguration, feederHandler, serviceProvider));
 
             return services;
         }
