@@ -9,6 +9,7 @@ using RapidStreamer.Application.Feeders;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using RapidStreamer.Application;
 
 namespace RapidStreamer.Feeders.UdpClient
 {
@@ -16,7 +17,7 @@ namespace RapidStreamer.Feeders.UdpClient
 #if !DEBUG
         sealed
 #endif
-        class UdpClientFeeder<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration> : DelegativeFeeder<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration>
+        class UdpClientFeeder<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration> : DelegativeFeeder<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration>, IFeature
         where TChannel : class, IChannel
         where TUdpClientFeederMessage : UdpClientFeederMessage
         where TUdpClientFeederConfiguration : UdpClientFeederConfiguration

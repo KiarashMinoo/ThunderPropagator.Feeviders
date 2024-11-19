@@ -9,6 +9,7 @@ using RapidStreamer.Application.Channels;
 using RapidStreamer.Application.Feeders;
 using RapidStreamer.Feeviders.ActiveMQ.SharedKernel;
 using System.Reflection;
+using RapidStreamer.Application;
 
 namespace RapidStreamer.Feeders.ActiveMQ
 {
@@ -16,7 +17,7 @@ namespace RapidStreamer.Feeders.ActiveMQ
 #if !DEBUG
         sealed
 #endif
-        class ActiveMQFeeder<TChannel, TActiveMQFeederMessage, TActiveMQFeederConfiguration> : DelegativeFeeder<TChannel, TActiveMQFeederMessage, TActiveMQFeederConfiguration>
+        class ActiveMQFeeder<TChannel, TActiveMQFeederMessage, TActiveMQFeederConfiguration> : DelegativeFeeder<TChannel, TActiveMQFeederMessage, TActiveMQFeederConfiguration>, IFeature
         where TChannel : class, IChannel
         where TActiveMQFeederMessage : ActiveMQFeederMessage
         where TActiveMQFeederConfiguration : ActiveMQFeederConfiguration

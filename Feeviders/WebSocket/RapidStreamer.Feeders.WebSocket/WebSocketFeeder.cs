@@ -4,6 +4,7 @@ using System.Diagnostics;
 #endif
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
+using RapidStreamer.Application;
 using RapidStreamer.Application.Channels;
 using RapidStreamer.Application.Feeders;
 
@@ -13,7 +14,7 @@ namespace RapidStreamer.Feeders.WebSocket
 #if !DEBUG
         sealed
 #endif
-        class WebSocketFeeder<TChannel, TWebSocketFeederMessage, TWebSocketFeederConfiguration> : DelegativeFeeder<TChannel, TWebSocketFeederMessage, TWebSocketFeederConfiguration>
+        class WebSocketFeeder<TChannel, TWebSocketFeederMessage, TWebSocketFeederConfiguration> : DelegativeFeeder<TChannel, TWebSocketFeederMessage, TWebSocketFeederConfiguration>, IFeature
         where TChannel : class, IChannel
         where TWebSocketFeederMessage : WebSocketFeederMessage
         where TWebSocketFeederConfiguration : WebSocketFeederConfiguration, IAbstractFeederConfiguration

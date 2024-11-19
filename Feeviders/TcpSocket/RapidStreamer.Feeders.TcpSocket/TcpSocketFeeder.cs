@@ -12,6 +12,7 @@ using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using RapidStreamer.Application;
 
 namespace RapidStreamer.Feeders.TcpSocket
 {
@@ -19,7 +20,7 @@ namespace RapidStreamer.Feeders.TcpSocket
 #if !DEBUG
         sealed
 #endif
-        class TcpSocketFeeder<TChannel, TTcpSocketFeederMessage, TTcpSocketFeederConfiguration> : DelegativeFeeder<TChannel, TTcpSocketFeederMessage, TTcpSocketFeederConfiguration>
+        class TcpSocketFeeder<TChannel, TTcpSocketFeederMessage, TTcpSocketFeederConfiguration> : DelegativeFeeder<TChannel, TTcpSocketFeederMessage, TTcpSocketFeederConfiguration>, IFeature
         where TChannel : class, IChannel
         where TTcpSocketFeederMessage : TcpSocketFeederMessage
         where TTcpSocketFeederConfiguration : TcpSocketFeederConfiguration

@@ -1,6 +1,7 @@
 ﻿using RapidStreamer.Application.Channels;
 using RapidStreamer.Application.Feeders;
 using System.Reflection;
+using RapidStreamer.Application;
 
 namespace RapidStreamer.Feeders.WebApi
 {
@@ -8,7 +9,7 @@ namespace RapidStreamer.Feeders.WebApi
 #if !DEBUG
         sealed
 #endif
-        class WebApiFeeder<TChannel, TWebApiFeederMessage, TWebApiFeederConfiguration> : DelegativeFeeder<TChannel, TWebApiFeederMessage, TWebApiFeederConfiguration>
+        class WebApiFeeder<TChannel, TWebApiFeederMessage, TWebApiFeederConfiguration> : DelegativeFeeder<TChannel, TWebApiFeederMessage, TWebApiFeederConfiguration>, IFeature
         where TChannel : class, IChannel
         where TWebApiFeederMessage : WebApiFeederMessage
         where TWebApiFeederConfiguration : WebApiFeederConfiguration
