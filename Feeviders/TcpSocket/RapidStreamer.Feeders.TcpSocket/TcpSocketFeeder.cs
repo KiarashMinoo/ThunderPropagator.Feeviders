@@ -67,7 +67,12 @@ namespace RapidStreamer.Feeders.TcpSocket
                 if (stream is SslStream sslStream)
                 {
                     ArgumentException.ThrowIfNullOrWhiteSpace(_tcpSocketFeederConfiguration.CertFile);
+#if NET9_0_OR_GREATER
+                    var serverCertificate = X509CertificateLoader.LoadCertificateFromFile(_tcpSocketFeederConfiguration.CertFile);
+#else
                     var serverCertificate = X509Certificate.CreateFromCertFile(_tcpSocketFeederConfiguration.CertFile);
+#endif
+
                     await sslStream.AuthenticateAsServerAsync(serverCertificate,
                         _tcpSocketFeederConfiguration.ClientCertificateRequired,
                         _tcpSocketFeederConfiguration.EnabledSslProtocols,

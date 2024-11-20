@@ -31,6 +31,7 @@ namespace RapidStreamer.Feeders.WebSocket
             return services;
         }
 
+
         public static IServiceCollection AddWebSocketFeederResolver<TChannel, TWebSocketFeederMessage, TWebSocketFeederConfiguration>
             (this IServiceCollection services)
             where TChannel : class, IChannel

@@ -43,7 +43,7 @@
                         <PackageId>$(RootNameSpace).Debug.ARM64</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.ARM64" Version="1.0.75"/>
+                        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.ARM64" Version="1.0.76"/>
                     </ItemGroup>
                 </When>
                 <When Condition="'$(Platform)'=='x86'">
@@ -51,7 +51,7 @@
                         <PackageId>$(RootNameSpace).Debug.x86</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.x86" Version="1.0.75"/>
+                        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.x86" Version="1.0.76"/>
                     </ItemGroup>
                 </When>
                 <When Condition="'$(Platform)'=='x64'">
@@ -59,7 +59,7 @@
                         <PackageId>$(RootNameSpace).Debug.x64</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.x64" Version="1.0.75"/>
+                        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.x64" Version="1.0.76"/>
                     </ItemGroup>
                 </When>
                 <Otherwise>
@@ -67,7 +67,7 @@
                         <PackageId>$(RootNameSpace).Debug</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug" Version="1.0.75"/>
+                        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug" Version="1.0.76"/>
                     </ItemGroup>
                 </Otherwise>
             </Choose>
@@ -79,7 +79,7 @@
                         <PackageId>$(RootNameSpace).x86</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.BuildingBlocks.x86" Version="1.0.75"/>
+                        <PackageReference Include="RapidStreamer.BuildingBlocks.x86" Version="1.0.76"/>
                     </ItemGroup>
                 </When>
                 <When Condition="'$(Platform)'=='ARM64'">
@@ -87,7 +87,7 @@
                         <PackageId>$(RootNameSpace).ARM64</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.BuildingBlocks.ARM64" Version="1.0.75"/>
+                        <PackageReference Include="RapidStreamer.BuildingBlocks.ARM64" Version="1.0.76"/>
                     </ItemGroup>
                 </When>
                 <When Condition="'$(Platform)'=='x64'">
@@ -95,7 +95,7 @@
                         <PackageId>$(RootNameSpace).x64</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.BuildingBlocks.x64" Version="1.0.75"/>
+                        <PackageReference Include="RapidStreamer.BuildingBlocks.x64" Version="1.0.76"/>
                     </ItemGroup>
                 </When>
                 <Otherwise>
@@ -103,7 +103,7 @@
                         <PackageId>$(RootNameSpace)</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.BuildingBlocks" Version="1.0.75"/>
+                        <PackageReference Include="RapidStreamer.BuildingBlocks" Version="1.0.76"/>
                     </ItemGroup>
                 </Otherwise>
             </Choose>
