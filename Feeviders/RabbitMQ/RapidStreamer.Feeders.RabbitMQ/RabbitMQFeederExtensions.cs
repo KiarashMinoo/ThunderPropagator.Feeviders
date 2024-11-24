@@ -35,10 +35,10 @@ namespace RapidStreamer.Feeders.RabbitMQ
             where TRabbitMQFeederMessage : RabbitMQFeederMessage
             where TRabbitMQFeederConfiguration : RabbitMQFeederConfiguration, new()
         {
-            services.AddChannelFeederResolver<TChannel,
+            SharedKernel.Extensions.AddChannelFeederResolver<TChannel,
                 RabbitMQFeeder<TChannel, TRabbitMQFeederMessage, TRabbitMQFeederConfiguration>,
                 TRabbitMQFeederMessage,
-                TRabbitMQFeederConfiguration>((serviceProvider, channel, rabbitMqFeederConfiguration, feederHandler) =>
+                TRabbitMQFeederConfiguration>(services, (serviceProvider, channel, rabbitMqFeederConfiguration, feederHandler) =>
                 new RabbitMQFeeder<TChannel, TRabbitMQFeederMessage, TRabbitMQFeederConfiguration>(channel, rabbitMqFeederConfiguration, feederHandler, serviceProvider));
 
             return services;

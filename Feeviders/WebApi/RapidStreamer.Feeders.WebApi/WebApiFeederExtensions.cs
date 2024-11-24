@@ -32,10 +32,10 @@ namespace RapidStreamer.Feeders.WebApi
             where TWebApiFeederMessage : WebApiFeederMessage
             where TWebApiFeederConfiguration : WebApiFeederConfiguration, new()
         {
-            services.AddChannelFeederResolver<TChannel,
+            SharedKernel.Extensions.AddChannelFeederResolver<TChannel,
                 WebApiFeeder<TChannel, TWebApiFeederMessage, TWebApiFeederConfiguration>,
                 TWebApiFeederMessage,
-                TWebApiFeederConfiguration>((serviceProvider, channel, webApiFeederConfiguration, feederHandler) =>
+                TWebApiFeederConfiguration>(services, (serviceProvider, channel, webApiFeederConfiguration, feederHandler) =>
                 new WebApiFeeder<TChannel, TWebApiFeederMessage, TWebApiFeederConfiguration>(channel, webApiFeederConfiguration, feederHandler, serviceProvider));
 
             return services;

@@ -35,10 +35,10 @@ namespace RapidStreamer.Feeders.TcpSocket
             where TTcpSocketFeederMessage : TcpSocketFeederMessage
             where TTcpSocketFeederConfiguration : TcpSocketFeederConfiguration, new()
         {
-            services.AddChannelFeederResolver<TChannel,
+            SharedKernel.Extensions.AddChannelFeederResolver<TChannel,
                 TcpSocketFeeder<TChannel, TTcpSocketFeederMessage, TTcpSocketFeederConfiguration>,
                 TTcpSocketFeederMessage,
-                TTcpSocketFeederConfiguration>((serviceProvider, channel, tcpSocketFeederConfiguration, feederHandler) =>
+                TTcpSocketFeederConfiguration>(services, (serviceProvider, channel, tcpSocketFeederConfiguration, feederHandler) =>
                 new TcpSocketFeeder<TChannel, TTcpSocketFeederMessage, TTcpSocketFeederConfiguration>(channel, tcpSocketFeederConfiguration, feederHandler, serviceProvider));
 
             return services;

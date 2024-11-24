@@ -35,10 +35,10 @@ namespace RapidStreamer.Feeders.Kafka
             where TKafkaFeederMessage : KafkaFeederMessage, new()
             where TKafkaFeederConfiguration : KafkaFeederConfiguration, new()
         {
-            services.AddChannelFeederResolver<TChannel,
+            SharedKernel.Extensions.AddChannelFeederResolver<TChannel,
                 KafkaFeeder<TChannel, TKafkaFeederMessage, TKafkaFeederConfiguration>,
                 TKafkaFeederMessage,
-                TKafkaFeederConfiguration>((serviceProvider, channel, kafkaFeederConfiguration, feederHandler) =>
+                TKafkaFeederConfiguration>(services, (serviceProvider, channel, kafkaFeederConfiguration, feederHandler) =>
                 new KafkaFeeder<TChannel, TKafkaFeederMessage, TKafkaFeederConfiguration>(channel, kafkaFeederConfiguration, feederHandler, serviceProvider));
 
             return services;

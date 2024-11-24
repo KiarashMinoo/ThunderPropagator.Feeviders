@@ -35,10 +35,10 @@ namespace RapidStreamer.Feeders.UdpClient
             where TUdpClientFeederMessage : UdpClientFeederMessage
             where TUdpClientFeederConfiguration : UdpClientFeederConfiguration, new()
         {
-            services.AddChannelFeederResolver<TChannel,
+            SharedKernel.Extensions.AddChannelFeederResolver<TChannel,
                 UdpClientFeeder<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration>,
                 TUdpClientFeederMessage,
-                TUdpClientFeederConfiguration>((serviceProvider, channel, udpClientFeederConfiguration, feederHandler) =>
+                TUdpClientFeederConfiguration>(services, (serviceProvider, channel, udpClientFeederConfiguration, feederHandler) =>
                 new UdpClientFeeder<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration>(channel, udpClientFeederConfiguration, feederHandler, serviceProvider));
 
             return services;

@@ -35,10 +35,10 @@ namespace RapidStreamer.Feeders.RedisPubSub
             where TRedisPubSubFeederMessage : RedisPubSubFeederMessage, new()
             where TRedisPubSubFeederConfiguration : RedisPubSubFeederConfiguration, new()
         {
-            services.AddChannelFeederResolver<TChannel,
+            SharedKernel.Extensions.AddChannelFeederResolver<TChannel,
                 RedisPubSubFeeder<TChannel, TRedisPubSubFeederMessage, TRedisPubSubFeederConfiguration>,
                 TRedisPubSubFeederMessage,
-                TRedisPubSubFeederConfiguration>((serviceProvider, channel, redisPubSubFeederConfiguration, feederHandler) =>
+                TRedisPubSubFeederConfiguration>(services, (serviceProvider, channel, redisPubSubFeederConfiguration, feederHandler) =>
                 new RedisPubSubFeeder<TChannel, TRedisPubSubFeederMessage, TRedisPubSubFeederConfiguration>(channel, redisPubSubFeederConfiguration, feederHandler, serviceProvider));
 
             return services;

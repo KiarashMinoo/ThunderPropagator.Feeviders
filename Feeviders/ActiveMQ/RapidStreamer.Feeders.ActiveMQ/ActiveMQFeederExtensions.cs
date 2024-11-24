@@ -35,10 +35,10 @@ namespace RapidStreamer.Feeders.ActiveMQ
             where TActiveMQFeederMessage : ActiveMQFeederMessage
             where TActiveMQFeederConfiguration : ActiveMQFeederConfiguration, new()
         {
-            services.AddChannelFeederResolver<TChannel,
+            SharedKernel.Extensions.AddChannelFeederResolver<TChannel,
                 ActiveMQFeeder<TChannel, TActiveMQFeederMessage, TActiveMQFeederConfiguration>,
                 TActiveMQFeederMessage,
-                TActiveMQFeederConfiguration>((serviceProvider, channel, activeMQFeederConfiguration, feederHandler) =>
+                TActiveMQFeederConfiguration>(services, (serviceProvider, channel, activeMQFeederConfiguration, feederHandler) =>
                 new ActiveMQFeeder<TChannel, TActiveMQFeederMessage, TActiveMQFeederConfiguration>(channel, activeMQFeederConfiguration, feederHandler, serviceProvider));
 
             return services;
