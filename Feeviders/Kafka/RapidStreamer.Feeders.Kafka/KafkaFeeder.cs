@@ -59,7 +59,8 @@ namespace RapidStreamer.Feeders.Kafka
                     {
                         KafkaSerializerType.Json => new KafkaJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
                         KafkaSerializerType.NJson => new KafkaNJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
-                        KafkaSerializerType.SchemaJson => new JsonDeserializer<TKafkaFeederMessage>().AsSyncOverAsync(),
+                        KafkaSerializerType.NetJson => new KafkaNetJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
+                        KafkaSerializerType.SchemaJson => new JsonDeserializer<TKafkaFeederMessage>(SchemaRegistryClient).AsSyncOverAsync(),
                         KafkaSerializerType.Avro => new AvroDeserializer<TKafkaFeederMessage>(SchemaRegistryClient).AsSyncOverAsync(),
                         _ => throw new ArgumentOutOfRangeException()
                     })

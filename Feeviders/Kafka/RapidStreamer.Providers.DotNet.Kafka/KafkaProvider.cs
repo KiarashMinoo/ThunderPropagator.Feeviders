@@ -37,6 +37,7 @@ namespace RapidStreamer.Providers.DotNet.Kafka
                     {
                         KafkaSerializerType.Json => new KafkaJsonSerializer<TKafkaProviderMessage>(this).AsSyncOverAsync(),
                         KafkaSerializerType.NJson => new KafkaNJsonSerializer<TKafkaProviderMessage>(this).AsSyncOverAsync(),
+                        KafkaSerializerType.NetJson => new KafkaNetJsonSerializer<TKafkaProviderMessage>(this).AsSyncOverAsync(),
                         KafkaSerializerType.SchemaJson => new JsonSerializer<TKafkaProviderMessage>(SchemaRegistryClient).AsSyncOverAsync(),
                         KafkaSerializerType.Avro => new AvroSerializer<TKafkaProviderMessage>(SchemaRegistryClient).AsSyncOverAsync(),
                         _ => throw new ArgumentOutOfRangeException()
