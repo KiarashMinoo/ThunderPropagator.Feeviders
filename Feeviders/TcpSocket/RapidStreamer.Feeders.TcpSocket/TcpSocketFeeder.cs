@@ -10,9 +10,9 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using RapidStreamer.Application;
+using RapidStreamer.BuildingBlocks.Application.Certificate;
 
 namespace RapidStreamer.Feeders.TcpSocket
 {
@@ -64,38 +64,31 @@ namespace RapidStreamer.Feeders.TcpSocket
 
                 await using Stream stream = _tcpSocketFeederConfiguration.Ssl == true ? new SslStream(client.GetStream(), false) : client.GetStream();
 
-                if (stream is SslStream sslStream)
+                switch (stream)
                 {
-                    ArgumentException.ThrowIfNullOrWhiteSpace(_tcpSocketFeederConfiguration.CertFile);
-#if NET9_0_OR_GREATER
-                    var serverCertificate = X509CertificateLoader.LoadCertificateFromFile(_tcpSocketFeederConfiguration.CertFile);
-#else
-                    var serverCertificate = X509Certificate.CreateFromCertFile(_tcpSocketFeederConfiguration.CertFile);
-#endif
+                    case SslStream sslStream:
+                    {
+                        await sslStream.AuthenticateAsServerAsync(_tcpSocketFeederConfiguration.Certificate?.Certificate ?? throw new ArgumentNullException(nameof(_tcpSocketFeederConfiguration.Certificate)),
+                            _tcpSocketFeederConfiguration.ClientCertificateRequired,
+                            _tcpSocketFeederConfiguration.EnabledSslProtocols,
+                            _tcpSocketFeederConfiguration.CheckCertificateRevocation);
 
-                    await sslStream.AuthenticateAsServerAsync(serverCertificate,
-                        _tcpSocketFeederConfiguration.ClientCertificateRequired,
-                        _tcpSocketFeederConfiguration.EnabledSslProtocols,
-                        _tcpSocketFeederConfiguration.CheckCertificateRevocation);
+                        if (_tcpSocketFeederConfiguration.ReadTimeout is not null)
+                            sslStream.ReadTimeout = _tcpSocketFeederConfiguration.ReadTimeout.Value;
 
-                    DisplaySecurityLevel(sslStream);
-                    DisplaySecurityServices(sslStream);
-                    DisplayCertificateInformation(sslStream);
-                    DisplayStreamProperties(sslStream);
+                        if (_tcpSocketFeederConfiguration.WriteTimeout is not null)
+                            sslStream.WriteTimeout = _tcpSocketFeederConfiguration.WriteTimeout.Value;
+                        break;
+                    }
+                    case NetworkStream networkStream:
+                    {
+                        if (_tcpSocketFeederConfiguration.ReadTimeout is not null)
+                            networkStream.ReadTimeout = _tcpSocketFeederConfiguration.ReadTimeout.Value;
 
-                    if (_tcpSocketFeederConfiguration.ReadTimeout is not null)
-                        sslStream.ReadTimeout = _tcpSocketFeederConfiguration.ReadTimeout.Value;
-
-                    if (_tcpSocketFeederConfiguration.WriteTimeout is not null)
-                        sslStream.WriteTimeout = _tcpSocketFeederConfiguration.WriteTimeout.Value;
-                }
-                else if (stream is NetworkStream networkStream)
-                {
-                    if (_tcpSocketFeederConfiguration.ReadTimeout is not null)
-                        networkStream.ReadTimeout = _tcpSocketFeederConfiguration.ReadTimeout.Value;
-
-                    if (_tcpSocketFeederConfiguration.WriteTimeout is not null)
-                        networkStream.WriteTimeout = _tcpSocketFeederConfiguration.WriteTimeout.Value;
+                        if (_tcpSocketFeederConfiguration.WriteTimeout is not null)
+                            networkStream.WriteTimeout = _tcpSocketFeederConfiguration.WriteTimeout.Value;
+                        break;
+                    }
                 }
 
                 var buffer = new byte[_tcpSocketFeederConfiguration.BufferSize];
@@ -156,58 +149,6 @@ namespace RapidStreamer.Feeders.TcpSocket
                 => _tcpSocketFeederConfiguration.AllowedAddresses is null ||
                    _tcpSocketFeederConfiguration.AllowedAddresses.Length == 0 ||
                    endPoint is IPEndPoint ipEndPoint && _tcpSocketFeederConfiguration.AllowedAddresses.Contains(ipEndPoint.Address.ToString());
-
-            void DisplaySecurityLevel(SslStream stream)
-            {
-                _logger.LogInformation("Cipher: {CipherAlgorithm} strength {CipherStrength}", stream.CipherAlgorithm, stream.CipherStrength);
-                _logger.LogInformation("Hash: {HashAlgorithm} strength {HashStrength}", stream.HashAlgorithm, stream.HashStrength);
-                _logger.LogInformation("Key exchange: {KeyExchangeAlgorithm} strength {KeyExchangeStrength}", stream.KeyExchangeAlgorithm, stream.KeyExchangeStrength);
-                _logger.LogInformation("Protocol: {SslProtocol}", stream.SslProtocol);
-            }
-
-            void DisplaySecurityServices(SslStream stream)
-            {
-                _logger.LogInformation("Is authenticated: {IsAuthenticated} as server? {IsServer}", stream.IsAuthenticated, stream.IsServer);
-                _logger.LogInformation("IsSigned: {IsSigned}", stream.IsSigned);
-                _logger.LogInformation("Is Encrypted: {IsEncrypted}", stream.IsEncrypted);
-                _logger.LogInformation("Is mutually authenticated: {IsMutuallyAuthenticated}", stream.IsMutuallyAuthenticated);
-            }
-
-            void DisplayStreamProperties(SslStream stream)
-            {
-                _logger.LogInformation("Can read: {CanRead}, write {CanWrite}", stream.CanRead, stream.CanWrite);
-                _logger.LogInformation("Can timeout: {CanTimeout}", stream.CanTimeout);
-            }
-
-            void DisplayCertificateInformation(SslStream stream)
-            {
-                _logger.LogInformation("Certificate revocation list checked: {CheckCertRevocationStatus}", stream.CheckCertRevocationStatus);
-
-                if (stream.LocalCertificate != null)
-                {
-                    _logger.LogInformation("Local cert was issued to {Subject} and is valid from {EffectiveDateString} until {ExpirationDateString}.",
-                        stream.LocalCertificate.Subject,
-                        stream.LocalCertificate.GetEffectiveDateString(),
-                        stream.LocalCertificate.GetExpirationDateString());
-                }
-                else
-                {
-                    _logger.LogInformation("Local certificate is null.");
-                }
-
-                // Display the properties of the client's certificate.
-                if (stream.RemoteCertificate != null)
-                {
-                    _logger.LogInformation("Remote cert was issued to {Subject} and is valid from {EffectiveDateString} until {ExpirationDateString}.",
-                        stream.RemoteCertificate.Subject,
-                        stream.RemoteCertificate.GetEffectiveDateString(),
-                        stream.RemoteCertificate.GetExpirationDateString());
-                }
-                else
-                {
-                    _logger.LogInformation("Remote certificate is null.");
-                }
-            }
 
             bool Authenticate(List<byte> bytes)
             {

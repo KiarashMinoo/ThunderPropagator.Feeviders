@@ -7,12 +7,11 @@
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <NoWarn>$(NoWarn);1591</NoWarn>
         <Configurations>Debug;Release</Configurations>
+        <EnablePreviewFeatures>true</EnablePreviewFeatures>
         <Platforms>AnyCPU;x86;x64;ARM64</Platforms>
         <Version>1.0.43.0</Version>
         <LangVersion>latestmajor</LangVersion>
         <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
-        <EnablePreviewFeatures>true</EnablePreviewFeatures>
-        <GenerateRequiresPreviewFeaturesAttribute>False</GenerateRequiresPreviewFeaturesAttribute>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)'=='Release'">
@@ -44,7 +43,7 @@
                         <PackageId>$(RootNameSpace).Debug.ARM64</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.Debug.ARM64" Version="1.0.84"/>
+                        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.ARM64" Version="1.0.83"/>
                     </ItemGroup>
                 </When>
                 <When Condition="'$(Platform)'=='x86'">
@@ -52,7 +51,7 @@
                         <PackageId>$(RootNameSpace).Debug.x86</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.Debug.x86" Version="1.0.84"/>
+                        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.x86" Version="1.0.83"/>
                     </ItemGroup>
                 </When>
                 <When Condition="'$(Platform)'=='x64'">
@@ -60,7 +59,7 @@
                         <PackageId>$(RootNameSpace).Debug.x64</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.Debug.x64" Version="1.0.84"/>
+                        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.x64" Version="1.0.83"/>
                     </ItemGroup>
                 </When>
                 <Otherwise>
@@ -68,27 +67,27 @@
                         <PackageId>$(RootNameSpace).Debug</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.Debug" Version="1.0.84"/>
+                        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug" Version="1.0.83"/>
                     </ItemGroup>
                 </Otherwise>
             </Choose>
         </When>
         <Otherwise>
             <Choose>
-                <When Condition="'$(Platform)'=='ARM64'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).ARM64</PackageId>
-                    </PropertyGroup>
-                    <ItemGroup>
-                        <PackageReference Include="RapidStreamer.ARM64" Version="1.0.84"/>
-                    </ItemGroup>
-                </When>
                 <When Condition="'$(Platform)'=='x86'">
                     <PropertyGroup>
                         <PackageId>$(RootNameSpace).x86</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.x86" Version="1.0.84"/>
+                        <PackageReference Include="RapidStreamer.BuildingBlocks.x86" Version="1.0.83"/>
+                    </ItemGroup>
+                </When>
+                <When Condition="'$(Platform)'=='ARM64'">
+                    <PropertyGroup>
+                        <PackageId>$(RootNameSpace).ARM64</PackageId>
+                    </PropertyGroup>
+                    <ItemGroup>
+                        <PackageReference Include="RapidStreamer.BuildingBlocks.ARM64" Version="1.0.83"/>
                     </ItemGroup>
                 </When>
                 <When Condition="'$(Platform)'=='x64'">
@@ -96,7 +95,7 @@
                         <PackageId>$(RootNameSpace).x64</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer.x64" Version="1.0.84"/>
+                        <PackageReference Include="RapidStreamer.BuildingBlocks.x64" Version="1.0.83"/>
                     </ItemGroup>
                 </When>
                 <Otherwise>
@@ -104,7 +103,7 @@
                         <PackageId>$(RootNameSpace)</PackageId>
                     </PropertyGroup>
                     <ItemGroup>
-                        <PackageReference Include="RapidStreamer" Version="1.0.84"/>
+                        <PackageReference Include="RapidStreamer.BuildingBlocks" Version="1.0.83"/>
                     </ItemGroup>
                 </Otherwise>
             </Choose>
@@ -121,7 +120,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="OpenTelemetry.Api" Version="1.10.0"/>
+        <PackageReference Include="DotPulsar" Version="3.6.0"/>
     </ItemGroup>
 
 </Project>

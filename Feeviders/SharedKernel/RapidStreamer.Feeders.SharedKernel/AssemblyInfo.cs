@@ -11,3 +11,5 @@ using System.Runtime.Versioning;
 [assembly: InternalsVisibleTo("RapidStreamer.Feeders.UdpClient")]
 [assembly: InternalsVisibleTo("RapidStreamer.Feeders.WebApi")]
 [assembly: InternalsVisibleTo("RapidStreamer.Feeders.WebSocket")]
+[assembly: InternalsVisibleTo("RapidStreamer.Feeders.Pulsar")]
+[assembly: InternalsVisibleTo("RapidStreamer.Feeders.NATS")]

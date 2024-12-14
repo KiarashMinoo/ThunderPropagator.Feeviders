@@ -56,8 +56,7 @@ namespace RapidStreamer.Providers.DotNet.TcpSocket
 
                 if (!string.IsNullOrEmpty(_tcpSocketProviderConfiguration.Username) && !string.IsNullOrWhiteSpace(_tcpSocketProviderConfiguration.Password))
                 {
-                    var authentication =
-                        $"{Constants.Authentication}{Constants.Username}{_tcpSocketProviderConfiguration.Username}{Constants.Separator}{Constants.Password}{_tcpSocketProviderConfiguration.Password}";
+                    var authentication = $"{Constants.Authentication}{Constants.Username}{_tcpSocketProviderConfiguration.Username}{Constants.Separator}{Constants.Password}{_tcpSocketProviderConfiguration.Password}";
                     await _stream.WriteAsync(authentication.ToByteArray(), cancellationToken);
                     await SendEomAsync();
                 }

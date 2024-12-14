@@ -48,8 +48,13 @@ namespace RapidStreamer.Feeders.ActiveMQ
             _consumer.Listener += async message =>
             {
 #if DEBUG
-                var activityContext = message.Properties.GetBytes(nameof(ActivityContext)).FromNJsonBytes<ActivityContext>();
-                var baggage = message.Properties.GetBytes(nameof(Baggage)).FromNJsonBytes<Baggage>();
+                ActivityContext? activityContext = null;
+                if (message.Properties.Contains(nameof(ActivityContext)))
+                    activityContext = message.Properties.GetBytes(nameof(ActivityContext)).FromNJsonBytes<ActivityContext>();
+
+                Baggage? baggage = null;
+                if (message.Properties.Contains(nameof(Baggage)))
+                    baggage = message.Properties.GetBytes(nameof(Baggage)).FromNJsonBytes<Baggage>();
 
                 switch (message)
                 {

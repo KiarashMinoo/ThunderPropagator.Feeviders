@@ -1,6 +1,7 @@
 ﻿using RapidStreamer.Application.Feeders;
 using RapidStreamer.Feeviders.TcpSocket.SharedKernel;
 using System.Security.Authentication;
+using RapidStreamer.BuildingBlocks.Application.Certificate;
 
 namespace RapidStreamer.Feeders.TcpSocket
 {
@@ -13,9 +14,9 @@ namespace RapidStreamer.Feeders.TcpSocket
             set => Set(value);
         }
 
-        public string? CertFile
+        public CertificateModel? Certificate
         {
-            get => Get<string>();
+            get => Get<CertificateModel>();
             set => Set(value);
         }
 

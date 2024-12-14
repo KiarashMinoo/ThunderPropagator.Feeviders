@@ -9,16 +9,10 @@
         <Configurations>Debug;Release</Configurations>
         <Platforms>AnyCPU;x86;x64;ARM64</Platforms>
         <Version>1.0.43.0</Version>
-        <LangVersion>latestmajor</LangVersion>
         <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+        <LangVersion>latestmajor</LangVersion>
         <EnablePreviewFeatures>true</EnablePreviewFeatures>
         <GenerateRequiresPreviewFeaturesAttribute>False</GenerateRequiresPreviewFeaturesAttribute>
-    </PropertyGroup>
-
-    <PropertyGroup Condition="'$(Configuration)'=='Release'">
-        <DebugSymbols>False</DebugSymbols>
-        <DebugType>None</DebugType>
-        <DefineConstants/>
     </PropertyGroup>
 
     <PropertyGroup Label="nuget">
@@ -36,6 +30,12 @@
         <AvoidCycleErrorOnSelfReference>true</AvoidCycleErrorOnSelfReference>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(Configuration)'=='Release'">
+        <DebugSymbols>False</DebugSymbols>
+        <DebugType>None</DebugType>
+        <DefineConstants/>
+    </PropertyGroup>
+
     <Choose>
         <When Condition="'$(Configuration)'=='Debug'">
             <Choose>
@@ -43,33 +43,21 @@
                     <PropertyGroup>
                         <PackageId>$(RootNameSpace).Debug.ARM64</PackageId>
                     </PropertyGroup>
-                    <ItemGroup>
-                        <PackageReference Include="RapidStreamer.Debug.ARM64" Version="1.0.84"/>
-                    </ItemGroup>
                 </When>
                 <When Condition="'$(Platform)'=='x86'">
                     <PropertyGroup>
                         <PackageId>$(RootNameSpace).Debug.x86</PackageId>
                     </PropertyGroup>
-                    <ItemGroup>
-                        <PackageReference Include="RapidStreamer.Debug.x86" Version="1.0.84"/>
-                    </ItemGroup>
                 </When>
                 <When Condition="'$(Platform)'=='x64'">
                     <PropertyGroup>
                         <PackageId>$(RootNameSpace).Debug.x64</PackageId>
                     </PropertyGroup>
-                    <ItemGroup>
-                        <PackageReference Include="RapidStreamer.Debug.x64" Version="1.0.84"/>
-                    </ItemGroup>
                 </When>
                 <Otherwise>
                     <PropertyGroup>
                         <PackageId>$(RootNameSpace).Debug</PackageId>
                     </PropertyGroup>
-                    <ItemGroup>
-                        <PackageReference Include="RapidStreamer.Debug" Version="1.0.84"/>
-                    </ItemGroup>
                 </Otherwise>
             </Choose>
         </When>
@@ -79,33 +67,21 @@
                     <PropertyGroup>
                         <PackageId>$(RootNameSpace).ARM64</PackageId>
                     </PropertyGroup>
-                    <ItemGroup>
-                        <PackageReference Include="RapidStreamer.ARM64" Version="1.0.84"/>
-                    </ItemGroup>
                 </When>
                 <When Condition="'$(Platform)'=='x86'">
                     <PropertyGroup>
                         <PackageId>$(RootNameSpace).x86</PackageId>
                     </PropertyGroup>
-                    <ItemGroup>
-                        <PackageReference Include="RapidStreamer.x86" Version="1.0.84"/>
-                    </ItemGroup>
                 </When>
                 <When Condition="'$(Platform)'=='x64'">
                     <PropertyGroup>
                         <PackageId>$(RootNameSpace).x64</PackageId>
                     </PropertyGroup>
-                    <ItemGroup>
-                        <PackageReference Include="RapidStreamer.x64" Version="1.0.84"/>
-                    </ItemGroup>
                 </When>
                 <Otherwise>
                     <PropertyGroup>
                         <PackageId>$(RootNameSpace)</PackageId>
                     </PropertyGroup>
-                    <ItemGroup>
-                        <PackageReference Include="RapidStreamer" Version="1.0.84"/>
-                    </ItemGroup>
                 </Otherwise>
             </Choose>
         </Otherwise>
@@ -121,7 +97,11 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="OpenTelemetry.Api" Version="1.10.0"/>
+        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="NATS.Net" Version="2.5.5" />
     </ItemGroup>
 
 </Project>
