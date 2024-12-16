@@ -27,7 +27,7 @@ namespace RapidStreamer.Providers.DotNet.Pulsar
         {
             _pulsarProviderConfiguration = pulsarProviderConfiguration;
             _client = PulsarClientFactory.CreateClient(pulsarProviderConfiguration);
-            var schema = new GenericSchema<TPulsarProviderMessage>(pulsarProviderConfiguration.SerializerType);
+            var schema = new JsonSchema<TPulsarProviderMessage>(pulsarProviderConfiguration.SerializerType);
 
             var producerOptions = new ProducerOptions<TPulsarProviderMessage>(pulsarProviderConfiguration.Topic, schema);
 

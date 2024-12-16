@@ -12,13 +12,13 @@ namespace RapidStreamer.Feeviders.Pulsar.SharedKernel
 #if !DEBUG
         sealed
 #endif
-        class GenericSchema<T> : ISchema<T> where T : notnull
+        class JsonSchema<T> : ISchema<T> where T : notnull
     {
         private readonly SerializerType _serializerType;
 
         public SchemaInfo SchemaInfo { get; }
 
-        public GenericSchema(SerializerType serializerType)
+        public JsonSchema(SerializerType serializerType)
         {
             _serializerType = serializerType;
 

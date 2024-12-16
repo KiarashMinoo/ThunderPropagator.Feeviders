@@ -31,7 +31,7 @@ namespace RapidStreamer.Feeders.Pulsar
         {
             _client = PulsarClientFactory.CreateClient(feederConfiguration);
 
-            var schema = new GenericSchema<TPulsarFeederMessage>(feederConfiguration.SerializerType);
+            var schema = new JsonSchema<TPulsarFeederMessage>(feederConfiguration.SerializerType);
 
             var consumerOptions = new ConsumerOptions<TPulsarFeederMessage>(feederConfiguration.SubscriptionName, feederConfiguration.Topic, schema);
 
