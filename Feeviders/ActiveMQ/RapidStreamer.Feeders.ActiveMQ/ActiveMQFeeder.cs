@@ -9,6 +9,7 @@ using RapidStreamer.Application.Channels;
 using RapidStreamer.Application.Feeders;
 using RapidStreamer.Feeviders.ActiveMQ.SharedKernel;
 using System.Reflection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using RapidStreamer.Application;
 
 namespace RapidStreamer.Feeders.ActiveMQ
@@ -47,41 +48,36 @@ namespace RapidStreamer.Feeders.ActiveMQ
 
             _consumer.Listener += async message =>
             {
+                try
+                {
+                    ActivityContext? activityContext = null;
+                    Baggage? baggage = null;
+
 #if DEBUG
-                ActivityContext? activityContext = null;
-                if (message.Properties.Contains(nameof(ActivityContext)))
-                    activityContext = message.Properties.GetBytes(nameof(ActivityContext)).FromNJsonBytes<ActivityContext>();
+                    if (message.Properties.Contains(nameof(ActivityContext)))
+                        activityContext = message.Properties.GetBytes(nameof(ActivityContext)).FromNJsonBytes<ActivityContext>();
 
-                Baggage? baggage = null;
-                if (message.Properties.Contains(nameof(Baggage)))
-                    baggage = message.Properties.GetBytes(nameof(Baggage)).FromNJsonBytes<Baggage>();
-
-                switch (message)
-                {
-                    case IObjectMessage { Body: TActiveMQFeederMessage activeMQFeederMessage }:
-                        await ReceiveAsync(activeMQFeederMessage, activityContext, baggage);
-                        break;
-                    case ITextMessage textMessage:
-                        await ReceiveAsync(textMessage.Text, activityContext, baggage);
-                        break;
-                    case IBytesMessage bytesMessage:
-                        await ReceiveAsync(bytesMessage.Content, activityContext, baggage);
-                        break;
-                }
-#else
-                switch (message)
-                {
-                    case IObjectMessage { Body: TActiveMQFeederMessage activeMQFeederMessage }:
-                        await ReceiveAsync(activeMQFeederMessage);
-                        break;
-                    case ITextMessage textMessage:
-                        await ReceiveAsync(textMessage.Text);
-                        break;
-                    case IBytesMessage bytesMessage:
-                        await ReceiveAsync(bytesMessage.Content);
-                        break;
-                }
+                    if (message.Properties.Contains(nameof(Baggage)))
+                        baggage = message.Properties.GetBytes(nameof(Baggage)).FromNJsonBytes<Baggage>();
 #endif
+
+                    switch (message)
+                    {
+                        case IObjectMessage { Body: TActiveMQFeederMessage activeMQFeederMessage }:
+                            await ReceiveAsync(activeMQFeederMessage, activityContext, baggage);
+                            break;
+                        case ITextMessage textMessage:
+                            await ReceiveAsync(textMessage.Text, activityContext, baggage);
+                            break;
+                        case IBytesMessage bytesMessage:
+                            await ReceiveAsync(bytesMessage.Content, activityContext, baggage);
+                            break;
+                    }
+                }
+                catch (Exception exception)
+                {
+                    ReportHealth(HealthStatus.Unhealthy, exception);
+                }
             };
 
             Logger.LogInformation("{Name}/{ChannelName} on Queue {Queue} has configured.", GetType().GetTypeInfo().Name, channel.Metadata.ChannelName,

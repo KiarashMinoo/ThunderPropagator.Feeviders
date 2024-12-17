@@ -54,20 +54,18 @@ namespace RapidStreamer.Feeders.Kafka
 
             _consumer = new ConsumerBuilder<string, TKafkaFeederMessage>(consumerConfig)
                 .SetKeyDeserializer(Deserializers.Utf8)
-                .SetValueDeserializer(
-                    _kafkaFeederConfiguration.SerializerType switch
-                    {
-                        KafkaSerializerType.Json => new KafkaJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
-                        KafkaSerializerType.NJson => new KafkaNJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
-                        KafkaSerializerType.NetJson => new KafkaNetJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
-                        KafkaSerializerType.SchemaJson => new JsonDeserializer<TKafkaFeederMessage>(SchemaRegistryClient).AsSyncOverAsync(),
-                        KafkaSerializerType.Avro => new AvroDeserializer<TKafkaFeederMessage>(SchemaRegistryClient).AsSyncOverAsync(),
-                        _ => throw new ArgumentOutOfRangeException()
-                    })
+                .SetValueDeserializer(_kafkaFeederConfiguration.SerializerType switch
+                {
+                    KafkaSerializerType.Json => new KafkaJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
+                    KafkaSerializerType.NJson => new KafkaNJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
+                    KafkaSerializerType.NetJson => new KafkaNetJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
+                    KafkaSerializerType.SchemaJson => new JsonDeserializer<TKafkaFeederMessage>(SchemaRegistryClient).AsSyncOverAsync(),
+                    KafkaSerializerType.Avro => new AvroDeserializer<TKafkaFeederMessage>(SchemaRegistryClient).AsSyncOverAsync(),
+                    _ => throw new ArgumentOutOfRangeException()
+                })
                 .SetErrorHandler((_, e) =>
                 {
-                    ReportHealth(e.IsFatal ? HealthStatus.Unhealthy : HealthStatus.Degraded, new KafkaException(e));
-
+                    ReportHealth(HealthStatus.Unhealthy, new KafkaException(e));
                     Logger.LogError("Error: {Reason}", e.Reason);
                 })
                 .Build();
@@ -97,15 +95,15 @@ namespace RapidStreamer.Feeders.Kafka
 
                     if (message is not null)
                     {
-#if DEBUG
                         ActivityContext? activityContext = null;
+                        Baggage? baggage = null;
+#if DEBUG
                         if (consumeResult.Message.Headers.TryGetLastBytes(nameof(Activity), out var activityContextBytes) && activityContextBytes is not null)
                             activityContext = activityContextBytes.FromNJsonBytes<ActivityContext>();
 
-                        Baggage? baggage = null;
                         if (consumeResult.Message.Headers.TryGetLastBytes(nameof(Baggage), out var baggageBytes) && baggageBytes is not null)
                             baggage = baggageBytes.FromNJsonBytes<Baggage>();
-
+#endif
                         yield return new FeederReceivedMessage<TKafkaFeederMessage>(message,
                             activityContext,
                             baggage,
@@ -114,14 +112,6 @@ namespace RapidStreamer.Feeders.Kafka
                                 { nameof(consumeResult.Topic), consumeResult.Topic },
                                 { nameof(consumeResult.Offset), consumeResult.Offset },
                             });
-#else
-                        yield return new FeederReceivedMessage<TKafkaFeederMessage>(message,
-                            arguments: new Dictionary<string, object?>
-                            {
-                                { nameof(consumeResult.Topic), consumeResult.Topic },
-                                { nameof(consumeResult.Offset), consumeResult.Offset },
-                            });
-#endif
                     }
                     else
                         await Task.Yield();

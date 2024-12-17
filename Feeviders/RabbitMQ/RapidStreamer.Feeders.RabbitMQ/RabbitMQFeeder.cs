@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Diagnostics.HealthChecks;
+﻿using System.Diagnostics;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry.Context.Propagation;
 using RabbitMQ.Client;
@@ -9,6 +10,7 @@ using System.Reflection;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using OpenTelemetry;
 
 namespace RapidStreamer.Feeders.RabbitMQ
 {
@@ -44,7 +46,7 @@ namespace RapidStreamer.Feeders.RabbitMQ
         private async void Start(object? state)
         {
             if (state is not CancellationToken cancellationToken)
-                cancellationToken = default;
+                cancellationToken = CancellationToken.None;
 
             (_connection, _channel) = await RabbitMQFeederConnectionFactory.InitializeChannelAsync(FeederConfiguration, cancellationToken);
 
@@ -54,12 +56,17 @@ namespace RapidStreamer.Feeders.RabbitMQ
             {
                 try
                 {
+                    ActivityContext? activityContext = null;
+                    Baggage? baggage = null;
 #if DEBUG
                     var parentContext = _propagator.Extract(default, eventArgs.BasicProperties, ExtractTraceContextFromBasicProperties);
 
+                    activityContext = parentContext.ActivityContext;
+                    baggage = parentContext.Baggage;
+#endif
                     await ReceiveAsync(eventArgs.Body.ToArray(),
-                        parentContext.ActivityContext,
-                        parentContext.Baggage,
+                        activityContext,
+                        baggage,
                         new Dictionary<string, object?>
                         {
                             { nameof(eventArgs.Exchange), eventArgs.Exchange },
@@ -68,17 +75,6 @@ namespace RapidStreamer.Feeders.RabbitMQ
                             { nameof(eventArgs.RoutingKey), eventArgs.RoutingKey },
                         },
                         cancellationToken);
-#else
-                    await ReceiveAsync(eventArgs.Body.ToArray(),
-                        arguments: new Dictionary<string, object?>
-                        {
-                            { nameof(eventArgs.Exchange), eventArgs.Exchange },
-                            { nameof(eventArgs.ConsumerTag), eventArgs.ConsumerTag },
-                            { nameof(eventArgs.DeliveryTag), eventArgs.DeliveryTag },
-                            { nameof(eventArgs.RoutingKey), eventArgs.RoutingKey },
-                        },
-                        cancellationToken: cancellationToken);
-#endif
 
                     ReportHealth(HealthStatus.Healthy);
                 }
