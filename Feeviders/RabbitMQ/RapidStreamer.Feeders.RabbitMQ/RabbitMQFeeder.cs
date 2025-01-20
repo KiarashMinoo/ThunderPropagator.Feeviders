@@ -48,7 +48,7 @@ namespace RapidStreamer.Feeders.RabbitMQ
             if (state is not CancellationToken cancellationToken)
                 cancellationToken = CancellationToken.None;
 
-            (_connection, _channel) = await RabbitMQFeederConnectionFactory.InitializeChannelAsync(FeederConfiguration, cancellationToken);
+            (_connection, _channel) = await RabbitMQFeeviderConnectionFactory.InitializeChannelAsync(FeederConfiguration, cancellationToken);
 
             _consumer = new AsyncEventingBasicConsumer(_channel);
 

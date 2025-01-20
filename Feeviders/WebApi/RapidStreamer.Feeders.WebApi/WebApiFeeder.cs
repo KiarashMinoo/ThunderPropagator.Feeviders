@@ -1,6 +1,7 @@
 ﻿using RapidStreamer.Application.Channels;
 using RapidStreamer.Application.Feeders;
 using System.Reflection;
+using Microsoft.Extensions.Logging;
 using RapidStreamer.Application;
 
 namespace RapidStreamer.Feeders.WebApi
@@ -20,8 +21,8 @@ namespace RapidStreamer.Feeders.WebApi
             IServiceProvider serviceProvider)
             : base(channel, webApiFeederConfiguration, feederHandler, serviceProvider)
         {
-            Logger.LogInformation("{Name}/{ChannelName} on Endpoint {Endpoint} has configured.", GetType().GetTypeInfo().Name, channel.Metadata.ChannelName,
-                webApiFeederConfiguration.Path);
+            Logger.LogInformation("{Name}/{ChannelName} on Endpoint {Endpoint} has configured.",
+                GetType().GetTypeInfo().Name, channel.Metadata.ChannelName, webApiFeederConfiguration.Path);
 
             HealthName = $"feeder_{nameof(WebApi)}_{webApiFeederConfiguration.Path.Replace("/", "_")}";
             HealthTags = [.. HealthTags, nameof(WebApi), webApiFeederConfiguration.Path.Replace("/", "_")];

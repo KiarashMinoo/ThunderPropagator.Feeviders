@@ -7,7 +7,7 @@ namespace RapidStreamer.Feeviders.ActiveMQ.SharedKernel
 #if !DEBUG
         sealed
 #endif
-        class ActiveMQConnectionFactory
+        class ActiveMQFeeviderConnectionFactory
     {
         public static IConnection CreateConnection(IActiveMQFeeviderConfiguration configuration)
         {

@@ -17,7 +17,7 @@
     <PropertyGroup Condition="'$(Configuration)'=='Release'">
         <DebugSymbols>False</DebugSymbols>
         <DebugType>None</DebugType>
-        <DefineConstants/>
+        <DefineConstants />
     </PropertyGroup>
 
     <PropertyGroup Label="nuget">
@@ -33,71 +33,26 @@
         <PackageIcon>RapidStreamer.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <AvoidCycleErrorOnSelfReference>true</AvoidCycleErrorOnSelfReference>
+        <PackageId Condition="'$(Configuration)' == 'Debug' And '$(Platform)' != 'AnyCPU'">$(RootNameSpace).Debug.$(Platform)</PackageId>
+        <PackageId Condition="'$(Configuration)' == 'Debug' And '$(Platform)' == 'AnyCPU'">$(RootNameSpace).Debug</PackageId>
+        <PackageId Condition="'$(Configuration)' == 'Release' And '$(Platform)' != 'AnyCPU'">$(RootNameSpace).$(Platform)</PackageId>
+        <PackageId Condition="'$(Configuration)' == 'Release' And '$(Platform)' == 'AnyCPU'">$(RootNameSpace)</PackageId>
     </PropertyGroup>
-
-    <Choose>
-        <When Condition="'$(Configuration)'=='Debug'">
-            <Choose>
-                <When Condition="'$(Platform)'=='ARM64'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).Debug.ARM64</PackageId>
-                    </PropertyGroup>
-                </When>
-                <When Condition="'$(Platform)'=='x86'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).Debug.x86</PackageId>
-                    </PropertyGroup>
-                </When>
-                <When Condition="'$(Platform)'=='x64'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).Debug.x64</PackageId>
-                    </PropertyGroup>
-                </When>
-                <Otherwise>
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).Debug</PackageId>
-                    </PropertyGroup>
-                </Otherwise>
-            </Choose>
-        </When>
-        <Otherwise>
-            <Choose>
-                <When Condition="'$(Platform)'=='ARM64'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).ARM64</PackageId>
-                    </PropertyGroup>
-                </When>
-                <When Condition="'$(Platform)'=='x86'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).x86</PackageId>
-                    </PropertyGroup>
-                </When>
-                <When Condition="'$(Platform)'=='x64'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).x64</PackageId>
-                    </PropertyGroup>
-                </When>
-                <Otherwise>
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace)</PackageId>
-                    </PropertyGroup>
-                </Otherwise>
-            </Choose>
-        </Otherwise>
-    </Choose>
 
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
         <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath=""/>
-        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath=""/>
+        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath="" />
+        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath="" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel.csproj"/>
-        <ProjectReference Include="..\RapidStreamer.Feeviders.TcpSocket.SharedKernel\RapidStreamer.Feeviders.TcpSocket.SharedKernel.csproj"/>
+        <ProjectReference
+            Include="..\..\SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel.csproj" />
+        <ProjectReference
+            Include="..\RapidStreamer.Feeviders.TcpSocket.SharedKernel\RapidStreamer.Feeviders.TcpSocket.SharedKernel.csproj" />
     </ItemGroup>
 
 </Project>

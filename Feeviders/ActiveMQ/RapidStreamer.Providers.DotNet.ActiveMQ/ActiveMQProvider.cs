@@ -27,7 +27,7 @@ namespace RapidStreamer.Providers.DotNet.ActiveMQ
             _activeMQProviderConfiguration = activeMQProviderConfiguration;
 
             // Create a Connection
-            _connection = ActiveMQConnectionFactory.CreateConnection(_activeMQProviderConfiguration);
+            _connection = ActiveMQFeeviderConnectionFactory.CreateConnection(_activeMQProviderConfiguration);
             _connection.Start();
 
             // Create a Session

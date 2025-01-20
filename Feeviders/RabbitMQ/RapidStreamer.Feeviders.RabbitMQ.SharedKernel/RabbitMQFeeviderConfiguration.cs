@@ -6,7 +6,7 @@ using RapidStreamer.BuildingBlocks.Application.Helpers;
 
 namespace RapidStreamer.Feeviders.RabbitMQ.SharedKernel
 {
-    public abstract class RabbitMQFeeviderConfiguration : ServiceConfiguration, IRabbitMQFeeviderConfiguration
+    public abstract class RabbitMQFeeviderConfiguration : ServiceConfiguration
     {
         public string HostName
         {

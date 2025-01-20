@@ -31,7 +31,7 @@ namespace RapidStreamer.Providers.DotNet.RabbitMQ
 
             var applicationLifetime = serviceProvider.GetRequiredService<IHostApplicationLifetime>();
 
-            _ = Task.Run(async () => (_connection, _channel) = await RabbitMQFeederConnectionFactory.InitializeChannelAsync(_rabbitMQProviderConfiguration, applicationLifetime.ApplicationStopping));
+            _ = Task.Run(async () => (_connection, _channel) = await RabbitMQFeeviderConnectionFactory.InitializeChannelAsync(_rabbitMQProviderConfiguration, applicationLifetime.ApplicationStopping));
         }
 
         protected override async Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)

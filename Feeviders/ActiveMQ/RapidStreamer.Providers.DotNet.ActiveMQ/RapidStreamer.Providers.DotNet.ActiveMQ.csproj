@@ -33,58 +33,11 @@
         <PackageIcon>RapidStreamer.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <AvoidCycleErrorOnSelfReference>true</AvoidCycleErrorOnSelfReference>
+        <PackageId Condition="'$(Configuration)' == 'Debug' And '$(Platform)' != 'AnyCPU'">$(RootNameSpace).Debug.$(Platform)</PackageId>
+        <PackageId Condition="'$(Configuration)' == 'Debug' And '$(Platform)' == 'AnyCPU'">$(RootNameSpace).Debug</PackageId>
+        <PackageId Condition="'$(Configuration)' == 'Release' And '$(Platform)' != 'AnyCPU'">$(RootNameSpace).$(Platform)</PackageId>
+        <PackageId Condition="'$(Configuration)' == 'Release' And '$(Platform)' == 'AnyCPU'">$(RootNameSpace)</PackageId>
     </PropertyGroup>
-
-    <Choose>
-        <When Condition="'$(Configuration)'=='Debug'">
-            <Choose>
-                <When Condition="'$(Platform)'=='ARM64'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).Debug.ARM64</PackageId>
-                    </PropertyGroup>
-                </When>
-                <When Condition="'$(Platform)'=='x86'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).Debug.x86</PackageId>
-                    </PropertyGroup>
-                </When>
-                <When Condition="'$(Platform)'=='x64'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).Debug.x64</PackageId>
-                    </PropertyGroup>
-                </When>
-                <Otherwise>
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).Debug</PackageId>
-                    </PropertyGroup>
-                </Otherwise>
-            </Choose>
-        </When>
-        <Otherwise>
-            <Choose>
-                <When Condition="'$(Platform)'=='x86'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).x86</PackageId>
-                    </PropertyGroup>
-                </When>
-                <When Condition="'$(Platform)'=='ARM64'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).ARM64</PackageId>
-                    </PropertyGroup>
-                </When>
-                <When Condition="'$(Platform)'=='x64'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).x64</PackageId>
-                    </PropertyGroup>
-                </When>
-                <Otherwise>
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace)</PackageId>
-                    </PropertyGroup>
-                </Otherwise>
-            </Choose>
-        </Otherwise>
-    </Choose>
 
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
         <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>

@@ -7,9 +7,9 @@ namespace RapidStreamer.Feeviders.RabbitMQ.SharedKernel
 #if !DEBUG
         sealed
 #endif
-        class RabbitMQFeederConnectionFactory : DisposableObject
+        class RabbitMQFeeviderConnectionFactory : DisposableObject
     {
-        public static Task<IConnection> CreateConnectionAsync(IRabbitMQFeeviderConfiguration configuration, CancellationToken cancellationToken = default)
+        public static Task<IConnection> CreateConnectionAsync(RabbitMQFeeviderConfiguration configuration, CancellationToken cancellationToken = default)
         {
             var factory = new ConnectionFactory
             {

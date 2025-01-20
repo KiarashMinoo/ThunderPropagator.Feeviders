@@ -34,82 +34,25 @@
         <PackageIcon>RapidStreamer.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <AvoidCycleErrorOnSelfReference>true</AvoidCycleErrorOnSelfReference>
+        <PackageId Condition="'$(Configuration)' == 'Debug' And '$(Platform)' != 'AnyCPU'">$(RootNameSpace).Debug.$(Platform)</PackageId>
+        <PackageId Condition="'$(Configuration)' == 'Debug' And '$(Platform)' == 'AnyCPU'">$(RootNameSpace).Debug</PackageId>
+        <PackageId Condition="'$(Configuration)' == 'Release' And '$(Platform)' != 'AnyCPU'">$(RootNameSpace).$(Platform)</PackageId>
+        <PackageId Condition="'$(Configuration)' == 'Release' And '$(Platform)' == 'AnyCPU'">$(RootNameSpace)</PackageId>
     </PropertyGroup>
 
-    <Choose>
-        <When Condition="'$(Configuration)'=='Debug'">
-            <Choose>
-                <When Condition="'$(Platform)'=='ARM64'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).Debug.ARM64</PackageId>
-                    </PropertyGroup>
-                    <ItemGroup>
-                        <PackageReference Include="RapidStreamer.Debug.ARM64" Version="1.0.90"/>
-                    </ItemGroup>
-                </When>
-                <When Condition="'$(Platform)'=='x86'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).Debug.x86</PackageId>
-                    </PropertyGroup>
-                    <ItemGroup>
-                        <PackageReference Include="RapidStreamer.Debug.x86" Version="1.0.90"/>
-                    </ItemGroup>
-                </When>
-                <When Condition="'$(Platform)'=='x64'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).Debug.x64</PackageId>
-                    </PropertyGroup>
-                    <ItemGroup>
-                        <PackageReference Include="RapidStreamer.Debug.x64" Version="1.0.90"/>
-                    </ItemGroup>
-                </When>
-                <Otherwise>
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).Debug</PackageId>
-                    </PropertyGroup>
-                    <ItemGroup>
-                        <PackageReference Include="RapidStreamer.Debug" Version="1.0.90"/>
-                    </ItemGroup>
-                </Otherwise>
-            </Choose>
-        </When>
-        <Otherwise>
-            <Choose>
-                <When Condition="'$(Platform)'=='ARM64'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).ARM64</PackageId>
-                    </PropertyGroup>
-                    <ItemGroup>
-                        <PackageReference Include="RapidStreamer.ARM64" Version="1.0.90"/>
-                    </ItemGroup>
-                </When>
-                <When Condition="'$(Platform)'=='x86'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).x86</PackageId>
-                    </PropertyGroup>
-                    <ItemGroup>
-                        <PackageReference Include="RapidStreamer.x86" Version="1.0.90"/>
-                    </ItemGroup>
-                </When>
-                <When Condition="'$(Platform)'=='x64'">
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace).x64</PackageId>
-                    </PropertyGroup>
-                    <ItemGroup>
-                        <PackageReference Include="RapidStreamer.x64" Version="1.0.90"/>
-                    </ItemGroup>
-                </When>
-                <Otherwise>
-                    <PropertyGroup>
-                        <PackageId>$(RootNameSpace)</PackageId>
-                    </PropertyGroup>
-                    <ItemGroup>
-                        <PackageReference Include="RapidStreamer" Version="1.0.90"/>
-                    </ItemGroup>
-                </Otherwise>
-            </Choose>
-        </Otherwise>
-    </Choose>
+    <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+        <PackageReference Include="RapidStreamer.Debug.ARM64" Version="1.0.92" Condition="'$(Platform)' == 'ARM64'"/>
+        <PackageReference Include="RapidStreamer.Debug.x86" Version="1.0.92" Condition="'$(Platform)' == 'x86'"/>
+        <PackageReference Include="RapidStreamer.Debug.x64" Version="1.0.92" Condition="'$(Platform)' == 'x64'"/>
+        <PackageReference Include="RapidStreamer.Debug" Version="1.0.92" Condition="'$(Platform)' == 'AnyCPU'"/>
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(Configuration)' == 'Release'">
+        <PackageReference Include="RapidStreamer.ARM64" Version="1.0.92" Condition="'$(Platform)' == 'ARM64'"/>
+        <PackageReference Include="RapidStreamer.x86" Version="1.0.92" Condition="'$(Platform)' == 'x86'"/>
+        <PackageReference Include="RapidStreamer.x64" Version="1.0.92" Condition="'$(Platform)' == 'x64'"/>
+        <PackageReference Include="RapidStreamer" Version="1.0.92" Condition="'$(Platform)' == 'AnyCPU'"/>
+    </ItemGroup>
 
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
         <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
@@ -121,7 +64,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="OpenTelemetry.Api" Version="1.10.0"/>
+        <PackageReference Include="OpenTelemetry.Api" Version="1.11.0"/>
     </ItemGroup>
 
 </Project>

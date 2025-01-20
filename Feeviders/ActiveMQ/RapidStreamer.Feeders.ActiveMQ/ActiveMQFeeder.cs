@@ -34,7 +34,7 @@ namespace RapidStreamer.Feeders.ActiveMQ
             : base(channel, activeMQFeederConfiguration, feederHandler, serviceProvider)
         {
             // Create a Connection
-            _connection = ActiveMQConnectionFactory.CreateConnection(activeMQFeederConfiguration);
+            _connection = ActiveMQFeeviderConnectionFactory.CreateConnection(activeMQFeederConfiguration);
             _connection.Start();
 
             // Create a Session
