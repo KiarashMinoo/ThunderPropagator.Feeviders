@@ -95,7 +95,7 @@ namespace RapidStreamer.Feeders.NATS
 
                 return new FeederReceivedMessage<TNatsFeederMessage>(message, activityContext, baggage);
 #else
-                yield return message;
+                return message;
 #endif
             }
         }

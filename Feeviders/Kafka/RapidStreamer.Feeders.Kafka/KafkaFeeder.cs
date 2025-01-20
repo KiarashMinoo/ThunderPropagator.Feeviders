@@ -10,11 +10,9 @@ using RapidStreamer.Application.Channels;
 using RapidStreamer.Application.Feeders;
 using RapidStreamer.BuildingBlocks.Application.Serializations;
 using RapidStreamer.Feeders.Kafka.KafkaDeserializers;
-#if DEBUG
 using OpenTelemetry;
 using RapidStreamer.BuildingBlocks.Application.Helpers;
 using System.Diagnostics;
-#endif
 
 namespace RapidStreamer.Feeders.Kafka
 {

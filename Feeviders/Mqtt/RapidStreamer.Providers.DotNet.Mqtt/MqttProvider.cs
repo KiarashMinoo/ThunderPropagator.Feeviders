@@ -1,8 +1,6 @@
-﻿#if DEBUG
-using OpenTelemetry;
+﻿using OpenTelemetry;
 using RapidStreamer.BuildingBlocks.Application.Helpers;
 using System.Diagnostics;
-#endif
 using Microsoft.Extensions.Logging;
 using MQTTnet;
 using RapidStreamer.BuildingBlocks.Application.Serializations;

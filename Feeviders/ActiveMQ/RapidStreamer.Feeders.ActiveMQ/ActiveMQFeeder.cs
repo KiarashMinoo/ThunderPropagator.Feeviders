@@ -1,8 +1,6 @@
-﻿#if DEBUG
-using OpenTelemetry;
+﻿using OpenTelemetry;
 using RapidStreamer.BuildingBlocks.Application.Helpers;
 using System.Diagnostics;
-#endif
 using Apache.NMS;
 using Microsoft.Extensions.Logging;
 using RapidStreamer.Application.Channels;
