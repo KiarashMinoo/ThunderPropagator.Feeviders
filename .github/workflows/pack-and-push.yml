@@ -18,7 +18,7 @@ env:
 
 jobs:
   versioning_and_pack:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: Update version and Pack nugets
     steps:
       - name: Checkout
@@ -83,7 +83,7 @@ jobs:
           git commit -m "Update project version to ${{ steps.update.outputs.newVersion }}"
           git push            
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: nuget
           if-no-files-found: error
@@ -92,11 +92,11 @@ jobs:
   
   
   push_nuget:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     name: Deploy to github
     needs: [ versioning_and_pack ]
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: nuget
           path: ${{ env.ArtifactsDirectory }}
