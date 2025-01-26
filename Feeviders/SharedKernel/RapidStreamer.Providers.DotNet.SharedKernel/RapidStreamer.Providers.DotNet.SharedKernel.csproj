@@ -75,7 +75,7 @@
         <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.1" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.1" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-        <PackageReference Include="OpenTelemetry.Api" Version="1.11.0" />
+        <PackageReference Include="OpenTelemetry.Api" Version="1.11.1" />
     </ItemGroup>
 
 </Project>
