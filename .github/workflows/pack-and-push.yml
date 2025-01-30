@@ -72,6 +72,12 @@ jobs:
           
           dotnet pack  -c Debug -o ${{ env.ArtifactsDirectory }}                                             
 
+      - name: Push package to GitHub packages
+        run: |
+          foreach($file in (Get-ChildItem "${{ env.ArtifactsDirectory }}" -Recurse -Include *.nupkg)) {
+            dotnet nuget push $file --source "RapidStreamer" --api-key "${{ secrets.GHP_NUGET_PACKAGE_TOKEN }}" --skip-duplicate --no-symbols
+          }
+
       - name: Push latest changes to repository
         run: |
           git config user.name "Kiarash Minoo"
@@ -79,9 +85,3 @@ jobs:
           git add .
           git commit -m "Update project version to ${{ steps.update.outputs.newVersion }}"
           git push            
-
-      - name: Push package to GitHub packages
-        run: |
-          foreach($file in (Get-ChildItem "${{ env.ArtifactsDirectory }}" -Recurse -Include *.nupkg)) {
-            dotnet nuget push $file --source "RapidStreamer" --api-key "${{ secrets.GHP_NUGET_PACKAGE_TOKEN }}" --skip-duplicate --no-symbols
-          }
