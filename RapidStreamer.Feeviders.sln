@@ -10,6 +10,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		RapidStreamer.png = RapidStreamer.png
 		RapidStreamer.svg = RapidStreamer.svg
 		README.md = README.md
+		nuget.config = nuget.config
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Feeviders", "Feeviders", "{0F922E11-B838-4DFD-A9A2-C3BBAFBF5A03}"

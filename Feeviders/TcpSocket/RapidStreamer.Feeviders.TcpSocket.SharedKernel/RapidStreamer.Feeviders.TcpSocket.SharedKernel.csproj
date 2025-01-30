@@ -44,24 +44,24 @@
     </PropertyGroup>
 
     <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.ARM64" Version="1.0.90"
+        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.ARM64" Version="1.0.95"
                           Condition="'$(Platform)' == 'ARM64'" />
-        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.x86" Version="1.0.90"
+        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.x86" Version="1.0.95"
                           Condition="'$(Platform)' == 'x86'" />
-        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.x64" Version="1.0.90"
+        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.x64" Version="1.0.95"
                           Condition="'$(Platform)' == 'x64'" />
-        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug" Version="1.0.90"
+        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug" Version="1.0.95"
                           Condition="'$(Platform)' == 'AnyCPU'" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(Configuration)' == 'Release'">
-        <PackageReference Include="RapidStreamer.BuildingBlocks.ARM64" Version="1.0.90"
+        <PackageReference Include="RapidStreamer.BuildingBlocks.ARM64" Version="1.0.95"
                           Condition="'$(Platform)' == 'ARM64'" />
-        <PackageReference Include="RapidStreamer.BuildingBlocks.x86" Version="1.0.90"
+        <PackageReference Include="RapidStreamer.BuildingBlocks.x86" Version="1.0.95"
                           Condition="'$(Platform)' == 'x86'" />
-        <PackageReference Include="RapidStreamer.BuildingBlocks.x64" Version="1.0.90"
+        <PackageReference Include="RapidStreamer.BuildingBlocks.x64" Version="1.0.95"
                           Condition="'$(Platform)' == 'x64'" />
-        <PackageReference Include="RapidStreamer.BuildingBlocks" Version="1.0.90" Condition="'$(Platform)' == 'AnyCPU'" />
+        <PackageReference Include="RapidStreamer.BuildingBlocks" Version="1.0.95" Condition="'$(Platform)' == 'AnyCPU'" />
     </ItemGroup>
 
     <ItemGroup>

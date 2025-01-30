@@ -39,13 +39,10 @@ jobs:
             "**/*.csproj", "**/*.nuspec", "**/AssemblyInfo.cs"
           version: ${{ env.Project_Version }}
 
-      - name: Prep packages
-        run: dotnet nuget add source --username KiarashMinoo --password ${{ secrets.GHP_NUGET_PACKAGE_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/KAB-TEAM/index.json"
-
       - name: Build solution and generate NuGet packages
         run: |
-          dotnet restore
           dotnet clean          
+          dotnet restore
           
           #Debug          
           dotnet build --nologo -c Debug /p:Platform=ARM64
@@ -86,5 +83,5 @@ jobs:
       - name: Push package to GitHub packages
         run: |
           foreach($file in (Get-ChildItem "${{ env.ArtifactsDirectory }}" -Recurse -Include *.nupkg)) {
-            dotnet nuget push $file --api-key "${{ secrets.GHP_NUGET_PACKAGE_TOKEN }}" --source "github" --skip-duplicate --no-symbols
+            dotnet nuget push $file --source "RapidStreamer" --api-key "${{ secrets.GHP_NUGET_PACKAGE_TOKEN }}" --skip-duplicate --no-symbols
           }
