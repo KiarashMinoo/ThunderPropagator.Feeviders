@@ -83,27 +83,6 @@ jobs:
           git commit -m "Update project version to ${{ steps.update.outputs.newVersion }}"
           git push            
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: nuget
-          if-no-files-found: error
-          retention-days: 1
-          path: ${{ env.ArtifactsDirectory }}/*.nupkg
-  
-  
-  push_nuget:
-    runs-on: ubuntu-22.04
-    name: Deploy to github
-    needs: [ versioning_and_pack ]
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: nuget
-          path: ${{ env.ArtifactsDirectory }}
-
-      - name: Prep packages
-        run: dotnet nuget add source --username KiarashMinoo --password ${{ secrets.GHP_NUGET_PACKAGE_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/KAB-TEAM/index.json"
-
       - name: Push package to GitHub packages
         run: |
           foreach($file in (Get-ChildItem "${{ env.ArtifactsDirectory }}" -Recurse -Include *.nupkg)) {
