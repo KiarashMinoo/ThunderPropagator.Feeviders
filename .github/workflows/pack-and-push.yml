@@ -69,8 +69,6 @@ jobs:
           
           dotnet build --nologo -c Release 
           dotnet pack  --nologo -c Release -o ${{ env.ArtifactsDirectory }}
-          
-          dotnet pack  -c Debug -o ${{ env.ArtifactsDirectory }}                                             
 
       - name: Push package to GitHub packages
         run: |
