@@ -10,7 +10,7 @@
         <Platforms>AnyCPU;x86;x64;ARM64</Platforms>
         <LangVersion>latestmajor</LangVersion>
         <GenerateRequiresPreviewFeaturesAttribute>False</GenerateRequiresPreviewFeaturesAttribute>
-        <Version>1.0.62.0</Version>
+        <Version>1.0.63.0</Version>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
