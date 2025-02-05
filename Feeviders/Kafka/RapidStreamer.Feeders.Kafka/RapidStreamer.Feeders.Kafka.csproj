@@ -8,7 +8,7 @@
         <NoWarn>$(NoWarn);1591</NoWarn>
         <Configurations>Debug;Release</Configurations>
         <Platforms>AnyCPU;x86;x64;ARM64</Platforms>
-        <Version>1.0.63.0</Version>
+        <Version>1.0.64.0</Version>
         <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
         <LangVersion>latestmajor</LangVersion>
         <EnablePreviewFeatures>true</EnablePreviewFeatures>
