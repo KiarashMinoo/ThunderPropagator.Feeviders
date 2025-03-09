@@ -40,24 +40,17 @@
     </PropertyGroup>
 
     <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.ARM64" Version="1.0.103"
-                          Condition="'$(Platform)' == 'ARM64'" />
-        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.x86" Version="1.0.103"
-                          Condition="'$(Platform)' == 'x86'" />
-        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.x64" Version="1.0.103"
-                          Condition="'$(Platform)' == 'x64'" />
-        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug" Version="1.0.103"
-                          Condition="'$(Platform)' == 'AnyCPU'" />
+        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.ARM64" Version="1.0.104" Condition="'$(Platform)' == 'ARM64'" />
+        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.x86" Version="1.0.104" Condition="'$(Platform)' == 'x86'" />
+        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug.x64" Version="1.0.104" Condition="'$(Platform)' == 'x64'" />
+        <PackageReference Include="RapidStreamer.BuildingBlocks.Debug" Version="1.0.104" Condition="'$(Platform)' == 'AnyCPU'" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(Configuration)' == 'Release'">
-        <PackageReference Include="RapidStreamer.BuildingBlocks.ARM64" Version="1.0.103"
-                          Condition="'$(Platform)' == 'ARM64'" />
-        <PackageReference Include="RapidStreamer.BuildingBlocks.x86" Version="1.0.103"
-                          Condition="'$(Platform)' == 'x86'" />
-        <PackageReference Include="RapidStreamer.BuildingBlocks.x64" Version="1.0.103"
-                          Condition="'$(Platform)' == 'x64'" />
-        <PackageReference Include="RapidStreamer.BuildingBlocks" Version="1.0.103" Condition="'$(Platform)' == 'AnyCPU'" />
+        <PackageReference Include="RapidStreamer.BuildingBlocks.ARM64" Version="1.0.104" Condition="'$(Platform)' == 'ARM64'" />
+        <PackageReference Include="RapidStreamer.BuildingBlocks.x86" Version="1.0.104" Condition="'$(Platform)' == 'x86'" />
+        <PackageReference Include="RapidStreamer.BuildingBlocks.x64" Version="1.0.104" Condition="'$(Platform)' == 'x64'" />
+        <PackageReference Include="RapidStreamer.BuildingBlocks" Version="1.0.104" Condition="'$(Platform)' == 'AnyCPU'" />
     </ItemGroup>
 
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
@@ -70,12 +63,12 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.1" />
-        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.1" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.1" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.1" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.2" />
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.2" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.2" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.2" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-        <PackageReference Include="OpenTelemetry.Api" Version="1.11.1" />
+        <PackageReference Include="OpenTelemetry.Api" Version="1.11.2" />
     </ItemGroup>
 
 </Project>

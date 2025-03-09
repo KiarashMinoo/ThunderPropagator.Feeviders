@@ -37,7 +37,7 @@
     <PropertyGroup Condition="'$(Configuration)'=='Release'">
         <DebugSymbols>False</DebugSymbols>
         <DebugType>None</DebugType>
-        <DefineConstants/>
+        <DefineConstants />
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
@@ -45,19 +45,19 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath=""/>
-        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath=""/>
+        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath="" />
+        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath="" />
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Confluent.Kafka" Version="2.8.0" />
         <PackageReference Include="Confluent.SchemaRegistry" Version="2.8.0" />
-        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.6.1" />
+        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.8.0" />
         <PackageReference Include="Confluent.SchemaRegistry.Serdes.Json" Version="2.8.0" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Feeders.SharedKernel\RapidStreamer.Feeders.SharedKernel.csproj"/>
+        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Feeders.SharedKernel\RapidStreamer.Feeders.SharedKernel.csproj" />
     </ItemGroup>
 
 </Project>

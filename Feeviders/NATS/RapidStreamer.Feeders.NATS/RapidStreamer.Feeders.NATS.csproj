@@ -37,7 +37,7 @@
     <PropertyGroup Condition="'$(Configuration)'=='Release'">
         <DebugSymbols>False</DebugSymbols>
         <DebugType>None</DebugType>
-        <DefineConstants/>
+        <DefineConstants />
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
@@ -45,17 +45,17 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath=""/>
-        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath=""/>
+        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath="" />
+        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath="" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Feeders.SharedKernel\RapidStreamer.Feeders.SharedKernel.csproj"/>
+        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Feeders.SharedKernel\RapidStreamer.Feeders.SharedKernel.csproj" />
         <ProjectReference Include="..\RapidStreamer.Feeviders.NATS.SharedKernel\RapidStreamer.Feeviders.NATS.SharedKernel.csproj" />
     </ItemGroup>
     
     <ItemGroup>
-        <PackageReference Include="NATS.Net" Version="2.5.7" />
+        <PackageReference Include="NATS.Net" Version="2.5.9" />
     </ItemGroup>
 
 </Project>
