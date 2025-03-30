@@ -61,13 +61,10 @@ namespace RapidStreamer.Feeders.Pulsar
             await foreach (var message in _consumer.Messages(cancellationToken: cancellationToken))
             {
                 var value = message.Value();
-#if DEBUG
+
                 var activityContext = value[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
                 var baggage = value[nameof(Baggage)] is Baggage b ? b : default;
                 yield return new FeederReceivedMessage<TPulsarFeederMessage>(value, activityContext, baggage);
-#else
-                yield return value;
-#endif
             }
         }
 

@@ -1,7 +1,5 @@
-﻿#if DEBUG
-using OpenTelemetry;
+﻿using OpenTelemetry;
 using System.Diagnostics;
-#endif
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using RapidStreamer.Application.Channels;
@@ -71,13 +69,9 @@ namespace RapidStreamer.Feeders.UdpClient
                     var udpClientFeederMessage = Deserialize(bytes.ToArray()) ??
                                                  throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
 
-#if DEBUG
                     var activityContext = udpClientFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
                     var baggage = udpClientFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
                     await ReceiveAsync(udpClientFeederMessage, activityContext, baggage);
-#else
-                    await ReceiveAsync(udpClientFeederMessage);
-#endif
 
                     ReportHealth(HealthStatus.Healthy);
                 }

@@ -49,15 +49,12 @@ namespace RapidStreamer.Feeders.ActiveMQ
                 try
                 {
                     ActivityContext? activityContext = null;
-                    Baggage? baggage = null;
-
-#if DEBUG
                     if (message.Properties.Contains(nameof(ActivityContext)))
                         activityContext = message.Properties.GetBytes(nameof(ActivityContext)).FromNJsonBytes<ActivityContext>();
 
+                    Baggage? baggage = null;
                     if (message.Properties.Contains(nameof(Baggage)))
                         baggage = message.Properties.GetBytes(nameof(Baggage)).FromNJsonBytes<Baggage>();
-#endif
 
                     switch (message)
                     {

@@ -1,8 +1,6 @@
-﻿#if DEBUG
-using OpenTelemetry;
+﻿using OpenTelemetry;
 using RapidStreamer.BuildingBlocks.Application.Helpers;
 using System.Diagnostics;
-#endif
 using Confluent.Kafka;
 using Confluent.Kafka.SyncOverAsync;
 using Confluent.SchemaRegistry;
@@ -64,12 +62,10 @@ namespace RapidStreamer.Providers.DotNet.Kafka
                     Value = feederMessage
                 };
 
-#if DEBUG
                 if (Activity.Current?.Context is not null)
                     message.Headers.Add(nameof(ActivityContext), Activity.Current.Context.ToNJsonBytes());
 
                 message.Headers.Add(nameof(Baggage), Baggage.Current.ToNJsonBytes());
-#endif
 
                 await _producer.ProduceAsync(_kafkaProviderConfiguration.TopicName,
                     message,

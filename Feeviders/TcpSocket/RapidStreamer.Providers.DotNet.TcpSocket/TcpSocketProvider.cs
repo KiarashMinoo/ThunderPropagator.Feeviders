@@ -1,7 +1,5 @@
-﻿#if DEBUG
-using OpenTelemetry;
+﻿using OpenTelemetry;
 using System.Diagnostics;
-#endif
 using Microsoft.Extensions.Logging;
 using RapidStreamer.BuildingBlocks.Application.Helpers;
 using RapidStreamer.Feeviders.TcpSocket.SharedKernel;
@@ -35,12 +33,11 @@ namespace RapidStreamer.Providers.DotNet.TcpSocket
 
         protected override Task InternalExecuteAsync(TTcpSocketProviderMessage feederMessage, CancellationToken cancellationToken = default)
         {
-#if DEBUG
             if (Activity.Current?.Context is not null)
                 feederMessage.TryAdd(nameof(ActivityContext), Activity.Current.Context.ToNJsonBytes());
 
             feederMessage.TryAdd(nameof(Baggage), Baggage.Current.ToNJsonBytes());
-#endif
+
             return Task.CompletedTask;
         }
 

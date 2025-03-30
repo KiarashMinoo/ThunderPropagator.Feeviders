@@ -57,12 +57,9 @@ namespace RapidStreamer.Feeders.Mqtt
             {
                 try
                 {
-                    ActivityContext? activityContext = null;
-                    Baggage? baggage = null;
-#if DEBUG
-                    activityContext = args.ApplicationMessage.UserProperties.Find(x => x.Name == nameof(ActivityContext))?.Value.FromNJsonBase64<ActivityContext>();
-                    baggage = args.ApplicationMessage.UserProperties.Find(x => x.Name == nameof(Baggage))?.Value.FromNJsonBase64<Baggage>();
-#endif
+                    var activityContext = args.ApplicationMessage.UserProperties.Find(x => x.Name == nameof(ActivityContext))?.Value.FromNJsonBase64<ActivityContext>();
+                    var baggage = args.ApplicationMessage.UserProperties.Find(x => x.Name == nameof(Baggage))?.Value.FromNJsonBase64<Baggage>();
+
                     await ReceiveAsync(args.ApplicationMessage.Payload.ToArray(),
                         activityContext,
                         baggage,

@@ -59,12 +59,10 @@ namespace RapidStreamer.Providers.DotNet.Pulsar
         {
             try
             {
-#if DEBUG
                 if (Activity.Current?.Context is not null)
                     feederMessage.TryAdd(nameof(ActivityContext), Activity.Current.Context.ToNJsonBytes());
 
                 feederMessage.TryAdd(nameof(Baggage), Baggage.Current.ToNJsonBytes());
-#endif
 
                 await _producer.Send(feederMessage, cancellationToken);
             }

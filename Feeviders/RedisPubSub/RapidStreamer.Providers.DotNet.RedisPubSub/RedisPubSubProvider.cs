@@ -1,8 +1,6 @@
-﻿#if DEBUG
-using OpenTelemetry;
+﻿using OpenTelemetry;
 using RapidStreamer.BuildingBlocks.Application.Helpers;
 using System.Diagnostics;
-#endif
 using Microsoft.Extensions.Logging;
 using RapidStreamer.Providers.DotNet.SharedKernel;
 using StackExchange.Redis;
@@ -32,12 +30,11 @@ namespace RapidStreamer.Providers.DotNet.RedisPubSub
 
         protected override Task InternalExecuteAsync(TRedisPubSubProviderMessage feederMessage, CancellationToken cancellationToken = default)
         {
-#if DEBUG
             if (Activity.Current?.Context is not null)
                 feederMessage.TryAdd(nameof(ActivityContext), Activity.Current.Context.ToNJsonBytes());
 
             feederMessage.TryAdd(nameof(Baggage), Baggage.Current.ToNJsonBytes());
-#endif
+
             return base.InternalExecuteAsync(feederMessage, cancellationToken);
         }
 

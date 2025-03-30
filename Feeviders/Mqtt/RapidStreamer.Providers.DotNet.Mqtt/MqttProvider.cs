@@ -44,12 +44,10 @@ namespace RapidStreamer.Providers.DotNet.Mqtt
                         _ => throw new ArgumentOutOfRangeException()
                     });
 
-#if DEBUG
                 if (Activity.Current?.Context is not null)
                     applicationMessageBuilder.WithUserProperty(nameof(ActivityContext), Activity.Current.Context.ToNJsonBase64());
 
                 applicationMessageBuilder.WithUserProperty(nameof(Baggage), Baggage.Current.ToNJsonBase64());
-#endif
 
                 var applicationMessage = applicationMessageBuilder.Build();
 

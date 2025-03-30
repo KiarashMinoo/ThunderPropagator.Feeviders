@@ -84,7 +84,6 @@ namespace RapidStreamer.Feeders.NATS
 
             FeederReceivedMessage<TNatsFeederMessage> MessageConsumed(TNatsFeederMessage message, NatsHeaders? headers)
             {
-#if DEBUG
                 ActivityContext? activityContext = null;
                 if (headers?.TryGetValue(nameof(ActivityContext), out var activityContextStr) == true)
                     activityContext = activityContextStr.ToString().FromNJsonBase64<ActivityContext>();
@@ -94,9 +93,6 @@ namespace RapidStreamer.Feeders.NATS
                     baggage = baggageStr.ToString().FromNJsonBase64<Baggage>();
 
                 return new FeederReceivedMessage<TNatsFeederMessage>(message, activityContext, baggage);
-#else
-                return message;
-#endif
             }
         }
 

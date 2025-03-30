@@ -56,14 +56,11 @@ namespace RapidStreamer.Feeders.RabbitMQ
             {
                 try
                 {
-                    ActivityContext? activityContext = null;
-                    Baggage? baggage = null;
-#if DEBUG
                     var parentContext = _propagator.Extract(default, eventArgs.BasicProperties, ExtractTraceContextFromBasicProperties);
 
-                    activityContext = parentContext.ActivityContext;
-                    baggage = parentContext.Baggage;
-#endif
+                    ActivityContext? activityContext = parentContext.ActivityContext;
+                    Baggage? baggage = parentContext.Baggage;
+
                     await ReceiveAsync(eventArgs.Body.ToArray(),
                         activityContext,
                         baggage,

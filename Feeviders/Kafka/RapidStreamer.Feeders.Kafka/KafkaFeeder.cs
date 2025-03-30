@@ -94,14 +94,13 @@ namespace RapidStreamer.Feeders.Kafka
                     if (message is not null)
                     {
                         ActivityContext? activityContext = null;
-                        Baggage? baggage = null;
-#if DEBUG
                         if (consumeResult.Message.Headers.TryGetLastBytes(nameof(Activity), out var activityContextBytes) && activityContextBytes is not null)
                             activityContext = activityContextBytes.FromNJsonBytes<ActivityContext>();
 
+                        Baggage? baggage = null;
                         if (consumeResult.Message.Headers.TryGetLastBytes(nameof(Baggage), out var baggageBytes) && baggageBytes is not null)
                             baggage = baggageBytes.FromNJsonBytes<Baggage>();
-#endif
+
                         yield return new FeederReceivedMessage<TKafkaFeederMessage>(message,
                             activityContext,
                             baggage,

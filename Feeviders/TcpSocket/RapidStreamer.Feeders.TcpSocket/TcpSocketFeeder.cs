@@ -121,13 +121,9 @@ namespace RapidStreamer.Feeders.TcpSocket
                     var tcpSocketFeederMessage = Deserialize(bytes.ToArray()) ??
                                                  throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
 
-#if DEBUG
                     var activityContext = tcpSocketFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
                     var baggage = tcpSocketFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
                     await ReceiveAsync(tcpSocketFeederMessage, activityContext, baggage);
-#else
-                    await ReceiveAsync(tcpSocketFeederMessage);
-#endif
 
                     ReportHealth(HealthStatus.Healthy);
                 }

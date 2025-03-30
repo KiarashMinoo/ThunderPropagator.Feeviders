@@ -46,15 +46,12 @@ namespace RapidStreamer.Providers.DotNet.NATS
         {
             try
             {
-                NatsHeaders? natsHeaders = null;
-#if DEBUG
-                natsHeaders = new NatsHeaders();
+                var natsHeaders = new NatsHeaders();
 
                 if (Activity.Current?.Context is not null)
                     natsHeaders.Add(nameof(ActivityContext), Activity.Current.Context.ToNJsonBase64());
 
                 natsHeaders.Add(nameof(Baggage), Baggage.Current.ToNJsonBase64());
-#endif
 
                 switch (_natsProviderConfiguration.MessagingType)
                 {

@@ -67,12 +67,10 @@ namespace RapidStreamer.Providers.DotNet.ActiveMQ
             {
                 var message = await _session.CreateBytesMessageAsync(bytes);
 
-#if DEBUG
                 if (Activity.Current?.Context is not null)
                     message.Properties.SetBytes(nameof(ActivityContext), Activity.Current.Context.ToNJsonBytes());
 
                 message.Properties.SetBytes(nameof(Baggage), Baggage.Current.ToNJsonBytes());
-#endif
 
                 await _producer.SendAsync(message);
             }

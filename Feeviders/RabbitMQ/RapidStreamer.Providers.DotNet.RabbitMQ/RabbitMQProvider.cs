@@ -1,8 +1,6 @@
-﻿#if DEBUG
-using OpenTelemetry;
+﻿using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
 using System.Diagnostics;
-#endif
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -47,23 +45,24 @@ namespace RapidStreamer.Providers.DotNet.RabbitMQ
                     DeliveryMode = DeliveryModes.Persistent
                 };
 
-#if DEBUG
                 if (Activity.Current?.Context is not null)
                 {
-                    RabbitMQProviderExtensions.Propagator.Inject(new PropagationContext(Activity.Current.Context, Baggage.Current), channelProperties, (properties, key, value) =>
-                    {
-                        try
-                        {
-                            properties.Headers ??= new Dictionary<string, object?>();
-                            properties.Headers[key] = value;
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.LogError(ex, "Failed to inject trace context.");
-                        }
-                    });
+                    RabbitMQProviderExtensions.Propagator
+                        .Inject(new PropagationContext(Activity.Current.Context, Baggage.Current),
+                            channelProperties,
+                            (properties, key, value) =>
+                            {
+                                try
+                                {
+                                    properties.Headers ??= new Dictionary<string, object?>();
+                                    properties.Headers[key] = value;
+                                }
+                                catch (Exception ex)
+                                {
+                                    Logger.LogError(ex, "Failed to inject trace context.");
+                                }
+                            });
                 }
-#endif
 
                 await _channel.BasicPublishAsync(_rabbitMQProviderConfiguration.Exchange,
                     _rabbitMQProviderConfiguration.RoutingKey,

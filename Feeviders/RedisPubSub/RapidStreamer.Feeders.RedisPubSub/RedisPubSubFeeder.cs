@@ -1,7 +1,5 @@
-﻿#if DEBUG
-using OpenTelemetry;
+﻿using OpenTelemetry;
 using System.Diagnostics;
-#endif
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using RapidStreamer.Application.Channels;
@@ -57,13 +55,9 @@ namespace RapidStreamer.Feeders.RedisPubSub
 
                 var redisPubSubFeederMessage = Deserialize(strMessage);
 
-#if DEBUG
                 var activityContext = redisPubSubFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
                 var baggage = redisPubSubFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
                 await ReceiveAsync(redisPubSubFeederMessage, activityContext, baggage);
-#else
-                await ReceiveAsync(redisPubSubFeederMessage);
-#endif
 
                 ReportHealth(HealthStatus.Healthy);
             }

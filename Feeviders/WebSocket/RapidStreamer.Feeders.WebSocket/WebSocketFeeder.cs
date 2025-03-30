@@ -1,7 +1,5 @@
-﻿#if DEBUG
-using OpenTelemetry;
+﻿using OpenTelemetry;
 using System.Diagnostics;
-#endif
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using RapidStreamer.Application;
@@ -37,13 +35,9 @@ namespace RapidStreamer.Feeders.WebSocket
 
                 var webSocketFeederMessage = Deserialize(bytes, cancellationToken) ??
                                              throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
-#if DEBUG
                 var activityContext = webSocketFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
                 var baggage = webSocketFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
                 await ReceiveAsync(webSocketFeederMessage, activityContext, baggage, cancellationToken: cancellationToken);
-#else
-                await ReceiveAsync(webSocketFeederMessage, cancellationToken: cancellationToken);
-#endif
             }
             catch (Exception exception)
             {
