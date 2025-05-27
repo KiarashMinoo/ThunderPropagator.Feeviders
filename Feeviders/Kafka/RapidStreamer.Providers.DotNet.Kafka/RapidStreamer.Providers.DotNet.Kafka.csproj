@@ -17,7 +17,7 @@
     <PropertyGroup Condition="'$(Configuration)'=='Release'">
         <DebugSymbols>False</DebugSymbols>
         <DebugType>None</DebugType>
-        <DefineConstants/>
+        <DefineConstants />
     </PropertyGroup>
 
     <PropertyGroup Label="nuget">
@@ -44,19 +44,19 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath=""/>
-        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath=""/>
+        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath="" />
+        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath="" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Confluent.Kafka" Version="2.9.0" />
-        <PackageReference Include="Confluent.SchemaRegistry" Version="2.9.0" />
-        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.9.0" />
-        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Json" Version="2.9.0" />
+        <PackageReference Include="Confluent.Kafka" Version="2.10.0" />
+        <PackageReference Include="Confluent.SchemaRegistry" Version="2.10.0" />
+        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.10.0" />
+        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Json" Version="2.10.0" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel.csproj"/>
+        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel.csproj" />
     </ItemGroup>
 
 </Project>
