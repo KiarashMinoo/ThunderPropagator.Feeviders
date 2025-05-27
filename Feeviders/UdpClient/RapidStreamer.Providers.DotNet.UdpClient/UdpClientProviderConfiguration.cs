@@ -18,13 +18,7 @@ namespace RapidStreamer.Providers.DotNet.UdpClient
 
         public int BufferSize
         {
-            get => Get<int?>() ?? 1024 * 4;
-            set => Set(value);
-        }
-
-        public string EndMessageCode
-        {
-            get => Get<string>() ?? "$E";
+            get => Get<int?>() ?? 65535;
             set => Set(value);
         }
     }

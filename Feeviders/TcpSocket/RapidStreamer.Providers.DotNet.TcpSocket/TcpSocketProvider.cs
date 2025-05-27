@@ -19,7 +19,7 @@ namespace RapidStreamer.Providers.DotNet.TcpSocket
         where TTcpSocketProviderConfiguration : TcpSocketProviderConfiguration
     {
         private readonly TTcpSocketProviderConfiguration _tcpSocketProviderConfiguration;
-        private readonly TcpClient _tcpClient;
+        private TcpClient _tcpClient;
         private readonly IPEndPoint _endPoint;
         private Stream? _stream;
         private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
@@ -45,11 +45,16 @@ namespace RapidStreamer.Providers.DotNet.TcpSocket
         {
             await _semaphoreSlim.WaitAsync(cancellationToken);
 
-            if (!_tcpClient.Connected)
+            if (!IsSocketConnected())
             {
+                _tcpClient.Close();
+                _tcpClient.Dispose();
+                _tcpClient = new TcpClient();
                 await _tcpClient.ConnectAsync(_endPoint, cancellationToken);
 
-                _stream = _tcpSocketProviderConfiguration.Ssl == true ? new SslStream(_tcpClient.GetStream()) : _tcpClient.GetStream();
+                Logger.LogInformation("TCP client connected to {Endpoint}:{Port}", _endPoint.Address, _endPoint.Port);
+
+                _stream = await InitializeStreamAsync();
 
                 if (!string.IsNullOrEmpty(_tcpSocketProviderConfiguration.Username) && !string.IsNullOrWhiteSpace(_tcpSocketProviderConfiguration.Password))
                 {
@@ -82,7 +87,38 @@ namespace RapidStreamer.Providers.DotNet.TcpSocket
 
             return;
 
-            ValueTask SendEomAsync() => _stream.WriteAsync(Constants.Eom.ToByteArray(), cancellationToken);
+            bool IsSocketConnected()
+            {
+                try
+                {
+                    if (!_tcpClient.Connected) return false;
+
+                    var socket = _tcpClient.Client;
+                    return !(socket.Poll(1, SelectMode.SelectRead) && socket.Available == 0);
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            async Task<Stream> InitializeStreamAsync()
+            {
+                if (_tcpSocketProviderConfiguration.Ssl == true)
+                {
+                    var sslStream = new SslStream(_tcpClient.GetStream());
+                    await sslStream.AuthenticateAsClientAsync(_tcpSocketProviderConfiguration.Endpoint);
+                    return sslStream;
+                }
+
+                return _tcpClient.GetStream();
+            }
+
+            async ValueTask SendEomAsync()
+            {
+                await _stream.WriteAsync(Constants.Eom.ToByteArray(), cancellationToken);
+                await _stream.FlushAsync(cancellationToken);
+            }
         }
 
         protected override void DisposeManagedResources()

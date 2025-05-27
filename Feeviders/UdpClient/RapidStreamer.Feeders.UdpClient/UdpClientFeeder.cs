@@ -6,7 +6,8 @@ using RapidStreamer.Application.Channels;
 using RapidStreamer.Application.Feeders;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using RapidStreamer.Application;
 
 namespace RapidStreamer.Feeders.UdpClient
@@ -21,6 +22,7 @@ namespace RapidStreamer.Feeders.UdpClient
         where TUdpClientFeederConfiguration : UdpClientFeederConfiguration
     {
         private readonly TUdpClientFeederConfiguration _udpClientFeederConfiguration;
+        private readonly IHostApplicationLifetime _applicationLifetime;
         private readonly Socket _socket;
 
         public UdpClientFeeder(TChannel channel,
@@ -31,9 +33,10 @@ namespace RapidStreamer.Feeders.UdpClient
         {
             _udpClientFeederConfiguration = udpClientFeederConfiguration;
 
+            _applicationLifetime = serviceProvider.GetRequiredService<IHostApplicationLifetime>();
+
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             _socket.Bind(new IPEndPoint(IPAddress.Any, udpClientFeederConfiguration.Port));
-            _socket.Listen();
 
             HealthName = $"feeder_{nameof(UdpClient)}_{udpClientFeederConfiguration.Port.ToString()}";
             HealthTags = [.. HealthTags, nameof(UdpClient), udpClientFeederConfiguration.Port.ToString()];
@@ -43,30 +46,23 @@ namespace RapidStreamer.Feeders.UdpClient
 
         private async void Start(object? state)
         {
-            var endMessageCode = Encoding.UTF8.GetBytes(_udpClientFeederConfiguration.EndMessageCode);
-
-            using var acceptedSocket = await _socket.AcceptAsync();
-
-            if (!CheckAllowance(acceptedSocket.RemoteEndPoint))
-                await acceptedSocket.DisconnectAsync(true);
-
             var buffer = new byte[_udpClientFeederConfiguration.BufferSize];
 
             while (!IsStopped)
             {
                 try
                 {
-                    List<byte> bytes = [];
-                    bool finished;
-                    do
-                    {
-                        var bytesRead = await acceptedSocket.ReceiveAsync(buffer);
-                        finished = bytesRead > 0 && buffer.Length == endMessageCode.Length && buffer.SequenceEqual(endMessageCode);
-                        if (!finished)
-                            bytes.AddRange(buffer);
-                    } while (!finished);
+                    EndPoint remoteEndpoint = new IPEndPoint(IPAddress.Any, 0);
+                    var result = await _socket.ReceiveFromAsync(buffer, SocketFlags.None, remoteEndpoint);
 
-                    var udpClientFeederMessage = Deserialize(bytes.ToArray()) ??
+                    Logger.LogInformation($"Received from {result.RemoteEndPoint}");
+
+                    if (!CheckAllowance(result.RemoteEndPoint))
+                        continue;
+
+                    var receivedBytes = buffer.AsSpan(0, result.ReceivedBytes).ToArray();
+
+                    var udpClientFeederMessage = Deserialize(receivedBytes) ??
                                                  throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
 
                     var activityContext = udpClientFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
@@ -84,8 +80,6 @@ namespace RapidStreamer.Feeders.UdpClient
                         string.Join(',', _udpClientFeederConfiguration.Port));
                 }
             }
-
-            acceptedSocket.Close();
 
             return;
 
