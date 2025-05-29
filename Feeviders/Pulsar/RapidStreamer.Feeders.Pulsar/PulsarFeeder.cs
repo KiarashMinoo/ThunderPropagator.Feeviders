@@ -7,10 +7,12 @@ using OpenTelemetry;
 using RapidStreamer.Application;
 using RapidStreamer.Application.Channels;
 using RapidStreamer.Application.Feeders;
+using RapidStreamer.Application.LicenseManagers.Providers.Demo;
 using RapidStreamer.Feeviders.Pulsar.SharedKernel;
 
 namespace RapidStreamer.Feeders.Pulsar
 {
+    [IsAvailableOnDemo]
     internal
 #if !DEBUG
         sealed

@@ -5,9 +5,11 @@ using Microsoft.Extensions.Logging;
 using RapidStreamer.Application;
 using RapidStreamer.Application.Channels;
 using RapidStreamer.Application.Feeders;
+using RapidStreamer.Application.LicenseManagers.Providers.Demo;
 
 namespace RapidStreamer.Feeders.WebSocket
 {
+    [IsAvailableOnDemo]
     internal
 #if !DEBUG
         sealed

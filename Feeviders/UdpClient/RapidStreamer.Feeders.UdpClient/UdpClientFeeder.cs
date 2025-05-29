@@ -9,9 +9,11 @@ using System.Net.Sockets;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RapidStreamer.Application;
+using RapidStreamer.Application.LicenseManagers.Providers.Demo;
 
 namespace RapidStreamer.Feeders.UdpClient
 {
+    [IsAvailableOnDemo]
     internal
 #if !DEBUG
         sealed
