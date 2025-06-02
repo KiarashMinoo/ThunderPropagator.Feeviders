@@ -6,6 +6,12 @@ namespace RapidStreamer.Feeviders.Pulsar.SharedKernel
 {
     public abstract class AbstractPulsarFeevidersConfiguration : ServiceConfiguration
     {
+        public bool IsEnabled
+        {
+            get => Get<bool>();
+            set => Set(value);
+        }
+        
         //Client
         public Uri ServiceUrl
         {

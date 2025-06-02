@@ -8,6 +8,12 @@ namespace RapidStreamer.Feeviders.NATS.SharedKernel
 {
     public abstract class AbstractNatsFeevidersConfiguration : ServiceConfiguration
     {
+        public bool IsEnabled
+        {
+            get => Get<bool>();
+            set => Set(value);
+        }
+
         public string Url
         {
             get => Get("nats://localhost:4222");

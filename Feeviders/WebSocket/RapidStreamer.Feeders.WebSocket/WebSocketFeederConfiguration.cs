@@ -7,6 +7,12 @@ namespace RapidStreamer.Feeders.WebSocket
     public abstract class WebSocketFeederConfiguration : WebSocketConfiguration,
         IAbstractFeederConfiguration
     {
+        public bool IsEnabled
+        {
+            get => Get(false);
+            set => Set(value);
+        }
+
         public Guid Id
         {
             get => Get(Guid.NewGuid());

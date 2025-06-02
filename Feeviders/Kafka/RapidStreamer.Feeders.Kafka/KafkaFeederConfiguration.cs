@@ -7,6 +7,12 @@ namespace RapidStreamer.Feeders.Kafka
     public abstract class KafkaFeederConfiguration : ConsumerConfig,
         IAbstractFeederConfiguration
     {
+        public bool IsEnabled
+        {
+            get => GetBool("enabled") ?? false;
+            set => Set("enabled", value ? "true" : "false");
+        }
+
         public Guid Id
         {
             get => Guid.TryParse(Get("id"), out var id) ? id : Guid.NewGuid();

@@ -8,6 +8,12 @@ namespace RapidStreamer.Feeviders.RabbitMQ.SharedKernel
 {
     public abstract class RabbitMQFeeviderConfiguration : ServiceConfiguration
     {
+        public bool IsEnabled
+        {
+            get => Get(false);
+            set => Set(value);
+        }
+
         public string HostName
         {
             get => Get<string>()!;

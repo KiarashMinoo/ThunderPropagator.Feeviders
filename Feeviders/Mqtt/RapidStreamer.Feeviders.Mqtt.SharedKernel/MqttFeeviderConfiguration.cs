@@ -12,6 +12,12 @@ namespace RapidStreamer.Feeviders.Mqtt.SharedKernel
 {
     public abstract class MqttFeeviderConfiguration : ServiceConfiguration
     {
+        public bool IsEnabled
+        {
+            get => Get<bool>();
+            set => Set(value);
+        }
+
         public AddressFamily? AddressFamily
         {
             get => Get<AddressFamily>();
