@@ -1,85 +1,85 @@
-name: Pack and Push
-
-on:
-  push:
-    branches:
-      - 'develop'
-
-defaults:
-  run:
-    shell: pwsh
-
-permissions:
-  contents: write
-
-env:
-  ArtifactsDirectory: ${{ github.workspace}}/artifacts
-  Project_Version: "*.*.^.*"
-
-jobs:
-  versioning_and_pack:
-    runs-on: ubuntu-22.04
-    name: Update version and Pack nugets
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: |
-            8.0.x
-            9.0.x
-
-      - name: Set project versions
-        id: update
-        uses: vers-one/dotnet-project-version-updater@v1.6
-        with:
-          file: |
-            "**/*.csproj", "**/*.nuspec", "**/AssemblyInfo.cs"
-          version: ${{ env.Project_Version }}
-
-      - name: Build solution and generate NuGet packages
-        run: |
-          dotnet clean          
-          dotnet restore
-          
-          #Debug          
-          dotnet build --nologo -c Debug /p:Platform=ARM64
-          dotnet pack  --nologo -c Debug /p:Platform=ARM64 -o ${{ env.ArtifactsDirectory }}
-          
-          dotnet build --nologo -c Debug /p:Platform=x64
-          dotnet pack  --nologo -c Debug /p:Platform=x64 -o ${{ env.ArtifactsDirectory }}
-          
-          dotnet build --nologo -c Debug /p:Platform=x86
-          dotnet pack  --nologo -c Debug /p:Platform=x86 -o ${{ env.ArtifactsDirectory }}                                                          
-          
-          dotnet build --nologo -c Debug 
-          dotnet pack  --nologo -c Debug -o ${{ env.ArtifactsDirectory }}
-          
-          #Release          
-          dotnet build --nologo -c Release /p:Platform=ARM64
-          dotnet pack  --nologo -c Release /p:Platform=ARM64 -o ${{ env.ArtifactsDirectory }}    
-          
-          dotnet build --nologo -c Release /p:Platform=x64
-          dotnet pack  --nologo -c Release /p:Platform=x64 -o ${{ env.ArtifactsDirectory }}                                                          
-          
-          dotnet build --nologo -c Release /p:Platform=x86
-          dotnet pack  --nologo -c Release /p:Platform=x86 -o ${{ env.ArtifactsDirectory }}
-          
-          dotnet build --nologo -c Release 
-          dotnet pack  --nologo -c Release -o ${{ env.ArtifactsDirectory }}
-
-      - name: Push package to GitHub packages
-        run: |
-          foreach($file in (Get-ChildItem "${{ env.ArtifactsDirectory }}" -Recurse -Include *.nupkg)) {
-            dotnet nuget push $file --source "RapidStreamer" --api-key "${{ secrets.GHP_NUGET_PACKAGE_TOKEN }}" --skip-duplicate --no-symbols
-          }
-
-      - name: Push latest changes to repository
-        run: |
-          git config user.name "Kiarash Minoo"
-          git config user.email "yanis_1984@msn.com"
-          git add .
-          git commit -m "Update project version to ${{ steps.update.outputs.newVersion }}"
-          git push            
+#name: Pack and Push
+#
+#on:
+#  push:
+#    branches:
+#      - 'develop'
+#
+#defaults:
+#  run:
+#    shell: pwsh
+#
+#permissions:
+#  contents: write
+#
+#env:
+#  ArtifactsDirectory: ${{ github.workspace}}/artifacts
+#  Project_Version: "*.*.^.*"
+#
+#jobs:
+#  versioning_and_pack:
+#    runs-on: ubuntu-22.04
+#    name: Update version and Pack nugets
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v3
+#
+#      - name: Setup .NET
+#        uses: actions/setup-dotnet@v4
+#        with:
+#          dotnet-version: |
+#            8.0.x
+#            9.0.x
+#
+#      - name: Set project versions
+#        id: update
+#        uses: vers-one/dotnet-project-version-updater@v1.6
+#        with:
+#          file: |
+#            "**/*.csproj", "**/*.nuspec", "**/AssemblyInfo.cs"
+#          version: ${{ env.Project_Version }}
+#
+#      - name: Build solution and generate NuGet packages
+#        run: |
+#          dotnet clean          
+#          dotnet restore
+#          
+#          #Debug          
+#          dotnet build --nologo -c Debug /p:Platform=ARM64
+#          dotnet pack  --nologo -c Debug /p:Platform=ARM64 -o ${{ env.ArtifactsDirectory }}
+#          
+#          dotnet build --nologo -c Debug /p:Platform=x64
+#          dotnet pack  --nologo -c Debug /p:Platform=x64 -o ${{ env.ArtifactsDirectory }}
+#          
+#          dotnet build --nologo -c Debug /p:Platform=x86
+#          dotnet pack  --nologo -c Debug /p:Platform=x86 -o ${{ env.ArtifactsDirectory }}                                                          
+#          
+#          dotnet build --nologo -c Debug 
+#          dotnet pack  --nologo -c Debug -o ${{ env.ArtifactsDirectory }}
+#          
+#          #Release          
+#          dotnet build --nologo -c Release /p:Platform=ARM64
+#          dotnet pack  --nologo -c Release /p:Platform=ARM64 -o ${{ env.ArtifactsDirectory }}    
+#          
+#          dotnet build --nologo -c Release /p:Platform=x64
+#          dotnet pack  --nologo -c Release /p:Platform=x64 -o ${{ env.ArtifactsDirectory }}                                                          
+#          
+#          dotnet build --nologo -c Release /p:Platform=x86
+#          dotnet pack  --nologo -c Release /p:Platform=x86 -o ${{ env.ArtifactsDirectory }}
+#          
+#          dotnet build --nologo -c Release 
+#          dotnet pack  --nologo -c Release -o ${{ env.ArtifactsDirectory }}
+#
+#      - name: Push package to GitHub packages
+#        run: |
+#          foreach($file in (Get-ChildItem "${{ env.ArtifactsDirectory }}" -Recurse -Include *.nupkg)) {
+#            dotnet nuget push $file --source "RapidStreamer" --api-key "${{ secrets.GHP_NUGET_PACKAGE_TOKEN }}" --skip-duplicate --no-symbols
+#          }
+#
+#      - name: Push latest changes to repository
+#        run: |
+#          git config user.name "Kiarash Minoo"
+#          git config user.email "yanis_1984@msn.com"
+#          git add .
+#          git commit -m "Update project version to ${{ steps.update.outputs.newVersion }}"
+#          git push            
