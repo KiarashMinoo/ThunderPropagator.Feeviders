@@ -1,52 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App"/>
+    </ItemGroup>
+
     <PropertyGroup>
         <OutputType>Library</OutputType>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <NoWarn>$(NoWarn);1591</NoWarn>
-        <Configurations>Debug;Release</Configurations>
-        <EnablePreviewFeatures>true</EnablePreviewFeatures>
-        <Platforms>AnyCPU;x86;x64;ARM64</Platforms>
-        <Version>1.0.76.0</Version>
-        <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
-        <LangVersion>latestmajor</LangVersion>
     </PropertyGroup>
 
-    <PropertyGroup Label="nuget">
-        <IsPackable>true</IsPackable>
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Authors>RapidStreamer</Authors>
-        <Description>Redefining real time data streaming; effortless, blazingly fast and cloud-native for maximum impact</Description>
-        <Copyright>Copyright ©2024 RapidStreamer Corporation</Copyright>
-        <PackageProjectUrl>https://www.rapidstreamer.com</PackageProjectUrl>
-        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-        <RepositoryUrl>https://github.com/KAB-TEAM/RapidStreamer.Feeviders</RepositoryUrl>
-        <PackageTags>Real-Time Data Streaming, Blazingly Fast, Cloud-Native, Data Streaming, Effortless Performance, High Impact, Real-Time Processing, Fast Data Pipelines, Cloud Solutions, Streaming Technology</PackageTags>
-        <PackageIcon>RapidStreamer.png</PackageIcon>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
-        <AvoidCycleErrorOnSelfReference>true</AvoidCycleErrorOnSelfReference>
+   <PropertyGroup Label="PackageId">
         <PackageId Condition="'$(Configuration)' == 'Debug' And '$(Platform)' != 'AnyCPU'">$(RootNameSpace).Debug.$(Platform)</PackageId>
         <PackageId Condition="'$(Configuration)' == 'Debug' And '$(Platform)' == 'AnyCPU'">$(RootNameSpace).Debug</PackageId>
         <PackageId Condition="'$(Configuration)' == 'Release' And '$(Platform)' != 'AnyCPU'">$(RootNameSpace).$(Platform)</PackageId>
         <PackageId Condition="'$(Configuration)' == 'Release' And '$(Platform)' == 'AnyCPU'">$(RootNameSpace)</PackageId>
     </PropertyGroup>
-
-    <PropertyGroup Condition="'$(Configuration)'=='Release'">
-        <DebugSymbols>False</DebugSymbols>
-        <DebugType>None</DebugType>
-        <DefineConstants/>
-    </PropertyGroup>
-
-    <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
-        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
-    </PropertyGroup>
-
-    <ItemGroup>
-        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath=""/>
-        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath=""/>
-    </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel.csproj"/>

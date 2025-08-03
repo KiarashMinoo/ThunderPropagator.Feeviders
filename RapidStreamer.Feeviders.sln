@@ -11,6 +11,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		RapidStreamer.svg = RapidStreamer.svg
 		README.md = README.md
 		nuget.config = nuget.config
+		Directory.Build.props = Directory.Build.props
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Feeviders", "Feeviders", "{0F922E11-B838-4DFD-A9A2-C3BBAFBF5A03}"
@@ -83,7 +84,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{4B11
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{8584B253-4E84-4DCE-AA1C-90BA89BDBF3E}"
 	ProjectSection(SolutionItems) = preProject
-		.github\workflows\pack-and-push.yml = .github\workflows\pack-and-push.yml
+		.github\workflows\develop-beta-ci.yml = .github\workflows\develop-beta-ci.yml
+		.github\workflows\develop-release-ci.yml = .github\workflows\develop-release-ci.yml
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Pulsar", "Pulsar", "{B5823E80-082B-47C8-AA33-CC6FDED8C94B}"
