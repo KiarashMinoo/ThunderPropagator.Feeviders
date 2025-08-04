@@ -42,10 +42,10 @@ jobs:
             } else { return $xml.SelectSingleNode("//$localName") }
           }
 
-          $pkgNode = Get-Node $xml "PackageVersion"
-          if (-not $pkgNode) { Write-Error "<PackageVersion> not found."; exit 1 }
+          $pkgNode = Get-Node $xml "Version"
+          if (-not $pkgNode) { Write-Error "<Version> not found."; exit 1 }
           $current = $pkgNode.InnerText.Trim()
-          if (-not $current) { Write-Error "<PackageVersion> is empty."; exit 1 }
+          if (-not $current) { Write-Error "<Version> is empty."; exit 1 }
 
           # Remove prerelease if any (finalize to stable)
           $stable = $current -replace '-.+$',''
@@ -140,8 +140,8 @@ jobs:
             } else { return $xml.SelectSingleNode("//$localName") }
           }
 
-          $pkgNode = Get-Node $xml "PackageVersion"
-          if (-not $pkgNode) { Write-Error "<PackageVersion> not found on develop."; exit 1 }
+          $pkgNode = Get-Node $xml "Version"
+          if (-not $pkgNode) { Write-Error "<Version> not found on develop."; exit 1 }
 
           $current = $pkgNode.InnerText.Trim()
           $target  = $env:STABLE_VERSION.Trim()
@@ -153,7 +153,7 @@ jobs:
 
           $pkgNode.InnerText = $target
           $xml.Save($propsPath)
-          Write-Host "Set develop PackageVersion: $current -> $target"
+          Write-Host "Set develop Version: $current -> $target"
 
       - name: Commit & push to develop (skip CI)
         run: |

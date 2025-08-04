@@ -26,7 +26,7 @@ jobs:
         run: |
           test -f Directory.Build.props || { echo "Directory.Build.props not found."; exit 1; }
 
-      - name: Bump <PackageVersion> (bump build if no beta, else bump beta.N)
+      - name: Bump <Version> (bump build if no beta, else bump beta.N)
         id: bump
         shell: pwsh
         run: |
@@ -44,10 +44,10 @@ jobs:
             }
           }
 
-          $pkgNode = Get-Node $xml "PackageVersion"
-          if (-not $pkgNode) { Write-Error "<PackageVersion> not found."; exit 1 }
+          $pkgNode = Get-Node $xml "Version"
+          if (-not $pkgNode) { Write-Error "<Version> not found."; exit 1 }
           $current = $pkgNode.InnerText.Trim()
-          if (-not $current) { Write-Error "<PackageVersion> is empty."; exit 1 }
+          if (-not $current) { Write-Error "<Version> is empty."; exit 1 }
 
           # Match 3- or 4-part with optional -beta.N
           $m4 = [regex]::Match($current, '^(?<maj>\d+)\.(?<min>\d+)\.(?<bld>\d+)\.(?<rev>\d+)(?:-(?<pre>.+))?$')
