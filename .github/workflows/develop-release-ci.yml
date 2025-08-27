@@ -168,7 +168,8 @@ jobs:
           git fetch origin develop
           git pull --rebase origin develop
           git push origin HEAD:develop
-
+  
+  
   # --- 2) pack matrix & upload artifacts ---
   pack:
     needs: finalize-and-tag
@@ -180,9 +181,11 @@ jobs:
         platform_in: [ AnyCpu, x86, x64, ARM64 ]
         configuration: [ Debug, Release ]
     steps:
-      - name: Checkout
+      - name: Checkout finalized tag
         uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+        with:
+          fetch-depth: 0
+          ref: refs/tags/v${{ needs.finalize-and-tag.outputs.version }}
 
       - name: Setup .NET (8.0.x & 9.0.x)
         uses: actions/setup-dotnet@v4
