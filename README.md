@@ -1,18 +1,19 @@
-# RapidStreamer.Providers
+# RapidStreamer Feeviders
 
-**RapidStreamer** is a cutting-edge software solution designed to redefine real-time data streaming. Our mission is to provide **effortless, blazingly fast, and cloud-native streaming capabilities** for maximum impact. This repository contains the foundational libraries, **RapidStreamer.Providers.DotNet.ActiveMQ**, **RapidStreamer.Providers.DotNet.Kafka**, **RapidStreamer.Providers.DotNet.Mqtt**, **RapidStreamer.Providers.DotNet.NATS**, **RapidStreamer.Providers.DotNet.Pulsar**, **RapidStreamer.Providers.DotNet.RabbitMQ**, **RapidStreamer.Providers.DotNet.RedisPubSub**, **RapidStreamer.Providers.DotNet.TcpSocket**, **RapidStreamer.Providers.DotNet.UdpClient**, **RapidStreamer.Providers.DotNet.WebApi** and **RapidStreamer.Providers.DotNet.WebSocket**, which empower developers to build scalable, high-performance streaming applications with ease.
+**RapidStreamer** is a cutting-edge software solution designed to redefine real-time data streaming. Our mission is to provide **effortless, blazingly fast, and cloud-native streaming capabilities** for maximum impact. This repository contains the foundational libraries for both **Feeders** (message consumption) and **Providers** (message publishing) across multiple messaging systems, which empower developers to build scalable, high-performance streaming applications with ease.
 
-These libraries support **.NET 9** and **.NET 8**, and are configured to work across multiple platforms, including **ARM64**, **x64**, **x86**, and **AnyCPU**. They are available as **NuGet packages** and can be installed from the custom NuGet repository:
-**`https://nuget.rapidstreamer.com/v3/index.json`**.
+These libraries support **.NET 9** and **.NET 8**, and are configured to work across multiple platforms, including **ARM64**, **x64**, **x86**, and **AnyCPU**. They are available as **NuGet packages** from **GitHub Packages**.
 
 ---
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Documentation](#documentation)
 - [Features](#features)
 - [Supported Platforms](#supported-platforms)
 - [Installation](#installation)
+- [Quick Start](#quick-start)
 - [License](#license)
 
 ---
@@ -25,8 +26,25 @@ RapidStreamer is designed to revolutionize real-time data streaming by providing
 - **Blazingly Fast Performance**: Optimized for low-latency, high-throughput streaming.
 - **Cloud-Native Architecture**: Built for modern cloud environments, enabling scalability and resilience.
 - **Cross-Platform Support**: Compatible with ARM64, x64, x86, and AnyCPU platforms.
+- **Multiple Messaging Systems**: Support for 12+ messaging systems including Kafka, RabbitMQ, WebSocket, and more.
 
 Whether you're building real-time analytics, live event processing, or IoT data pipelines, RapidStreamer empowers you to deliver maximum impact with minimal effort.
+
+---
+
+## Documentation
+
+📖 **[Complete Documentation](docs/README.md)** - Comprehensive framework documentation with API references, examples, and best practices.
+
+### Quick Links
+
+- **[Architecture Overview](docs/README.md#architecture-components)** - Framework architecture and components
+- **[SharedKernel](docs/SharedKernel/README.md)** - Core interfaces and base classes
+- **[RabbitMQ Integration](docs/RabbitMQ/README.md)** - AMQP messaging with complex routing
+- **[Kafka Integration](docs/Kafka/README.md)** - High-throughput streaming and event sourcing
+- **[WebSocket Integration](docs/WebSocket/README.md)** - Real-time web communication
+- **[Getting Started Guide](docs/README.md#getting-started)** - Installation and basic usage
+- **[Performance Notes](docs/README.md#performance-notes)** - Optimization recommendations
 
 ---
 
@@ -84,90 +102,130 @@ Here’s an example of what the `nuget.config` file should look like:
   <packageSources>
     <!-- Add the official NuGet.org source -->
     <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
-    <!-- Add the custom RapidStreamer NuGet repository -->
-    <add key="RapidStreamer" value="https://nuget.rapidstreamer.com/v3/index.json" />
+    <!-- Add the RapidStreamer GitHub Packages repository -->
+    <add key="RapidStreamer" value="https://nuget.pkg.github.com/KiarashMinoo/index.json" />
   </packageSources>
 </configuration>
 ```
 
-Place the `nuget.config` file in the root of your solution or project directory. This ensures that all projects in the solution can access the custom NuGet repository.
+Place the `nuget.config` file in the root of your solution or project directory. This ensures that all projects in the solution can access the GitHub Packages repository.
 
 ### Step 2: Verify the Configuration
 
-To verify that the custom repository is correctly configured, you can use the following command in the terminal:
+To verify that the GitHub Packages repository is correctly configured, you can use the following command:
 ```bash
 dotnet nuget list source
 ```
-This will list all configured NuGet sources. You should see something like this in the output:
+
+You should see output similar to:
 ```text
 Registered Sources:
   1.  nuget.org [Enabled]
       https://api.nuget.org/v3/index.json
   2.  RapidStreamer [Enabled]
-      https://nuget.rapidstreamer.com/v3/index.json
+      https://nuget.pkg.github.com/KiarashMinoo/index.json
 ```
 
-### Step 3: Install the NuGet Packages
-You can now install the packages using the following commands:
+### Step 3: Build and Restore Packages
 
-For `RapidStreamer.Providers.DotNet.ActiveMQ`:
+After configuring the NuGet sources, restore and build your project:
 ```bash
-dotnet add package RapidStreamer.Providers.DotNet.ActiveMQ
+dotnet restore
+dotnet build -c Release
 ```
 
-For `RapidStreamer.Providers.DotNet.Kafka`:
+### Step 4: Install RapidStreamer Packages
+
+You can now install the messaging system packages you need. Examples:
+
+**High-throughput streaming (Kafka)**:
 ```bash
+dotnet add package RapidStreamer.Feeders.Kafka
 dotnet add package RapidStreamer.Providers.DotNet.Kafka
 ```
 
-For `RapidStreamer.Providers.DotNet.Mqtt`:
+**Reliable messaging (RabbitMQ)**:
 ```bash
-dotnet add package RapidStreamer.Providers.DotNet.Mqtt
-```
-
-For `RapidStreamer.Providers.DotNet.NATS`:
-```bash
-dotnet add package RapidStreamer.Providers.DotNet.NATS
-```
-
-For `RapidStreamer.Providers.DotNet.Pulsar`:
-```bash
-dotnet add package RapidStreamer.Providers.DotNet.Pulsar
-```
-
-For `RapidStreamer.Providers.DotNet.RabbitMQ`:
-```bash
+dotnet add package RapidStreamer.Feeders.RabbitMQ
 dotnet add package RapidStreamer.Providers.DotNet.RabbitMQ
 ```
 
-For `RapidStreamer.Providers.DotNet.RedisPubSub`:
+**Real-time web communication (WebSocket)**:
 ```bash
-dotnet add package RapidStreamer.Providers.DotNet.RedisPubSub
-```
-
-For `RapidStreamer.Providers.DotNet.TcpSocket`:
-```bash
-dotnet add package RapidStreamer.Providers.DotNet.TcpSocket
-```
-
-For `RapidStreamer.Providers.DotNet.UdpClient`:
-```bash
-dotnet add package RapidStreamer.Providers.DotNet.UdpClient
-```
-
-For `RapidStreamer.Providers.DotNet.WebApi`:
-```bash
-dotnet add package RapidStreamer.Providers.DotNet.WebApi
-```
-
-For `RapidStreamer.Providers.DotNet.WebSocket`:
-```bash
+dotnet add package RapidStreamer.Feeders.WebSocket
 dotnet add package RapidStreamer.Providers.DotNet.WebSocket
 ```
 
-Alternatively, you can install the packages via the NuGet Package Manager in Visual Studio.
+**See [Documentation](docs/README.md#nuget-packages) for complete package listing.**
+
+---
+
+## Quick Start
+
+### 1. Basic Message Producer
+
+```csharp
+// Define your message
+public class OrderEvent : RabbitMQProviderMessage
+{
+    public string OrderId { get; set; }
+    public decimal Amount { get; set; }
+    public DateTime OrderDate { get; set; }
+}
+
+// Define configuration
+public class OrderConfig : RabbitMQProviderConfiguration { }
+
+// Register in DI container
+services.AddRabbitMQProvider<OrderEvent, OrderConfig>(
+    configuration, "Messaging:RabbitMQ");
+
+// Use in your service
+public class OrderService
+{
+    private readonly IProvider<OrderEvent> _provider;
+    
+    public OrderService(IProvider<OrderEvent> provider)
+    {
+        _provider = provider;
+    }
+    
+    public async Task ProcessOrderAsync(Order order)
+    {
+        await _provider.ExecuteAsync(new OrderEvent
+        {
+            OrderId = order.Id,
+            Amount = order.Total,
+            OrderDate = DateTime.UtcNow
+        });
+    }
+}
+```
+
+### 2. Configuration Example
+
+```json
+{
+  "Messaging": {
+    "RabbitMQ": {
+      "HostName": "localhost",
+      "Port": 5672,
+      "UserName": "guest",
+      "Password": "guest",
+      "ExchangeName": "orders",
+      "QueueName": "order-processing",
+      "RoutingKey": "order.created"
+    }
+  }
+}
+```
+
+**📖 [View Complete Documentation](docs/README.md) for detailed examples, configuration options, and best practices.**
+
+---
 
 ## License
-This project is licensed under the **MIT License**.
 
-© 2024 RapidStreamer. All rights reserved.
+This project is licensed under the **Apache-2.0 License**.
+
+© 2024 RapidStreamer Corporation. All rights reserved.
