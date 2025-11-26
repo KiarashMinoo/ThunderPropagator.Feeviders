@@ -1,49 +1,49 @@
 <Project>
-    <PropertyGroup Label="Verioning">
-        <Version>1.0.79-beta.2</Version>
-    </PropertyGroup>
-    <PropertyGroup>
-        <OutputType>Library</OutputType>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <NoWarn>$(NoWarn);1591;CS0067</NoWarn>
-        <Configurations>Debug;Release</Configurations>
-        <LangVersion>latestmajor</LangVersion>
-        <Platforms>AnyCPU;x86;x64;ARM64</Platforms>
-        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
-        <UseRidGraph>true</UseRidGraph>
-    </PropertyGroup>
-    <PropertyGroup Condition="'$(Configuration)'=='Release'">
-        <DebugSymbols>False</DebugSymbols>
-        <DebugType>None</DebugType>
-        <DefineConstants/>
-    </PropertyGroup>
-    <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
-        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
-    </PropertyGroup>
-    <PropertyGroup Label="nuget">
-        <IsPackable>true</IsPackable>
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Authors>RapidStreamer</Authors>
-        <Description>Redefining real time data streaming; effortless, blazingly fast and cloud-native for maximum impact</Description>
-        <Copyright>Copyright ©2024 RapidStreamer Corporation</Copyright>
-        <PackageProjectUrl>https://www.rapidstreamer.com</PackageProjectUrl>
-        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-        <RepositoryUrl>https://github.com/KAB-TEAM/RapidStreamer.BuildingBlocks</RepositoryUrl>
-        <PackageTags>Real-Time Data Streaming, Blazingly Fast, Cloud-Native, Data Streaming, Effortless Performance, High Impact, Real-Time Processing, Fast Data Pipelines, Cloud Solutions, Streaming Technology</PackageTags>
-        <PackageIcon>RapidStreamer.png</PackageIcon>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
-        <AvoidCycleErrorOnSelfReference>true</AvoidCycleErrorOnSelfReference>
-    </PropertyGroup>
-    <PropertyGroup Label="PackageId">
-        <PackageIdConfigurationSuffix Condition="'$(Configuration)' == 'Debug'">.Debug</PackageIdConfigurationSuffix>
-        <PackageIdPlatformSuffix Condition="'$(Platform)' != 'AnyCPU'">.$(Platform)</PackageIdPlatformSuffix>
-        <PackageId>$(MSBuildProjectName)$(PackageIdConfigurationSuffix)$(PackageIdPlatformSuffix)</PackageId>
-    </PropertyGroup>
-    <ItemGroup>
-        <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath=""/>
-        <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath=""/>
-    </ItemGroup>
+  <PropertyGroup Label="Verioning">
+    <Version>1.0.79-beta.3</Version>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591;CS0067</NoWarn>
+    <Configurations>Debug;Release</Configurations>
+    <LangVersion>latestmajor</LangVersion>
+    <Platforms>AnyCPU;x86;x64;ARM64</Platforms>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <UseRidGraph>true</UseRidGraph>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <DebugSymbols>False</DebugSymbols>
+    <DebugType>None</DebugType>
+    <DefineConstants />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+  <PropertyGroup Label="nuget">
+    <IsPackable>true</IsPackable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>RapidStreamer</Authors>
+    <Description>Redefining real time data streaming; effortless, blazingly fast and cloud-native for maximum impact</Description>
+    <Copyright>Copyright ©2024 RapidStreamer Corporation</Copyright>
+    <PackageProjectUrl>https://www.rapidstreamer.com</PackageProjectUrl>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/KAB-TEAM/RapidStreamer.BuildingBlocks</RepositoryUrl>
+    <PackageTags>Real-Time Data Streaming, Blazingly Fast, Cloud-Native, Data Streaming, Effortless Performance, High Impact, Real-Time Processing, Fast Data Pipelines, Cloud Solutions, Streaming Technology</PackageTags>
+    <PackageIcon>RapidStreamer.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <AvoidCycleErrorOnSelfReference>true</AvoidCycleErrorOnSelfReference>
+  </PropertyGroup>
+  <PropertyGroup Label="PackageId">
+    <PackageIdConfigurationSuffix Condition="'$(Configuration)' == 'Debug'">.Debug</PackageIdConfigurationSuffix>
+    <PackageIdPlatformSuffix Condition="'$(Platform)' != 'AnyCPU'">.$(Platform)</PackageIdPlatformSuffix>
+    <PackageId>$(MSBuildProjectName)$(PackageIdConfigurationSuffix)$(PackageIdPlatformSuffix)</PackageId>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath="" />
+    <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath="" />
+  </ItemGroup>
 </Project>
