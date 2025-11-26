@@ -13,11 +13,9 @@ using System.Security.Authentication;
 using System.Text;
 using Microsoft.Extensions.Hosting;
 using RapidStreamer.Application;
-using RapidStreamer.Application.LicenseManagers.Providers.Demo;
 
 namespace RapidStreamer.Feeders.TcpSocket
 {
-    [IsAvailableOnDemo]
     internal
 #if !DEBUG
         sealed

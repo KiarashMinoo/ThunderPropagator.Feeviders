@@ -9,12 +9,9 @@ using RapidStreamer.Feeviders.ActiveMQ.SharedKernel;
 using System.Reflection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using RapidStreamer.Application;
-using RapidStreamer.Application.LicenseManagers;
-using RapidStreamer.Application.LicenseManagers.Providers.Demo;
 
 namespace RapidStreamer.Feeders.ActiveMQ
 {
-    [IsAvailableOnDemo]
     internal
 #if !DEBUG
         sealed

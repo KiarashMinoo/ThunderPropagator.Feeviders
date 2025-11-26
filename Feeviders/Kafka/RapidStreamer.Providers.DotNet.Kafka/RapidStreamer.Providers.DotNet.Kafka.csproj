@@ -1,29 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
-        <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    </ItemGroup>
-
-    <PropertyGroup>
-        <OutputType>Library</OutputType>
-    </PropertyGroup>
-
-    <PropertyGroup Label="PackageId">
-        <PackageId Condition="'$(Configuration)' == 'Debug' And '$(Platform)' != 'AnyCPU'">$(RootNameSpace).Debug.$(Platform)</PackageId>
-        <PackageId Condition="'$(Configuration)' == 'Debug' And '$(Platform)' == 'AnyCPU'">$(RootNameSpace).Debug</PackageId>
-        <PackageId Condition="'$(Configuration)' == 'Release' And '$(Platform)' != 'AnyCPU'">$(RootNameSpace).$(Platform)</PackageId>
-        <PackageId Condition="'$(Configuration)' == 'Release' And '$(Platform)' == 'AnyCPU'">$(RootNameSpace)</PackageId>
-    </PropertyGroup>
-
-    <ItemGroup>
-        <PackageReference Include="Confluent.Kafka" Version="2.11.1" />
-        <PackageReference Include="Confluent.SchemaRegistry" Version="2.11.1" />
-        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.11.1" />
-        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Json" Version="2.11.1" />
+        <PackageReference Include="Confluent.Kafka"/>
+        <PackageReference Include="Confluent.SchemaRegistry"/>
+        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro"/>
+        <PackageReference Include="Confluent.SchemaRegistry.Serdes.Json"/>
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel.csproj" />
+        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel.csproj"/>
     </ItemGroup>
 
 </Project>

@@ -1,21 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
-        <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    </ItemGroup>
-
-    <PropertyGroup>
-        <OutputType>Library</OutputType>
-    </PropertyGroup>
-
-    <PropertyGroup Label="PackageId">
-        <PackageId Condition="'$(Configuration)' == 'Debug' And '$(Platform)' != 'AnyCPU'">$(RootNameSpace).Debug.$(Platform)</PackageId>
-        <PackageId Condition="'$(Configuration)' == 'Debug' And '$(Platform)' == 'AnyCPU'">$(RootNameSpace).Debug</PackageId>
-        <PackageId Condition="'$(Configuration)' == 'Release' And '$(Platform)' != 'AnyCPU'">$(RootNameSpace).$(Platform)</PackageId>
-        <PackageId Condition="'$(Configuration)' == 'Release' And '$(Platform)' == 'AnyCPU'">$(RootNameSpace)</PackageId>
-    </PropertyGroup>
-
-    <ItemGroup>
         <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel.csproj"/>
         <ProjectReference Include="..\RapidStreamer.Feeviders.ActiveMQ.SharedKernel\RapidStreamer.Feeviders.ActiveMQ.SharedKernel.csproj"/>
     </ItemGroup>

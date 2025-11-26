@@ -16,7 +16,7 @@ jobs:
     if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.ver.outputs.version }}
+      version: ${{ steps.ver.outputs.version }}      
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,77 +26,21 @@ jobs:
         run: |
           test -f Directory.Build.props || { echo "Directory.Build.props not found."; exit 1; }
 
-      - name: Strip -beta.* (stable) and read version
+      - name: Finalize version (strip prerelease) using helper script
         id: ver
         shell: pwsh
         run: |
-          $propsPath = Join-Path $PWD "Directory.Build.props"
-          [xml]$xml = Get-Content -Raw $propsPath
+          pwsh ./.github/scripts/update-version.ps1 -Channel release -CommitAndTag
 
-          function Get-Node($xml, $localName) {
-            $ns = $xml.DocumentElement.GetAttribute("xmlns")
-            if ($ns) {
-              $nsm = New-Object System.Xml.XmlNamespaceManager($xml.NameTable)
-              $nsm.AddNamespace("msb", $ns)
-              return $xml.SelectSingleNode("//msb:$localName", $nsm)
-            } else { return $xml.SelectSingleNode("//$localName") }
-          }
-
-          $pkgNode = Get-Node $xml "Version"
-          if (-not $pkgNode) { Write-Error "<Version> not found."; exit 1 }
-          $current = $pkgNode.InnerText.Trim()
-          if (-not $current) { Write-Error "<Version> is empty."; exit 1 }
-
-          # Remove prerelease if any (finalize to stable)
-          $stable = $current -replace '-.+$',''
-          if ($stable -ne $current) {
-            $pkgNode.InnerText = $stable
-            $xml.Save($propsPath)
-            echo "changed=1" >> $env:GITHUB_OUTPUT
+      - name: Generate release notes
+        shell: pwsh
+        run: |
+          $lastTag = git describe --tags --abbrev=0 2>$null
+          if ($lastTag) {
+            pwsh ./.github/scripts/generate-release-notes.ps1 -Before $lastTag -After HEAD
           } else {
-            echo "changed=0" >> $env:GITHUB_OUTPUT
+            pwsh ./.github/scripts/generate-release-notes.ps1
           }
-          echo "version=$stable" >> $env:GITHUB_OUTPUT
-          Write-Host "Stable version: $stable"
-
-      - name: Commit stable version (skip CI)
-        if: steps.ver.outputs.changed == '1'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Directory.Build.props
-          git commit -m "chore: finalize release version (strip -beta) [skip ci]"
-          git push
-
-      - name: Create & push tag
-        env:
-          VERSION: ${{ steps.ver.outputs.version }}
-        run: |
-          TAG="v${VERSION}"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists."
-          else
-            git tag -a "$TAG" -m "Release $TAG"
-            git push origin "$TAG"
-          fi
-
-      - name: Generate release notes (exclude merges & version bumps)
-        id: notes
-        shell: bash
-        run: |
-          set -euo pipefail
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          if [[ -n "$LAST_TAG" ]]; then
-            RAW=$(git log --no-merges --format="%s" "$LAST_TAG..HEAD" || true)
-          else
-            RAW=$(git log --no-merges -n 100 --format="%s" || true)
-          fi
-          FILTER='(packageversion|package version|bump version|version bump|^bump[[:space:]])'
-          NOTES="$(printf "%s\n" "$RAW" | grep -Ei -v "$FILTER" || true)"
-          NOTES="$(printf "%s\n" "$NOTES" | grep -Ei -v 'beta bump.*packageversion' || true)"
-          NOTES="$(printf "%s\n" "$NOTES" | sed '/^[[:space:]]*$/d; s/^/- /')"
-          [[ -z "$NOTES" ]] && NOTES='- No user-facing changes since last release.'
-          printf "%s\n" "$NOTES" > release-notes.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -118,42 +62,12 @@ jobs:
           fetch-depth: 0
           ref: develop
 
-      - name: Update Directory.Build.props on develop to release version
+      - name: Update Directory.Build.props on develop to release version (helper)
         shell: pwsh
         env:
           STABLE_VERSION: ${{ needs.finalize-and-tag.outputs.version }}
         run: |
-          $propsPath = Join-Path $PWD "Directory.Build.props"
-          if (-not (Test-Path $propsPath)) {
-            Write-Error "Directory.Build.props not found on develop."
-            exit 1
-          }
-
-          [xml]$xml = Get-Content -Raw $propsPath
-
-          function Get-Node($xml, $localName) {
-            $ns = $xml.DocumentElement.GetAttribute("xmlns")
-            if ($ns) {
-              $nsm = New-Object System.Xml.XmlNamespaceManager($xml.NameTable)
-              $nsm.AddNamespace("msb", $ns)
-              return $xml.SelectSingleNode("//msb:$localName", $nsm)
-            } else { return $xml.SelectSingleNode("//$localName") }
-          }
-
-          $pkgNode = Get-Node $xml "Version"
-          if (-not $pkgNode) { Write-Error "<Version> not found on develop."; exit 1 }
-
-          $current = $pkgNode.InnerText.Trim()
-          $target  = $env:STABLE_VERSION.Trim()
-
-          if ($current -eq $target) {
-            Write-Host "Develop already at $target; nothing to change."
-            exit 0
-          }
-
-          $pkgNode.InnerText = $target
-          $xml.Save($propsPath)
-          Write-Host "Set develop Version: $current -> $target"
+          pwsh ./.github/scripts/update-version.ps1 -SetVersion $env:STABLE_VERSION
 
       - name: Commit & push to develop (skip CI)
         run: |
@@ -168,7 +82,7 @@ jobs:
           git fetch origin develop
           git pull --rebase origin develop
           git push origin HEAD:develop
-  
+
   
   # --- 2) pack matrix & upload artifacts ---
   pack:
@@ -193,6 +107,7 @@ jobs:
           dotnet-version: |
             8.0.x
             9.0.x
+            10.0.x
 
       - name: Cache NuGet
         uses: actions/cache@v4
@@ -202,76 +117,18 @@ jobs:
           restore-keys: |
             nuget-${{ runner.os }}-
 
-      - name: Resolve Platform for .sln
-        id: cfg
-        shell: bash
+      - name: Build and Pack
+        id: pack
+        shell: pwsh
         run: |
-          IN="${{ matrix.platform_in }}"
-          if [[ "$IN" =~ ^[Aa]ny[Cc]pu$ ]]; then
-            PLATFORM_SOL="Any CPU"
-            ARTIFACT_SUFFIX=""
-          else
-            PLATFORM_SOL="$IN"
-            ARTIFACT_SUFFIX="-$IN"
-          fi
-          echo "platform_sol=$PLATFORM_SOL" >> "$GITHUB_OUTPUT"
-          echo "artifact_suffix=$ARTIFACT_SUFFIX" >> "$GITHUB_OUTPUT"
-
-      - name: Resolve solution file
-        id: sln
-        shell: bash
-        run: |
-          set -euo pipefail
-          SOL="${SOLUTION_PATH:-}"
-          if [[ -n "$SOL" ]]; then
-            [[ -f "$SOL" ]] || { echo "SOLUTION_PATH '$SOL' not found."; exit 1; }
-          else
-            mapfile -t SLNS < <(ls -1 *.sln 2>/dev/null || true)
-            if (( ${#SLNS[@]} == 0 )); then
-              echo "No .sln at repo root. Set SOLUTION_PATH."; exit 1
-            elif (( ${#SLNS[@]} > 1 )); then
-              echo "Multiple .sln files found: ${SLNS[*]}. Set SOLUTION_PATH."; exit 1
-            else
-              SOL="${SLNS[0]}"
-            fi
-          fi
-          echo "solution=$SOL" >> "$GITHUB_OUTPUT"
-          echo "Using solution: $SOL"
-
-      - name: Clean
-        run: |
-          SLN='${{ steps.sln.outputs.solution }}'
-          dotnet clean "$SLN" --nologo
-
-      - name: Restore
-        run: |
-          SLN='${{ steps.sln.outputs.solution }}'
-          dotnet restore "$SLN" --nologo -p:Platform="${{ steps.cfg.outputs.platform_sol }}"
-
-      - name: Build
-        run: |
-          SLN='${{ steps.sln.outputs.solution }}'
-          dotnet build "$SLN" --nologo \
-            -c "${{ matrix.configuration }}" \
-            -p:Platform="${{ steps.cfg.outputs.platform_sol }}" \
-            -p:ContinuousIntegrationBuild=true \
-            --no-restore
-
-      - name: Pack
-        run: |
-          SLN='${{ steps.sln.outputs.solution }}'
-          mkdir -p artifacts/pkg
-          dotnet pack "$SLN" --nologo \
-            -c "${{ matrix.configuration }}" \
-            -p:Platform="${{ steps.cfg.outputs.platform_sol }}" \
-            -p:ContinuousIntegrationBuild=true \
-            -o artifacts/pkg \
-            --no-build
+          pwsh ./.github/scripts/pack-solution.ps1 `
+            -Configuration "${{ matrix.configuration }}" `
+            -Platform "${{ matrix.platform_in }}"
 
       - name: Upload packages artifact (unique per leg)
         uses: actions/upload-artifact@v4
         with:
-          name: pkg-${{ matrix.configuration }}${{ steps.cfg.outputs.artifact_suffix }}
+          name: pkg-${{ matrix.configuration }}${{ steps.pack.outputs.artifact_suffix }}
           path: artifacts/pkg/*.nupkg
           if-no-files-found: error
 
@@ -279,7 +136,7 @@ jobs:
         if: ${{ hashFiles('artifacts/pkg/*.snupkg') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: symbols-${{ matrix.configuration }}${{ steps.cfg.outputs.artifact_suffix }}
+          name: symbols-${{ matrix.configuration }}${{ steps.pack.outputs.artifact_suffix }}
           path: artifacts/pkg/*.snupkg
           if-no-files-found: ignore
 
@@ -288,6 +145,10 @@ jobs:
     needs: pack
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout (for scripts)
+        uses: actions/checkout@v4
+        with: { sparse-checkout: .github/scripts }
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with: { dotnet-version: 8.0.x }
@@ -307,40 +168,22 @@ jobs:
           path: ./dist/symbols
           merge-multiple: true
 
-      - name: Push .nupkg to stable feed
+      - name: Publish packages to stable feed
+        shell: pwsh
         env:
           NUGET_SOURCE: ${{ secrets.NUGET_SOURCE }}
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
-          test -n "$NUGET_SOURCE" && test -n "$NUGET_API_KEY" || { echo "Missing stable feed secrets."; exit 1; }
-          shopt -s nullglob
-          for pkg in dist/packages/*.nupkg; do
-            echo "Pushing $pkg"
-            dotnet nuget push "$pkg" --source "$NUGET_SOURCE" --api-key "$NUGET_API_KEY" --skip-duplicate
-          done
-
-      - name: Push .snupkg (optional)
-        if: ${{ always() }}
-        env:
-          NUGET_SOURCE: ${{ secrets.NUGET_SOURCE }}
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        run: |
-          shopt -s nullglob
-          for sym in dist/symbols/*.snupkg; do
-            echo "Pushing $sym"
-            dotnet nuget push "$sym" --source "$NUGET_SOURCE" --api-key "$NUGET_API_KEY" --skip-duplicate || true
-          done
+          pwsh ./.github/scripts/publish-packages.ps1 `
+            -NuGetSource $env:NUGET_SOURCE `
+            -NuGetApiKey $env:NUGET_API_KEY
 
       - name: Delete ALL run artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -euo pipefail
           gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
             --paginate --jq '.artifacts[].id' | while read -r id; do
             echo "Deleting artifact id=$id"
             gh api -X DELETE repos/${{ github.repository }}/actions/artifacts/$id
           done
-
-      - name: Cleanup workspace
-        run: rm -rf ./dist ./artifacts || true

@@ -1,27 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
-        <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    </ItemGroup>
-
-    <PropertyGroup>
-        <OutputType>Library</OutputType>
-    </PropertyGroup>
-
-    <PropertyGroup Label="PackageId">
-        <PackageId Condition="'$(Configuration)' == 'Debug' And '$(Platform)' != 'AnyCPU'">$(RootNameSpace).Debug.$(Platform)</PackageId>
-        <PackageId Condition="'$(Configuration)' == 'Debug' And '$(Platform)' == 'AnyCPU'">$(RootNameSpace).Debug</PackageId>
-        <PackageId Condition="'$(Configuration)' == 'Release' And '$(Platform)' != 'AnyCPU'">$(RootNameSpace).$(Platform)</PackageId>
-        <PackageId Condition="'$(Configuration)' == 'Release' And '$(Platform)' == 'AnyCPU'">$(RootNameSpace)</PackageId>
-    </PropertyGroup>
-
-    <ItemGroup>
-        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Feeders.SharedKernel\RapidStreamer.Feeders.SharedKernel.csproj" />
-        <ProjectReference Include="..\RapidStreamer.Feeviders.NATS.SharedKernel\RapidStreamer.Feeviders.NATS.SharedKernel.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <PackageReference Include="NATS.Net" Version="2.6.10" />
+        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Feeders.SharedKernel\RapidStreamer.Feeders.SharedKernel.csproj"/>
+        <ProjectReference Include="..\RapidStreamer.Feeviders.NATS.SharedKernel\RapidStreamer.Feeviders.NATS.SharedKernel.csproj"/>
     </ItemGroup>
 
 </Project>

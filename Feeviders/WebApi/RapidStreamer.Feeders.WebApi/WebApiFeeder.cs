@@ -3,11 +3,9 @@ using RapidStreamer.Application.Feeders;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using RapidStreamer.Application;
-using RapidStreamer.Application.LicenseManagers.Providers.Demo;
 
 namespace RapidStreamer.Feeders.WebApi
 {
-    [IsAvailableOnDemo]
     internal
 #if !DEBUG
         sealed

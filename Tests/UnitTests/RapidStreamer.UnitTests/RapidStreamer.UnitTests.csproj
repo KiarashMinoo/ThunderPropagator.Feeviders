@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Bogus"/>
+        <PackageReference Include="JetBrains.Annotations"/>
+        <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+        <PackageReference Include="NJsonSchema"/>
+        <PackageReference Include="NSubstitute"/>
+        <PackageReference Include="xunit"/>
+        <PackageReference Include="xunit.runner.visualstudio"/>
+        <PackageReference Include="coverlet.collector"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\Feeviders\RabbitMQ\RapidStreamer.Feeders.RabbitMQ\RapidStreamer.Feeders.RabbitMQ.csproj"/>
+    </ItemGroup>
+
+</Project>
