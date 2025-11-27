@@ -44,7 +44,8 @@ param(
     [string]$PackagesPath = './dist/packages',
     [string]$SymbolsPath = './dist/symbols',
     [switch]$SkipSymbols,
-    [switch]$SkipCleanup
+    [switch]$SkipCleanup,
+    [switch]$ReplaceIfExists
 )
 
 Set-StrictMode -Version Latest
@@ -75,7 +76,27 @@ else {
     
     foreach ($pkg in $packages) {
         Write-Host "`nPushing: $($pkg.Name)" -ForegroundColor Cyan
-        
+        # If requested, attempt to delete existing version on the feed before pushing
+        if ($ReplaceIfExists) {
+            try {
+                $baseName = [System.IO.Path]::GetFileNameWithoutExtension($pkg.Name)
+                $versionPattern = '\d+\.\d+\.\d+(?:[.-][A-Za-z0-9\.\-]+)*$'
+                if ($baseName -match "(?<id>.+)\.(?<version>$versionPattern)") {
+                    $pkgId = $Matches['id']
+                    $pkgVersion = $Matches['version']
+                    Write-Host "  Replace requested: attempting to delete existing $pkgId $pkgVersion from feed..." -ForegroundColor Yellow
+                    dotnet nuget delete $pkgId $pkgVersion --source $NuGetSource --api-key $NuGetApiKey --non-interactive --yes 2>&1 | Out-Null
+                    if ($LASTEXITCODE -eq 0) { Write-Host "  Deleted existing $pkgId $pkgVersion (if present)" -ForegroundColor Yellow }
+                }
+                else {
+                    Write-Host "  Could not parse package id/version from '$($pkg.Name)'; skipping pre-delete." -ForegroundColor DarkYellow
+                }
+            }
+            catch {
+                Write-Warning "  Pre-delete attempt failed: $($_.Exception.Message)"
+            }
+        }
+
         dotnet nuget push $pkg.FullName `
             --source $NuGetSource `
             --api-key $NuGetApiKey `

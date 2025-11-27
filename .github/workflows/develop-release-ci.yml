@@ -67,7 +67,7 @@ jobs:
         env:
           STABLE_VERSION: ${{ needs.finalize-and-tag.outputs.version }}
         run: |
-          pwsh ./.github/scripts/update-version.ps1 -SetVersion $env:STABLE_VERSION
+          pwsh ./.github/scripts/update-version.ps1 -SetVersion $env:STABLE_VERSION          
 
       - name: Commit & push to develop (skip CI)
         run: |
@@ -101,7 +101,7 @@ jobs:
           fetch-depth: 0
           ref: refs/tags/v${{ needs.finalize-and-tag.outputs.version }}
 
-      - name: Setup .NET (8.0.x & 9.0.x)
+      - name: Setup .NET (8.0.x & 9.0.x & 10.0.x for packing)
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |

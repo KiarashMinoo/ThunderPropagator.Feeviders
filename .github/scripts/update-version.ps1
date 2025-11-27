@@ -18,8 +18,8 @@
     pwsh .github/scripts/update-version.ps1 -SetVersion 1.2.3
 #>
 param(
-    [ValidateSet('release', 'beta')][string]$Channel = 'beta',
-    [string]$SetVersion,
+    [ValidateSet('release', 'beta', '')][string]$Channel = '',
+    [string]$SetVersion = '',
     [string]$PropsPath = 'Directory.Build.props', 
     [switch]$CommitAndTag, 
     [string]$CommitMessage = 'chore: bump version to {VERSION} [skip ci]',
@@ -28,13 +28,25 @@ param(
 )
 
 # Validate parameters
-if (-not $Channel -and -not $SetVersion) {
-    Write-Error "Either -Channel or -SetVersion must be specified"
-    exit 1
+# Use $PSBoundParameters to detect whether a caller explicitly provided a parameter.
+# This avoids treating the default empty string as "provided" which previously caused
+# the script to think both -Channel and -SetVersion were specified when callers only
+# passed -SetVersion.
+$channelBound = $PSBoundParameters.ContainsKey('Channel')
+$setVersionBound = $PSBoundParameters.ContainsKey('SetVersion')
+
+# Consider a parameter present only if it was explicitly bound and not empty/whitespace
+$hasChannel = $channelBound -and -not [string]::IsNullOrWhiteSpace($Channel)
+$hasSetVersion = $setVersionBound -and -not [string]::IsNullOrWhiteSpace($SetVersion)
+
+# If both are present, prefer SetVersion (CI environments may sometimes bind defaults unexpectedly)
+if ($hasChannel -and $hasSetVersion) {
+    Write-Host "Both -Channel and -SetVersion were provided; preferring -SetVersion and ignoring -Channel" -ForegroundColor Yellow
+    $hasChannel = $false
 }
 
-if ($Channel -and $SetVersion) {
-    Write-Error "Cannot specify both -Channel and -SetVersion"
+if (-not $hasChannel -and -not $hasSetVersion) {
+    Write-Error "Either -Channel or -SetVersion must be specified"
     exit 1
 }
 
@@ -118,7 +130,7 @@ else {
     exit 5
 }
 
-if ($Channel -eq 'beta') {
+if ($hasChannel -and $Channel -eq 'beta') {
     # Beta channel: bump patch if no prerelease, otherwise increment beta.N
     if (-not $pre) {
         # First beta after stable release: bump patch and add -beta.1
@@ -157,7 +169,7 @@ if ($Channel -eq 'beta') {
         $newVersion = "{0}.{1}.{2}-{3}" -f $maj, $min, $bld, $pre
     }
 }
-else {
+elseif ($hasChannel -and $Channel -eq 'release') {
     # Release channel: just strip prerelease suffix, don't bump version
     if ($format -eq '4') {
         $newVersion = "{0}.{1}.{2}.{3}" -f $maj, $min, $bld, $rev

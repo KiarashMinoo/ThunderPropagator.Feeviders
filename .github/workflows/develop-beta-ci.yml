@@ -44,13 +44,20 @@ jobs:
         configuration: [Debug, Release]
 
     steps:
-      - name: Checkout
+      - name: Checkout bumped tag
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.sha }}      
+          ref: refs/tags/v${{ needs.bump-beta.outputs.version }}
+
+      - name: Show `Directory.Build.props` version from checked-out ref
+        shell: pwsh
+        run: |
+          Write-Host 'Directory.Build.props (checked-out ref) version:'
+          $line = (Select-String -Path Directory.Build.props -Pattern '<Version>' -SimpleMatch).Line
+          if ($line) { Write-Host $line } else { Write-Host '  <Version> node not found or file missing' }
       
-      - name: Setup .NET (8.0.x & 9.0.x)
+      - name: Setup .NET (8.0.x & 9.0.x & 10.0.x for packing)
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
