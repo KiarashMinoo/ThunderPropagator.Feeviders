@@ -25,7 +25,9 @@ namespace RapidStreamer.Feeders.NATS
         where TNatsFeederConfiguration : NatsFeederConfiguration
     {
         private readonly INatsClient _client;
-        private readonly INatsJSConsumer? _natsJsConsumer;
+        private INatsJSConsumer? _natsJsConsumer;
+        // Initialization task for JetStream consumer when created async
+        private readonly Task? _jetStreamInitTask;
 
         public NatsFeeder(TChannel channel,
             TNatsFeederConfiguration feederConfiguration,
@@ -39,13 +41,8 @@ namespace RapidStreamer.Feeders.NATS
             {
                 ArgumentException.ThrowIfNullOrWhiteSpace(FeederConfiguration.StreamName);
                 ArgumentNullException.ThrowIfNull(FeederConfiguration.ConsumerConfig);
-
-                _natsJsConsumer = _client.CreateJetStreamContext()
-                    .CreateOrUpdateConsumerAsync(FeederConfiguration.StreamName,
-                        FeederConfiguration.ConsumerConfig,
-                        serviceProvider.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping)
-                    .GetAwaiter()
-                    .GetResult();
+                // initialize JetStream consumer asynchronously and store the task so other methods can await it
+                _jetStreamInitTask = InitializeJetStreamConsumerAsync(serviceProvider.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping);
             }
         }
 
@@ -64,6 +61,9 @@ namespace RapidStreamer.Feeders.NATS
 
                     break;
                 case MessagingType.JetStream:
+                    // ensure initialization completed (or fail) before beginning to consume
+                    if (_jetStreamInitTask is not null)
+                        await _jetStreamInitTask.ConfigureAwait(false);
 
                     ArgumentNullException.ThrowIfNull(_natsJsConsumer);
 
@@ -93,6 +93,22 @@ namespace RapidStreamer.Feeders.NATS
                     baggage = baggageStr.ToString().FromNJsonBase64<Baggage>();
 
                 return new FeederReceivedMessage<TNatsFeederMessage>(message, activityContext, baggage);
+            }
+        }
+
+        private async Task InitializeJetStreamConsumerAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                _natsJsConsumer = await _client.CreateJetStreamContext()
+                    .CreateOrUpdateConsumerAsync(FeederConfiguration.StreamName!,
+                        FeederConfiguration.ConsumerConfig!,
+                        cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to initialize JetStream consumer.");
+                throw;
             }
         }
 
