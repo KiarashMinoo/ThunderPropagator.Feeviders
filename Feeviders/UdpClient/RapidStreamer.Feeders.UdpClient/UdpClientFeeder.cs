@@ -67,10 +67,10 @@ namespace RapidStreamer.Feeders.UdpClient
             HealthName = $"feeder_{nameof(UdpClient)}_{udpClientFeederConfiguration.Port.ToString()}";
             HealthTags = [.. HealthTags, nameof(UdpClient), udpClientFeederConfiguration.Port.ToString()];
 
-            new Thread(Start).Start();
+            _ = Task.Run(() => StartAsync_CatchAll(_applicationLifetime.ApplicationStopping), _applicationLifetime.ApplicationStopping);
         }
 
-        private async void Start(object? state)
+        private async Task StartAsync(object? state)
         {
             var buffer = _bufferPool.Rent(_udpClientFeederConfiguration.BufferSize);
 
@@ -81,7 +81,7 @@ namespace RapidStreamer.Feeders.UdpClient
                     try
                     {
                         EndPoint remoteEndpoint = new IPEndPoint(IPAddress.Any, 0);
-                        var result = await _socket.ReceiveFromAsync(buffer, SocketFlags.None, remoteEndpoint);
+                        var result = await _socket.ReceiveFromAsync(buffer, SocketFlags.None, remoteEndpoint).ConfigureAwait(false);
 
                         Logger.LogInformation($"Received from {result.RemoteEndPoint}");
 
@@ -90,24 +90,13 @@ namespace RapidStreamer.Feeders.UdpClient
 
                         // Use span to avoid allocating new array for received bytes
                         var receivedSpan = buffer.AsSpan(0, result.ReceivedBytes);
-                        byte[] messageBytes;
+                        byte[] messageBytes = ( _aes is not null && _hmac is not null ) ? DecryptMessage(receivedSpan.ToArray()) : receivedSpan.ToArray();
 
-                        if (_aes is not null && _hmac is not null)
-                        {
-                            // Decrypt the message
-                            messageBytes = DecryptMessage(receivedSpan.ToArray());
-                        }
-                        else
-                        {
-                            messageBytes = receivedSpan.ToArray();
-                        }
-
-                        var udpClientFeederMessage = Deserialize(messageBytes) ??
-                                                     throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
+                        var udpClientFeederMessage = Deserialize(messageBytes) ?? throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
 
                         var activityContext = udpClientFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
                         var baggage = udpClientFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
-                        await ReceiveAsync(udpClientFeederMessage, activityContext, baggage);
+                        await ReceiveAsync(udpClientFeederMessage, activityContext, baggage).ConfigureAwait(false);
 
                         ReportHealth(HealthStatus.Healthy);
                     }
@@ -115,9 +104,7 @@ namespace RapidStreamer.Feeders.UdpClient
                     {
                         ReportHealth(HealthStatus.Unhealthy, exception);
 
-                        Logger.LogError(exception,
-                            "error has occured while consuming messages on port {Port}.",
-                            string.Join(',', _udpClientFeederConfiguration.Port));
+                        Logger.LogError(exception, "error has occured while consuming messages on port {Port}.", string.Join(',', _udpClientFeederConfiguration.Port));
                     }
                 }
             }
@@ -125,46 +112,71 @@ namespace RapidStreamer.Feeders.UdpClient
             {
                 _bufferPool.Return(buffer);
             }
+        }
 
-            return;
-
-            bool CheckAllowance(EndPoint? endPoint)
-                => _allowedAddressesSet is null ||
-                   endPoint is IPEndPoint ipEndPoint && _allowedAddressesSet.Contains(ipEndPoint.Address.ToString());
-
-            byte[] DecryptMessage(byte[] encryptedData)
+        private async Task StartAsync_CatchAll(object? state)
+        {
+            try
             {
-                if (_aes is null || _hmac is null)
-                    throw new InvalidOperationException("Encryption not properly initialized");
+                await StartAsync(state).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Unhandled exception in UDP feeder background loop.");
+                ReportHealth(HealthStatus.Unhealthy, ex);
+            }
+        }
 
-                try
-                {
-                    // Extract IV (first 16 bytes), HMAC (next 32 bytes), and encrypted data
-                    var iv = encryptedData.AsSpan(0, 16).ToArray();
-                    var receivedHmac = encryptedData.AsSpan(16, 32).ToArray();
-                    var encryptedPayload = encryptedData.AsSpan(48).ToArray();
+        private bool CheckAllowance(EndPoint? endPoint)
+            => _allowedAddressesSet is null || endPoint is IPEndPoint ipEndPoint && _allowedAddressesSet.Contains(ipEndPoint.Address.ToString());
 
-                    // Verify HMAC
-                    var computedHmac = _hmac.ComputeHash(encryptedPayload);
-                    if (!CryptographicOperations.FixedTimeEquals(computedHmac, receivedHmac))
-                        throw new CryptographicException("Message integrity check failed");
+        private byte[] DecryptMessage(byte[] encryptedData)
+        {
+            if (_aes is null || _hmac is null)
+                throw new InvalidOperationException("Encryption not properly initialized");
 
-                    // Decrypt
-                    using var decryptor = _aes.CreateDecryptor(_aes.Key, iv);
-                    return decryptor.TransformFinalBlock(encryptedPayload, 0, encryptedPayload.Length);
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogWarning(ex, "Failed to decrypt UDP message");
-                    throw;
-                }
+            try
+            {
+                // Extract IV (first 16 bytes), HMAC (next 32 bytes), and encrypted data
+                var iv = encryptedData.AsSpan(0, 16).ToArray();
+                var receivedHmac = encryptedData.AsSpan(16, 32).ToArray();
+                var encryptedPayload = encryptedData.AsSpan(48).ToArray();
+
+                // Verify HMAC
+                var computedHmac = _hmac.ComputeHash(encryptedPayload);
+                if (!CryptographicOperations.FixedTimeEquals(computedHmac, receivedHmac))
+                    throw new CryptographicException("Message integrity check failed");
+
+                // Decrypt
+                using var decryptor = _aes.CreateDecryptor(_aes.Key, iv);
+                return decryptor.TransformFinalBlock(encryptedPayload, 0, encryptedPayload.Length);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to decrypt UDP message");
+                throw;
             }
         }
 
         protected override void DisposeManagedResources()
         {
-            _socket.Close();
-            _socket.Dispose();
+            try
+            {
+                _socket?.Close();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while closing UDP socket.");
+            }
+
+            try
+            {
+                _socket?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while disposing UDP socket.");
+            }
         }
     }
 }

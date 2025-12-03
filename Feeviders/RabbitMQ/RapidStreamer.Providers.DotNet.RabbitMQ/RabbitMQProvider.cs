@@ -29,7 +29,20 @@ namespace RapidStreamer.Providers.DotNet.RabbitMQ
 
             var applicationLifetime = serviceProvider.GetRequiredService<IHostApplicationLifetime>();
 
-            _ = Task.Run(async () => (_connection, _channel) = await RabbitMQFeeviderConnectionFactory.InitializeChannelAsync(_rabbitMQProviderConfiguration, applicationLifetime.ApplicationStopping));
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var tuple = await RabbitMQFeeviderConnectionFactory.InitializeChannelAsync(_rabbitMQProviderConfiguration, applicationLifetime.ApplicationStopping).ConfigureAwait(false);
+                    (_connection, _channel) = tuple;
+                }
+                catch (Exception ex)
+                {
+                    // Logging isn't available in constructor context, use provider logger
+                    var logger = serviceProvider.GetService<ILogger<RabbitMQProvider<TRabbitMQProviderMessage, TRabbitMQProviderConfiguration>>>();
+                    logger?.LogError(ex, "Failed to initialize RabbitMQ channel in background.");
+                }
+            }, applicationLifetime.ApplicationStopping);
         }
 
         protected override async Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)

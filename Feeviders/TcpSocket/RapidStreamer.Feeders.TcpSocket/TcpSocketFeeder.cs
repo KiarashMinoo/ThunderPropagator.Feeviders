@@ -107,8 +107,8 @@ namespace RapidStreamer.Feeders.TcpSocket
             _listener = new TcpListener(IPAddress.Any, tcpSocketFeederConfiguration.Port);
             _listener.Start();
 
-            // Use Task.Run instead of new Thread for better async integration
-            _ = Task.Run(StartAsync, _applicationLifetime.ApplicationStopping);
+            // Use Task.Run instead of new Thread for better async integration and observe top-level errors
+            _ = Task.Run(() => StartAsync_CatchAll(), _applicationLifetime.ApplicationStopping);
         }
 
         private async Task StartAsync()
@@ -120,7 +120,7 @@ namespace RapidStreamer.Feeders.TcpSocket
 
                 try
                 {
-                    client = await _listener.AcceptTcpClientAsync(_applicationLifetime.ApplicationStopping);
+                    client = await _listener.AcceptTcpClientAsync(_applicationLifetime.ApplicationStopping).ConfigureAwait(false);
 
                     if (!CheckAllowance(client.Client.RemoteEndPoint))
                     {
@@ -142,12 +142,12 @@ namespace RapidStreamer.Feeders.TcpSocket
                             _tcpSocketFeederConfiguration.Certificate?.Certificate ?? throw new ArgumentNullException(nameof(_tcpSocketFeederConfiguration.Certificate)),
                             _tcpSocketFeederConfiguration.ClientCertificateRequired,
                             _tcpSocketFeederConfiguration.EnabledSslProtocols,
-                            _tcpSocketFeederConfiguration.CheckCertificateRevocation);
+                            _tcpSocketFeederConfiguration.CheckCertificateRevocation).ConfigureAwait(false);
                     }
 
                     // Read message data
                     var reader = new FramedStreamReader(stream, _eomBytes.Span);
-                    var bytes = await reader.ReadUntilEomAsync(_tcpSocketFeederConfiguration.BufferSize, _applicationLifetime.ApplicationStopping);
+                    var bytes = await reader.ReadUntilEomAsync(_tcpSocketFeederConfiguration.BufferSize, _applicationLifetime.ApplicationStopping).ConfigureAwait(false);
 
                     if (bytes.Length == 0)
                     {
@@ -168,7 +168,7 @@ namespace RapidStreamer.Feeders.TcpSocket
 
                     var activityContext = tcpSocketFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
                     var baggage = tcpSocketFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
-                    await ReceiveAsync(tcpSocketFeederMessage, activityContext, baggage);
+                    await ReceiveAsync(tcpSocketFeederMessage, activityContext, baggage).ConfigureAwait(false);
 
                     ReportHealth(HealthStatus.Healthy);
                 }
@@ -183,6 +183,19 @@ namespace RapidStreamer.Feeders.TcpSocket
                     stream?.Close();
                     client?.Close();
                 }
+            }
+        }
+
+        private async Task StartAsync_CatchAll()
+        {
+            try
+            {
+                await StartAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                ReportHealth(HealthStatus.Unhealthy, ex);
+                Logger.LogError(ex, "Unhandled exception in TCP socket feeder background loop.");
             }
         }
 

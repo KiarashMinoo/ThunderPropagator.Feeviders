@@ -34,7 +34,7 @@ namespace RapidStreamer.Feeders.Mqtt
             _mqttFeederConfiguration = mqttFeederConfiguration;
             var applicationLifetime = serviceProvider.GetRequiredService<IHostApplicationLifetime>();
 
-            new Thread(Start).Start(applicationLifetime.ApplicationStopping);
+            _ = Task.Run(() => StartAsync_CatchAll(applicationLifetime.ApplicationStopping), applicationLifetime.ApplicationStopping);
 
             HealthName = $"feeder_{nameof(Mqtt)}_{_mqttFeederConfiguration.Topic}";
             HealthTags = [.. HealthTags, nameof(Mqtt), _mqttFeederConfiguration.Topic];
@@ -43,7 +43,7 @@ namespace RapidStreamer.Feeders.Mqtt
                 string.Join(", ", _mqttFeederConfiguration.Topic));
         }
 
-        private async void Start(object? state)
+        private async Task StartAsync(object? state)
         {
             if (state is not CancellationToken cancellationToken)
                 cancellationToken = CancellationToken.None;
@@ -89,6 +89,20 @@ namespace RapidStreamer.Feeders.Mqtt
             var mqttSubscribeOptions = mqttSubscribeOptionsBuilder.Build();
 
             await _mqttClient.SubscribeAsync(mqttSubscribeOptions, cancellationToken).ConfigureAwait(false);
+        }
+
+        // StartAsync runs as a background task - ensure top-level exceptions are observed and logged
+        private async Task StartAsync_CatchAll(object? state)
+        {
+            try
+            {
+                await StartAsync(state).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Unhandled exception in MQTT feeder background loop.");
+                ReportHealth(HealthStatus.Unhealthy, ex);
+            }
         }
 
         protected override async Task StopAsync(CancellationToken cancellationToken = default)

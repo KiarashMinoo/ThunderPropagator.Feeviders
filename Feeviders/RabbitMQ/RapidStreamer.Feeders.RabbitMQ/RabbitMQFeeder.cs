@@ -37,59 +37,80 @@ namespace RapidStreamer.Feeders.RabbitMQ
         {
             var applicationLifetime = serviceProvider.GetRequiredService<IHostApplicationLifetime>();
 
-            new Thread(Start).Start(applicationLifetime.ApplicationStopping);
+            _ = Task.Run(() => StartAsync_CatchAll(applicationLifetime.ApplicationStopping), applicationLifetime.ApplicationStopping);
 
             HealthName = $"feeder_{nameof(RabbitMQ)}_{rabbitMqFeederConfiguration.Queue}";
             HealthTags = [.. HealthTags, nameof(RabbitMQ), rabbitMqFeederConfiguration.Queue];
         }
 
-        private async void Start(object? state)
+        private async Task StartAsync(object? state)
         {
             if (state is not CancellationToken cancellationToken)
                 cancellationToken = CancellationToken.None;
 
-            (_connection, _channel) = await RabbitMQFeeviderConnectionFactory.InitializeChannelAsync(FeederConfiguration, cancellationToken);
-
-            _consumer = new AsyncEventingBasicConsumer(_channel);
-
-            _consumer.ReceivedAsync += async (_, eventArgs) =>
+            try
             {
-                try
+                (_connection, _channel) = await RabbitMQFeeviderConnectionFactory.InitializeChannelAsync(FeederConfiguration, cancellationToken).ConfigureAwait(false);
+
+                _consumer = new AsyncEventingBasicConsumer(_channel);
+
+                _consumer.ReceivedAsync += async (_, eventArgs) =>
                 {
-                    var parentContext = _propagator.Extract(default, eventArgs.BasicProperties, ExtractTraceContextFromBasicProperties);
+                    try
+                    {
+                        var parentContext = _propagator.Extract(default, eventArgs.BasicProperties, ExtractTraceContextFromBasicProperties);
 
-                    ActivityContext? activityContext = parentContext.ActivityContext;
-                    Baggage? baggage = parentContext.Baggage;
+                        ActivityContext? activityContext = parentContext.ActivityContext;
+                        Baggage? baggage = parentContext.Baggage;
 
-                    await ReceiveAsync(eventArgs.Body.ToArray(),
-                        activityContext,
-                        baggage,
-                        new Dictionary<string, object?>
-                        {
-                            { nameof(eventArgs.Exchange), eventArgs.Exchange },
-                            { nameof(eventArgs.ConsumerTag), eventArgs.ConsumerTag },
-                            { nameof(eventArgs.DeliveryTag), eventArgs.DeliveryTag },
-                            { nameof(eventArgs.RoutingKey), eventArgs.RoutingKey },
-                        },
-                        cancellationToken);
+                        await ReceiveAsync(eventArgs.Body.ToArray(),
+                            activityContext,
+                            baggage,
+                            new Dictionary<string, object?>
+                            {
+                                { nameof(eventArgs.Exchange), eventArgs.Exchange },
+                                { nameof(eventArgs.ConsumerTag), eventArgs.ConsumerTag },
+                                { nameof(eventArgs.DeliveryTag), eventArgs.DeliveryTag },
+                                { nameof(eventArgs.RoutingKey), eventArgs.RoutingKey },
+                            },
+                            cancellationToken).ConfigureAwait(false);
 
-                    ReportHealth(HealthStatus.Healthy);
-                }
-                catch (Exception exception)
-                {
-                    ReportHealth(HealthStatus.Unhealthy, exception);
+                        ReportHealth(HealthStatus.Healthy);
+                    }
+                    catch (Exception exception)
+                    {
+                        ReportHealth(HealthStatus.Unhealthy, exception);
 
-                    Logger.LogError(exception, "error has occured while consuming messages on Queue {Queue}.", FeederConfiguration.Queue);
-                }
-            };
+                        Logger.LogError(exception, "error has occured while consuming messages on Queue {Queue}.", FeederConfiguration.Queue);
+                    }
+                };
 
-            await _channel.BasicConsumeAsync(FeederConfiguration.Queue, FeederConfiguration.AutoAck, _consumer, cancellationToken: cancellationToken);
+                await _channel.BasicConsumeAsync(FeederConfiguration.Queue, FeederConfiguration.AutoAck, _consumer, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            Logger.LogInformation(
-                "{Name}/{ChannelName} on Queue {Queue} has configured.",
-                GetType().GetTypeInfo().Name,
-                Channel.Metadata.ChannelName,
-                FeederConfiguration.Queue);
+                Logger.LogInformation(
+                    "{Name}/{ChannelName} on Queue {Queue} has configured.",
+                    GetType().GetTypeInfo().Name,
+                    Channel.Metadata.ChannelName,
+                    FeederConfiguration.Queue);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to initialize RabbitMQ feeder or consumer.");
+                ReportHealth(HealthStatus.Unhealthy, ex);
+            }
+        }
+
+        private async Task StartAsync_CatchAll(object? state)
+        {
+            try
+            {
+                await StartAsync(state).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Unhandled exception in RabbitMQ feeder background loop.");
+                ReportHealth(HealthStatus.Unhealthy, ex);
+            }
         }
 
         private IEnumerable<string> ExtractTraceContextFromBasicProperties(IReadOnlyBasicProperties props, string key)
