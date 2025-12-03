@@ -5,6 +5,7 @@ using OpenTelemetry;
 using RapidStreamer.Application.Channels;
 using RapidStreamer.Application.Feeders;
 using RapidStreamer.Feeviders.TcpSocket.SharedKernel;
+using System.Buffers;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Security;
@@ -25,40 +26,48 @@ namespace RapidStreamer.Feeders.TcpSocket
         where TTcpSocketFeederMessage : TcpSocketFeederMessage
         where TTcpSocketFeederConfiguration : TcpSocketFeederConfiguration
     {
-        private class FramedStreamReader(Stream stream, byte[] eom)
+        private class FramedStreamReader(Stream stream, ReadOnlySpan<byte> eom)
         {
+            private readonly ReadOnlyMemory<byte> _eom = eom.ToArray();
+
             public async Task<byte[]> ReadUntilEomAsync(int bufferSize, CancellationToken cancellationToken = default)
             {
-                var buffer = new byte[bufferSize];
-                var bytes = new List<byte>();
-
-                while (true)
+                // Use ArrayPool for buffer management to reduce allocations
+                byte[] buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+                try
                 {
-                    var bytesRead = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
-                    if (bytesRead == 0) break;
+                    // Pre-allocate with estimated capacity to reduce reallocations
+                    int estimatedCapacity = Math.Min(bufferSize * 2, 8192);
+                    using var memoryStream = new MemoryStream(estimatedCapacity);
 
-                    bytes.AddRange(buffer.AsSpan(0, bytesRead).ToArray());
-
-                    if (EndsWithEom(bytes))
+                    while (true)
                     {
-                        bytes.RemoveRange(bytes.Count - eom.Length, eom.Length);
-                        break;
-                    }
-                }
+                        int bytesRead = await stream.ReadAsync(buffer.AsMemory(0, bufferSize), cancellationToken);
+                        if (bytesRead == 0) break;
 
-                return bytes.ToArray();
+                        memoryStream.Write(buffer.AsSpan(0, bytesRead));
+
+                        // Check for EOM without additional allocations
+                        if (EndsWithEom(memoryStream.GetBuffer().AsSpan(0, (int)memoryStream.Length)))
+                        {
+                            // Remove EOM from the end
+                            memoryStream.SetLength(memoryStream.Length - _eom.Length);
+                            break;
+                        }
+                    }
+
+                    return memoryStream.ToArray();
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
+                }
             }
 
-            private bool EndsWithEom(List<byte> data)
+            private bool EndsWithEom(ReadOnlySpan<byte> data)
             {
-                if (data.Count < eom.Length) return false;
-                for (int i = 0; i < eom.Length; i++)
-                {
-                    if (data[data.Count - eom.Length + i] != eom[i])
-                        return false;
-                }
-
-                return true;
+                if (data.Length < _eom.Length) return false;
+                return data[^_eom.Length..].SequenceEqual(_eom.Span);
             }
         }
 
@@ -66,6 +75,12 @@ namespace RapidStreamer.Feeders.TcpSocket
         private readonly TTcpSocketFeederConfiguration _tcpSocketFeederConfiguration;
         private readonly IHostApplicationLifetime _applicationLifetime;
         private readonly TcpListener _listener;
+        private readonly ReadOnlyMemory<byte> _eomBytes;
+        private readonly ReadOnlyMemory<byte> _authenticationPrefixBytes;
+        private readonly ReadOnlyMemory<byte> _usernamePrefixBytes;
+        private readonly ReadOnlyMemory<byte> _passwordPrefixBytes;
+        private readonly ReadOnlyMemory<byte> _separatorBytes;
+        private readonly bool _requiresAuthentication;
 
         public TcpSocketFeeder(TChannel channel,
             TTcpSocketFeederConfiguration tcpSocketFeederConfiguration,
@@ -74,80 +89,80 @@ namespace RapidStreamer.Feeders.TcpSocket
             : base(channel, tcpSocketFeederConfiguration, feederHandler, serviceProvider)
         {
             _tcpSocketFeederConfiguration = tcpSocketFeederConfiguration;
-
             _applicationLifetime = serviceProvider.GetRequiredService<IHostApplicationLifetime>();
 
-            HealthName = $"feeder_{nameof(TcpSocket)}_{tcpSocketFeederConfiguration.Port.ToString()}";
+            // Pre-compute byte arrays to avoid repeated allocations
+            _eomBytes = Encoding.UTF8.GetBytes(Constants.Eom);
+            _authenticationPrefixBytes = Encoding.UTF8.GetBytes(Constants.Authentication);
+            _usernamePrefixBytes = Encoding.UTF8.GetBytes(Constants.Username);
+            _passwordPrefixBytes = Encoding.UTF8.GetBytes(Constants.Password);
+            _separatorBytes = Encoding.UTF8.GetBytes(Constants.Separator);
+
+            _requiresAuthentication = !string.IsNullOrWhiteSpace(_tcpSocketFeederConfiguration.Username) &&
+                                     !string.IsNullOrWhiteSpace(_tcpSocketFeederConfiguration.Password);
+
+            HealthName = $"feeder_{nameof(TcpSocket)}_{tcpSocketFeederConfiguration.Port}";
             HealthTags = [.. HealthTags, nameof(TcpSocket), tcpSocketFeederConfiguration.Port.ToString()];
 
             _listener = new TcpListener(IPAddress.Any, tcpSocketFeederConfiguration.Port);
             _listener.Start();
 
-            new Thread(Start).Start();
+            // Use Task.Run instead of new Thread for better async integration
+            _ = Task.Run(StartAsync, _applicationLifetime.ApplicationStopping);
         }
 
-        private async void Start(object? state)
+        private async Task StartAsync()
         {
-            var eom = Encoding.UTF8.GetBytes(Constants.Eom);
-            var checkAuthentication = !string.IsNullOrWhiteSpace(_tcpSocketFeederConfiguration.Username) && !string.IsNullOrWhiteSpace(_tcpSocketFeederConfiguration.Username);
-
             while (!IsStopped)
             {
-                using var client = await _listener.AcceptTcpClientAsync(_applicationLifetime.ApplicationStopping);
+                TcpClient? client = null;
+                Stream? stream = null;
 
-                if (!CheckAllowance(client.Client.RemoteEndPoint))
+                try
                 {
-                    client.Close();
-                    continue;
-                }
+                    client = await _listener.AcceptTcpClientAsync(_applicationLifetime.ApplicationStopping);
 
-                await using Stream stream = _tcpSocketFeederConfiguration.Ssl == true
-                    ? new SslStream(client.GetStream(), false)
-                    : client.GetStream();
+                    if (!CheckAllowance(client.Client.RemoteEndPoint))
+                    {
+                        client.Close();
+                        continue;
+                    }
 
-                switch (stream)
-                {
-                    case SslStream sslStream:
+                    stream = _tcpSocketFeederConfiguration.Ssl == true
+                        ? new SslStream(client.GetStream(), false)
+                        : client.GetStream();
+
+                    // Configure stream timeouts
+                    ConfigureStreamTimeouts(stream);
+
+                    // Handle SSL authentication if required
+                    if (stream is SslStream sslStream)
                     {
                         await sslStream.AuthenticateAsServerAsync(
                             _tcpSocketFeederConfiguration.Certificate?.Certificate ?? throw new ArgumentNullException(nameof(_tcpSocketFeederConfiguration.Certificate)),
                             _tcpSocketFeederConfiguration.ClientCertificateRequired,
                             _tcpSocketFeederConfiguration.EnabledSslProtocols,
                             _tcpSocketFeederConfiguration.CheckCertificateRevocation);
-
-                        sslStream.ReadTimeout = _tcpSocketFeederConfiguration.ReadTimeout ?? Timeout.Infinite;
-                        sslStream.WriteTimeout = _tcpSocketFeederConfiguration.WriteTimeout ?? Timeout.Infinite;
-                        break;
                     }
-                    case NetworkStream networkStream:
-                    {
-                        networkStream.ReadTimeout = _tcpSocketFeederConfiguration.ReadTimeout ?? Timeout.Infinite;
-                        networkStream.WriteTimeout = _tcpSocketFeederConfiguration.WriteTimeout ?? Timeout.Infinite;
-                        break;
-                    }
-                }
 
-                try
-                {
-                    var reader = new FramedStreamReader(stream, eom);
+                    // Read message data
+                    var reader = new FramedStreamReader(stream, _eomBytes.Span);
                     var bytes = await reader.ReadUntilEomAsync(_tcpSocketFeederConfiguration.BufferSize, _applicationLifetime.ApplicationStopping);
 
                     if (bytes.Length == 0)
                     {
                         Logger.LogWarning("Client disconnected before EOM.");
-                        client.Close();
-                        stream.Close();
                         continue;
                     }
 
-                    if (RequiresAuthentication() && !Authenticate(bytes))
+                    // Handle authentication if required
+                    if (_requiresAuthentication && !Authenticate(bytes))
                     {
                         Logger.LogWarning("Authentication failed.");
-                        client.Close();
-                        stream.Close();
                         continue;
                     }
 
+                    // Process the message
                     var tcpSocketFeederMessage = Deserialize(bytes) ??
                                                  throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
 
@@ -157,50 +172,76 @@ namespace RapidStreamer.Feeders.TcpSocket
 
                     ReportHealth(HealthStatus.Healthy);
                 }
-                catch (Exception exception)
+                catch (Exception exception) when (exception is not OperationCanceledException)
                 {
                     ReportHealth(HealthStatus.Unhealthy, exception);
-
-                    Logger.LogError(exception, "An error occurred while serving the TCP socket client.port: {Port}.", _tcpSocketFeederConfiguration.Port);
-
-                    throw;
+                    Logger.LogError(exception, "An error occurred while serving the TCP socket client on port: {Port}.", _tcpSocketFeederConfiguration.Port);
                 }
-            }
-
-            return;
-
-            bool RequiresAuthentication()
-                => !string.IsNullOrWhiteSpace(_tcpSocketFeederConfiguration.Username) && !string.IsNullOrWhiteSpace(_tcpSocketFeederConfiguration.Password);
-
-            bool CheckAllowance(EndPoint? endPoint)
-                => _tcpSocketFeederConfiguration.AllowedAddresses is null ||
-                   _tcpSocketFeederConfiguration.AllowedAddresses.Length == 0 ||
-                   endPoint is IPEndPoint ipEndPoint &&
-                   _tcpSocketFeederConfiguration.AllowedAddresses.Contains(ipEndPoint.Address.ToString());
-
-            bool Authenticate(byte[] bytes)
-            {
-                var authentication = Encoding.UTF8.GetString(bytes);
-                if (!authentication.StartsWith(Constants.Authentication))
+                finally
                 {
-                    Logger.LogError(nameof(InvalidCredentialException));
-                    return false;
+                    // Ensure proper cleanup
+                    stream?.Close();
+                    client?.Close();
                 }
-
-                var authenticationParts = authentication
-                    .Replace(Constants.Authentication, string.Empty)
-                    .Split(Constants.Separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-                if (authenticationParts.Length != 2) return false;
-                
-                if (!authenticationParts[0].StartsWith(Constants.Username) || !authenticationParts[1].StartsWith(Constants.Password)) return false;
-
-                var username = authenticationParts[0][Constants.Username.Length..];
-                var password = authenticationParts[1][Constants.Password.Length..];
-
-                return username == _tcpSocketFeederConfiguration.Username &&
-                       password == _tcpSocketFeederConfiguration.Password;
             }
+        }
+
+        private void ConfigureStreamTimeouts(Stream stream)
+        {
+            switch (stream)
+            {
+                case SslStream sslStream:
+                    sslStream.ReadTimeout = _tcpSocketFeederConfiguration.ReadTimeout ?? Timeout.Infinite;
+                    sslStream.WriteTimeout = _tcpSocketFeederConfiguration.WriteTimeout ?? Timeout.Infinite;
+                    break;
+                case NetworkStream networkStream:
+                    networkStream.ReadTimeout = _tcpSocketFeederConfiguration.ReadTimeout ?? Timeout.Infinite;
+                    networkStream.WriteTimeout = _tcpSocketFeederConfiguration.WriteTimeout ?? Timeout.Infinite;
+                    break;
+            }
+        }
+
+        private bool CheckAllowance(EndPoint? endPoint)
+        {
+            if (_tcpSocketFeederConfiguration.AllowedAddresses is null ||
+                _tcpSocketFeederConfiguration.AllowedAddresses.Length == 0)
+                return true;
+
+            return endPoint is IPEndPoint ipEndPoint &&
+                   _tcpSocketFeederConfiguration.AllowedAddresses.Contains(ipEndPoint.Address.ToString());
+        }
+
+        private bool Authenticate(ReadOnlySpan<byte> bytes)
+        {
+            // Quick check for authentication prefix
+            if (!bytes.StartsWith(_authenticationPrefixBytes.Span))
+                return false;
+
+            // Skip the authentication prefix
+            var authData = bytes[_authenticationPrefixBytes.Length..];
+
+            // Find separator positions efficiently
+            int separatorIndex = authData.IndexOf(_separatorBytes.Span);
+            if (separatorIndex == -1) return false;
+
+            var usernamePart = authData[..separatorIndex];
+            var passwordPart = authData[(separatorIndex + _separatorBytes.Length)..];
+
+            // Validate username prefix
+            if (!usernamePart.StartsWith(_usernamePrefixBytes.Span))
+                return false;
+
+            // Validate password prefix
+            if (!passwordPart.StartsWith(_passwordPrefixBytes.Span))
+                return false;
+
+            // Extract credentials
+            var username = usernamePart[_usernamePrefixBytes.Length..];
+            var password = passwordPart[_passwordPrefixBytes.Length..];
+
+            // Compare with configured credentials (null checks already done in constructor)
+            return username.SequenceEqual(Encoding.UTF8.GetBytes(_tcpSocketFeederConfiguration.Username!)) &&
+                   password.SequenceEqual(Encoding.UTF8.GetBytes(_tcpSocketFeederConfiguration.Password!));
         }
 
         protected override void DisposeManagedResources()

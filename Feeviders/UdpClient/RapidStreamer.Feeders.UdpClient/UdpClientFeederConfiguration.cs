@@ -21,5 +21,17 @@ namespace RapidStreamer.Feeders.UdpClient
             get => Get<string[]>();
             set => Set(value);
         }
+
+        public string? EncryptionKey
+        {
+            get => Get<string>();
+            set => Set(value);
+        }
+
+        public bool EnableEncryption
+        {
+            get => Get<bool?>() ?? false;
+            set => Set(value);
+        }
     }
 }

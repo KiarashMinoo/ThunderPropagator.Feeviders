@@ -21,5 +21,17 @@ namespace RapidStreamer.Providers.DotNet.UdpClient
             get => Get<int?>() ?? 65535;
             set => Set(value);
         }
+
+        public string? EncryptionKey
+        {
+            get => Get<string>();
+            set => Set(value);
+        }
+
+        public bool EnableEncryption
+        {
+            get => Get<bool?>() ?? false;
+            set => Set(value);
+        }
     }
 }

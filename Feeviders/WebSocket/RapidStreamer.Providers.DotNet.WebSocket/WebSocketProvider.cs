@@ -37,14 +37,14 @@ namespace RapidStreamer.Providers.DotNet.WebSocket
 
         protected override async Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)
         {
-            await _semaphoreSlim.WaitAsync(cancellationToken);
+            await _semaphoreSlim.WaitAsync(cancellationToken).ConfigureAwait(false);
 
             try
             {
                 if (_clientWebSocket.State != WebSocketState.Open)
-                    await _clientWebSocket.ConnectAsync(new Uri(_webSocketProviderConfiguration.Endpoint), cancellationToken);
+                    await _clientWebSocket.ConnectAsync(new Uri(_webSocketProviderConfiguration.Endpoint), cancellationToken).ConfigureAwait(false);
 
-                await _clientWebSocket.SendAsync(bytes, WebSocketMessageType.Text, true, cancellationToken);
+                await _clientWebSocket.SendAsync(bytes, WebSocketMessageType.Text, true, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception)
             {
@@ -61,12 +61,27 @@ namespace RapidStreamer.Providers.DotNet.WebSocket
 
         protected override async ValueTask DisposeManagedResourcesAsync()
         {
-            await _clientWebSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "shutting down", CancellationToken.None);
+            try
+            {
+                if (_clientWebSocket.State == WebSocketState.Open)
+                    await _clientWebSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "shutting down", CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while closing ClientWebSocket during dispose.");
+            }
         }
 
         protected override void DisposeManagedResources()
         {
-            _clientWebSocket.Dispose();
+            try
+            {
+                _clientWebSocket.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while disposing ClientWebSocket.");
+            }
         }
     }
 }

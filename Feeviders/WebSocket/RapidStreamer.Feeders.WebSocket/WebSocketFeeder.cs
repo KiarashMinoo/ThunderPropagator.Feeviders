@@ -37,7 +37,7 @@ namespace RapidStreamer.Feeders.WebSocket
                                              throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
                 var activityContext = webSocketFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
                 var baggage = webSocketFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
-                await ReceiveAsync(webSocketFeederMessage, activityContext, baggage, cancellationToken: cancellationToken);
+                await ReceiveAsync(webSocketFeederMessage, activityContext, baggage, cancellationToken: cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception)
             {

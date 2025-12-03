@@ -7,6 +7,8 @@ using RapidStreamer.Providers.DotNet.SharedKernel;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Buffers;
+using System.Text;
 
 namespace RapidStreamer.Providers.DotNet.TcpSocket
 {
@@ -24,11 +26,23 @@ namespace RapidStreamer.Providers.DotNet.TcpSocket
         private Stream? _stream;
         private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
 
+        // Pre-computed byte arrays for performance
+        private readonly byte[] _eomBytes = Encoding.UTF8.GetBytes(Constants.Eom);
+        private readonly byte[]? _authenticationBytes;
+        private readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Shared;
+
         public TcpSocketProvider(TTcpSocketProviderConfiguration tcpSocketProviderConfiguration, IServiceProvider serviceProvider) : base(serviceProvider)
         {
             _tcpSocketProviderConfiguration = tcpSocketProviderConfiguration;
             _tcpClient = new TcpClient();
             _endPoint = new IPEndPoint(IPAddress.Parse(_tcpSocketProviderConfiguration.Endpoint), _tcpSocketProviderConfiguration.Port);
+
+            // Pre-compute authentication bytes if credentials are provided
+            if (!string.IsNullOrEmpty(_tcpSocketProviderConfiguration.Username) && !string.IsNullOrWhiteSpace(_tcpSocketProviderConfiguration.Password))
+            {
+                var authentication = $"{Constants.Authentication}{Constants.Username}{_tcpSocketProviderConfiguration.Username}{Constants.Separator}{Constants.Password}{_tcpSocketProviderConfiguration.Password}";
+                _authenticationBytes = Encoding.UTF8.GetBytes(authentication);
+            }
         }
 
         protected override Task InternalExecuteAsync(TTcpSocketProviderMessage feederMessage, CancellationToken cancellationToken = default)
@@ -56,10 +70,9 @@ namespace RapidStreamer.Providers.DotNet.TcpSocket
 
                 _stream = await InitializeStreamAsync();
 
-                if (!string.IsNullOrEmpty(_tcpSocketProviderConfiguration.Username) && !string.IsNullOrWhiteSpace(_tcpSocketProviderConfiguration.Password))
+                if (_authenticationBytes is not null)
                 {
-                    var authentication = $"{Constants.Authentication}{Constants.Username}{_tcpSocketProviderConfiguration.Username}{Constants.Separator}{Constants.Password}{_tcpSocketProviderConfiguration.Password}";
-                    await _stream.WriteAsync(authentication.ToByteArray(), cancellationToken);
+                    await _stream.WriteAsync(_authenticationBytes, cancellationToken);
                     await SendEomAsync();
                 }
             }
@@ -68,8 +81,24 @@ namespace RapidStreamer.Providers.DotNet.TcpSocket
 
             try
             {
-                foreach (var buffer in bytes.Splice(_tcpSocketProviderConfiguration.BufferSize))
-                    await _stream.WriteAsync(buffer, cancellationToken);
+                // Use pooled buffer for efficient chunking
+                var bufferSize = _tcpSocketProviderConfiguration.BufferSize;
+                for (int offset = 0; offset < bytes.Length; offset += bufferSize)
+                {
+                    var remaining = bytes.Length - offset;
+                    var chunkSize = Math.Min(bufferSize, remaining);
+                    var buffer = _bufferPool.Rent(chunkSize);
+                    
+                    try
+                    {
+                        bytes.AsSpan(offset, chunkSize).CopyTo(buffer);
+                        await _stream.WriteAsync(buffer.AsMemory(0, chunkSize), cancellationToken);
+                    }
+                    finally
+                    {
+                        _bufferPool.Return(buffer);
+                    }
+                }
 
                 await SendEomAsync();
             }
@@ -116,7 +145,7 @@ namespace RapidStreamer.Providers.DotNet.TcpSocket
 
             async ValueTask SendEomAsync()
             {
-                await _stream.WriteAsync(Constants.Eom.ToByteArray(), cancellationToken);
+                await _stream.WriteAsync(_eomBytes, cancellationToken);
                 await _stream.FlushAsync(cancellationToken);
             }
         }

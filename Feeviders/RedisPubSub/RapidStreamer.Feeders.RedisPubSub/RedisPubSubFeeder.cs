@@ -34,7 +34,8 @@ namespace RapidStreamer.Feeders.RedisPubSub
             _subscriber = _connectionMultiplexer.GetSubscriber();
             _redisChannel = new RedisChannel(_redisPubSubFeederConfiguration.Channel, _redisPubSubFeederConfiguration.PatternMode);
 
-            _subscriber.Subscribe(_redisChannel, Handler);
+            // Subscribe with a lightweight handler that dispatches processing to the thread-pool
+            _subscriber.Subscribe(_redisChannel, (channel, msg) => _ = ProcessMessageAsync(channel, msg));
 
             Logger.LogInformation("{Name}/{ChannelName} on Channel {Channel} has configured.", GetType().GetTypeInfo().Name, channel.Metadata.ChannelName,
                 _redisPubSubFeederConfiguration.Channel);
@@ -43,28 +44,47 @@ namespace RapidStreamer.Feeders.RedisPubSub
             HealthTags = [.. HealthTags, nameof(RedisPubSub), _redisPubSubFeederConfiguration.Channel];
         }
 
-        private async void Handler(RedisChannel _, RedisValue message)
+        private async Task ProcessMessageAsync(RedisChannel _, RedisValue message)
         {
             try
             {
-                var strMessage = message.ToString();
-                if (string.IsNullOrWhiteSpace(strMessage))
-                {
+                if (message.IsNullOrEmpty)
                     return;
+
+                // Prefer binary path to avoid string allocations when the publisher sent raw bytes
+                TRedisPubSubFeederMessage? redisPubSubFeederMessage = null;
+
+                try
+                {
+                    // Attempt to get raw bytes - if the message was published as bytes this avoids encoding allocations
+                    var bytes = (byte[]?)message;
+                    if (bytes is not null && bytes.Length > 0)
+                    {
+                        redisPubSubFeederMessage = Deserialize(bytes);
+                    }
+                }
+                catch
+                {
+                    // Fall back to string path
+                    var strMessage = message.ToString();
+                    if (string.IsNullOrWhiteSpace(strMessage))
+                        return;
+
+                    redisPubSubFeederMessage = Deserialize(strMessage);
                 }
 
-                var redisPubSubFeederMessage = Deserialize(strMessage);
+                if (redisPubSubFeederMessage is null)
+                    throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
 
                 var activityContext = redisPubSubFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
                 var baggage = redisPubSubFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
-                await ReceiveAsync(redisPubSubFeederMessage, activityContext, baggage);
+                await ReceiveAsync(redisPubSubFeederMessage, activityContext, baggage).ConfigureAwait(false);
 
                 ReportHealth(HealthStatus.Healthy);
             }
             catch (Exception exception)
             {
                 ReportHealth(HealthStatus.Unhealthy, exception);
-
                 Logger.LogError(exception, "error has occured while consuming messages on Channel {Channel}.", _redisPubSubFeederConfiguration.Channel);
             }
         }

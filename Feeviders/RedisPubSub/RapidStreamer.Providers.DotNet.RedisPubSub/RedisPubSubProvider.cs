@@ -4,6 +4,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using RapidStreamer.Providers.DotNet.SharedKernel;
 using StackExchange.Redis;
+using System.Buffers;
 
 namespace RapidStreamer.Providers.DotNet.RedisPubSub
 {
@@ -26,6 +27,12 @@ namespace RapidStreamer.Providers.DotNet.RedisPubSub
             _connectionMultiplexer = ConnectionMultiplexer.Connect(_redisPubSubProviderConfiguration.ConnectionString);
             _subscriber = _connectionMultiplexer.GetSubscriber();
             _redisChannel = new RedisChannel(_redisPubSubProviderConfiguration.Channel, _redisPubSubProviderConfiguration.PatternMode);
+
+            // Validate connection
+            if (!_connectionMultiplexer.IsConnected)
+            {
+                throw new InvalidOperationException($"Failed to connect to Redis at {_redisPubSubProviderConfiguration.ConnectionString}");
+            }
         }
 
         protected override Task InternalExecuteAsync(TRedisPubSubProviderMessage feederMessage, CancellationToken cancellationToken = default)
@@ -38,11 +45,22 @@ namespace RapidStreamer.Providers.DotNet.RedisPubSub
             return base.InternalExecuteAsync(feederMessage, cancellationToken);
         }
 
-        protected override async Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)
+        protected override Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)
         {
+            if (bytes is null || bytes.Length == 0)
+                return Task.CompletedTask;
+
             try
             {
-                await _subscriber.PublishAsync(_redisChannel, bytes, CommandFlags.FireAndForget);
+                // Fire-and-forget publish: do not await to reduce latency. Attach a continuation to log any unexpected faults.
+                var publishTask = _subscriber.PublishAsync(_redisChannel, bytes, CommandFlags.FireAndForget);
+                _ = publishTask.ContinueWith(t =>
+                {
+                    if (t.IsFaulted && t.Exception is not null)
+                        Logger.LogWarning(t.Exception, "Redis publish task faulted for channel {Channel}", _redisPubSubProviderConfiguration.Channel);
+                }, TaskScheduler.Default);
+
+                return Task.CompletedTask;
             }
             catch (Exception exception)
             {
