@@ -51,7 +51,7 @@ namespace RapidStreamer.Feeders.Mqtt
             var mqttFactory = new MqttClientFactory();
             _mqttClient = mqttFactory.CreateMqttClient();
 
-            await _mqttClient.ConnectAsync(_mqttFeederConfiguration.ToMqttClientOptions(), cancellationToken);
+            await _mqttClient.ConnectAsync(_mqttFeederConfiguration.ToMqttClientOptions(), cancellationToken).ConfigureAwait(false);
 
             _mqttClient.ApplicationMessageReceivedAsync += async args =>
             {
@@ -69,7 +69,7 @@ namespace RapidStreamer.Feeders.Mqtt
                             { nameof(args.Tag), args.Tag },
                             { nameof(args.ApplicationMessage.Topic), args.ApplicationMessage.Topic },
                         },
-                        cancellationToken);
+                        cancellationToken).ConfigureAwait(false);
 
                     ReportHealth(HealthStatus.Healthy);
                 }
@@ -88,20 +88,35 @@ namespace RapidStreamer.Feeders.Mqtt
 
             var mqttSubscribeOptions = mqttSubscribeOptionsBuilder.Build();
 
-            await _mqttClient.SubscribeAsync(mqttSubscribeOptions, cancellationToken);
+            await _mqttClient.SubscribeAsync(mqttSubscribeOptions, cancellationToken).ConfigureAwait(false);
         }
 
         protected override async Task StopAsync(CancellationToken cancellationToken = default)
         {
-            if (_mqttClient is not null)
-                await _mqttClient.DisconnectAsync(cancellationToken: cancellationToken);
+            try
+            {
+                if (_mqttClient is not null)
+                    await _mqttClient.DisconnectAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while disconnecting MQTT client.");
+            }
 
-            await base.StopAsync(cancellationToken);
+            await base.StopAsync(cancellationToken).ConfigureAwait(false);
         }
 
         protected override void DisposeManagedResources()
         {
-            _mqttClient?.Dispose();
+            try
+            {
+                _mqttClient?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while disposing MQTT client.");
+            }
+            
             base.DisposeManagedResources();
         }
     }

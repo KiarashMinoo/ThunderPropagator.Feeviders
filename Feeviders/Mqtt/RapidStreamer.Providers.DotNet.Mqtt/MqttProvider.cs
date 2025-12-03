@@ -32,7 +32,7 @@ namespace RapidStreamer.Providers.DotNet.Mqtt
             try
             {
                 if (!_mqttClient.IsConnected)
-                    await _mqttClient.ConnectAsync(_mqttProviderConfiguration.ToMqttClientOptions(), cancellationToken);
+                    await _mqttClient.ConnectAsync(_mqttProviderConfiguration.ToMqttClientOptions(), cancellationToken).ConfigureAwait(false);
 
                 var applicationMessageBuilder = new MqttApplicationMessageBuilder()
                     .WithTopic(_mqttProviderConfiguration.Topic)
@@ -51,7 +51,7 @@ namespace RapidStreamer.Providers.DotNet.Mqtt
 
                 var applicationMessage = applicationMessageBuilder.Build();
 
-                await _mqttClient.PublishAsync(applicationMessage, cancellationToken);
+                await _mqttClient.PublishAsync(applicationMessage, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception)
             {
@@ -64,8 +64,23 @@ namespace RapidStreamer.Providers.DotNet.Mqtt
 
         protected override async ValueTask DisposeManagedResourcesAsync()
         {
-            await _mqttClient.DisconnectAsync();
-            _mqttClient.Dispose();
+            try
+            {
+                await _mqttClient.DisconnectAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while disconnecting MQTT client.");
+            }
+
+            try
+            {
+                _mqttClient?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while disposing MQTT client.");
+            }
         }
     }
 }

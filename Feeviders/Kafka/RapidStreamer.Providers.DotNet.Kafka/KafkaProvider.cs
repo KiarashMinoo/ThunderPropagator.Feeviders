@@ -69,7 +69,7 @@ namespace RapidStreamer.Providers.DotNet.Kafka
 
                 await _producer.ProduceAsync(_kafkaProviderConfiguration.TopicName,
                     message,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception)
             {

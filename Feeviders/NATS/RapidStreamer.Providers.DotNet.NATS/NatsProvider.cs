@@ -59,7 +59,7 @@ namespace RapidStreamer.Providers.DotNet.NATS
                         await _client.PublishAsync(subject: _natsProviderConfiguration.Subject,
                             replyTo: _natsProviderConfiguration.ReplyTo,
                             data: feederMessage,
-                            cancellationToken: cancellationToken);
+                            cancellationToken: cancellationToken).ConfigureAwait(false);
                         break;
                     case MessagingType.JetStream:
 
@@ -68,7 +68,7 @@ namespace RapidStreamer.Providers.DotNet.NATS
                         var ack = await _jetStreamContext.PublishAsync(subject: _natsProviderConfiguration.Subject,
                             data: feederMessage,
                             opts: _natsProviderConfiguration.NatsJSPubOpts,
-                            cancellationToken: cancellationToken);
+                            cancellationToken: cancellationToken).ConfigureAwait(false);
 
                         ack.EnsureSuccess();
 

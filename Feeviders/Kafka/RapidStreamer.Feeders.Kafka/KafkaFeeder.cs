@@ -142,21 +142,43 @@ namespace RapidStreamer.Feeders.Kafka
                     break;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(awaitness), cancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(awaitness), cancellationToken).ConfigureAwait(false);
             return true;
         }
 
         protected override Task StopAsync(CancellationToken cancellationToken = default)
         {
-            _consumer.Close();
+            try
+            {
+                _consumer.Close();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while closing Kafka consumer.");
+            }
 
             return base.StopAsync(cancellationToken);
         }
 
         protected override void DisposeManagedResources()
         {
-            _consumer.Dispose();
-            _schemaRegistry?.Dispose();
+            try
+            {
+                _consumer?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while disposing Kafka consumer.");
+            }
+
+            try
+            {
+                _schemaRegistry?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while disposing schema registry.");
+            }
         }
     }
 }

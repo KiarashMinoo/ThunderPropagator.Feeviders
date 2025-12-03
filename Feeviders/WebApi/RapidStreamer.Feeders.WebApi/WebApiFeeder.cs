@@ -28,6 +28,6 @@ namespace RapidStreamer.Feeders.WebApi
             HealthTags = [.. HealthTags, nameof(WebApi), webApiFeederConfiguration.Path.Replace("/", "_")];
         }
 
-        internal ValueTask EnqueueAsync(string rawMessage, CancellationToken cancellationToken = default) => ReceiveAsync(rawMessage, cancellationToken: cancellationToken);
+        internal async ValueTask EnqueueAsync(string rawMessage, CancellationToken cancellationToken = default) => await ReceiveAsync(rawMessage, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 }

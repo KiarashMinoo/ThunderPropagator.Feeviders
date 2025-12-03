@@ -29,7 +29,7 @@ namespace RapidStreamer.Providers.DotNet.WebApi
             {
                 using var request = new HttpRequestMessage(HttpMethod.Post, _webApiProviderConfiguration.Path);
                 request.Content = new ByteArrayContent(bytes);
-                var response = await _httpClient.SendAsync(request, cancellationToken);
+                var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
             }
             catch (Exception exception)
@@ -43,7 +43,14 @@ namespace RapidStreamer.Providers.DotNet.WebApi
 
         protected override void DisposeManagedResources()
         {
-            _httpClient.Dispose();
+            try
+            {
+                _httpClient?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while disposing HttpClient.");
+            }
         }
     }
 }

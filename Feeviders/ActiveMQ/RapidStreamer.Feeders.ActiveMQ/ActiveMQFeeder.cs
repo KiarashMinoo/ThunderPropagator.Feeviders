@@ -59,13 +59,13 @@ namespace RapidStreamer.Feeders.ActiveMQ
                     switch (message)
                     {
                         case IObjectMessage { Body: TActiveMQFeederMessage activeMQFeederMessage }:
-                            await ReceiveAsync(activeMQFeederMessage, activityContext, baggage);
+                            await ReceiveAsync(activeMQFeederMessage, activityContext, baggage).ConfigureAwait(false);
                             break;
                         case ITextMessage textMessage:
-                            await ReceiveAsync(textMessage.Text, activityContext, baggage);
+                            await ReceiveAsync(textMessage.Text, activityContext, baggage).ConfigureAwait(false);
                             break;
                         case IBytesMessage bytesMessage:
-                            await ReceiveAsync(bytesMessage.Content, activityContext, baggage);
+                            await ReceiveAsync(bytesMessage.Content, activityContext, baggage).ConfigureAwait(false);
                             break;
                     }
                 }
@@ -84,16 +84,46 @@ namespace RapidStreamer.Feeders.ActiveMQ
 
         protected override async Task StopAsync(CancellationToken cancellationToken = default)
         {
-            await _consumer.CloseAsync();
-            await _session.CloseAsync();
-            await _connection.CloseAsync();
+            try
+            {
+                await _consumer.CloseAsync().ConfigureAwait(false);
+                await _session.CloseAsync().ConfigureAwait(false);
+                await _connection.CloseAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while closing ActiveMQ resources.");
+            }
         }
 
         protected override void DisposeManagedResources()
         {
-            _consumer.Dispose();
-            _session.Dispose();
-            _connection.Dispose();
+            try
+            {
+                _consumer?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while disposing ActiveMQ consumer.");
+            }
+
+            try
+            {
+                _session?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while disposing ActiveMQ session.");
+            }
+
+            try
+            {
+                _connection?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while disposing ActiveMQ connection.");
+            }
         }
     }
 }

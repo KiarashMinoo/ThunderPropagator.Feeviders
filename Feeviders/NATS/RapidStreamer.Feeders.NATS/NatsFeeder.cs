@@ -72,7 +72,7 @@ namespace RapidStreamer.Feeders.NATS
                         if (message.Data is not null)
                             yield return MessageConsumed(message.Data, message.Headers);
 
-                        await message.AckAsync(cancellationToken: cancellationToken);
+                        await message.AckAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
                     }
 
                     break;

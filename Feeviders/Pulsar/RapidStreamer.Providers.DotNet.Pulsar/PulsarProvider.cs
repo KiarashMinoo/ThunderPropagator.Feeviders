@@ -64,7 +64,7 @@ namespace RapidStreamer.Providers.DotNet.Pulsar
 
                 feederMessage.TryAdd(nameof(Baggage), Baggage.Current.ToNJsonBytes());
 
-                await _producer.Send(feederMessage, cancellationToken);
+                await _producer.Send(feederMessage, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception)
             {

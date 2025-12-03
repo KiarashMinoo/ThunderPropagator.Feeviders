@@ -65,14 +65,14 @@ namespace RapidStreamer.Providers.DotNet.ActiveMQ
         {
             try
             {
-                var message = await _session.CreateBytesMessageAsync(bytes);
+                var message = await _session.CreateBytesMessageAsync(bytes).ConfigureAwait(false);
 
                 if (Activity.Current?.Context is not null)
                     message.Properties.SetBytes(nameof(ActivityContext), Activity.Current.Context.ToNJsonBytes());
 
                 message.Properties.SetBytes(nameof(Baggage), Baggage.Current.ToNJsonBytes());
 
-                await _producer.SendAsync(message);
+                await _producer.SendAsync(message).ConfigureAwait(false);
             }
             catch (Exception exception)
             {
@@ -85,13 +85,59 @@ namespace RapidStreamer.Providers.DotNet.ActiveMQ
 
         protected override async ValueTask DisposeManagedResourcesAsync()
         {
-            await _producer.CloseAsync();
-            await _session.CloseAsync();
-            await _connection.CloseAsync();
+            try
+            {
+                await _producer.CloseAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while closing ActiveMQ producer.");
+            }
 
-            _producer.Dispose();
-            _session.Dispose();
-            _connection.Dispose();
+            try
+            {
+                await _session.CloseAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while closing ActiveMQ session.");
+            }
+
+            try
+            {
+                await _connection.CloseAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while closing ActiveMQ connection.");
+            }
+
+            try
+            {
+                _producer?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while disposing ActiveMQ producer.");
+            }
+
+            try
+            {
+                _session?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while disposing ActiveMQ session.");
+            }
+
+            try
+            {
+                _connection?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Exception while disposing ActiveMQ connection.");
+            }
         }
     }
 }
