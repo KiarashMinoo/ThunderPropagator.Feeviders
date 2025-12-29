@@ -10,7 +10,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\Clients\RapidStreamer.Clients.DotNet\RapidStreamer.Clients.DotNet.csproj" />
+        <ProjectReference Include="..\..\Clients\ThunderPropagator.Clients.DotNet\ThunderPropagator.Clients.DotNet.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,7 +1,7 @@
-﻿# RapidStreamer Feeviders Development Guide
+﻿# ThunderPropagator Feeviders Development Guide
 
 ## Project Overview
-**RapidStreamer Feeviders** is a comprehensive .NET messaging framework providing unified abstractions for 12+ messaging systems. Built with enterprise-grade requirements, it offers consistent APIs, OpenTelemetry integration, and production-ready reliability across diverse messaging technologies (Kafka, RabbitMQ, WebSocket, NATS, MQTT, Pulsar, RedisPubSub, ActiveMQ, TcpSocket, UdpClient, WebApi).
+**ThunderPropagator Feeviders** is a comprehensive .NET messaging framework providing unified abstractions for 12+ messaging systems. Built with enterprise-grade requirements, it offers consistent APIs, OpenTelemetry integration, and production-ready reliability across diverse messaging technologies (Kafka, RabbitMQ, WebSocket, NATS, MQTT, Pulsar, RedisPubSub, ActiveMQ, TcpSocket, UdpClient, WebApi).
 
 ## Architecture: Provider/Feeder Pattern
 
@@ -11,7 +11,7 @@ The framework follows a **bidirectional messaging pattern**:
 - **SharedKernel** provides common abstractions and utilities
 
 ### Feeder Structure (Message Consumer)
-Every feeder implementation in `Feeviders/{System}/RapidStreamer.Feeders.{System}/`:
+Every feeder implementation in `Feeviders/{System}/ThunderPropagator.Feeders.{System}/`:
 
 1. **{System}Feeder.cs** — Inherits `IterativeFeeder<TChannel, TMessage, TConfig>` or `DelegativeFeeder<>`
    - Mark `internal` and `sealed` in Release: `#if !DEBUG sealed #endif`
@@ -27,7 +27,7 @@ Every feeder implementation in `Feeviders/{System}/RapidStreamer.Feeders.{System
    ```
 
 ### Provider Structure (Message Publisher)
-Every provider implementation in `Feeviders/{System}/RapidStreamer.Providers.DotNet.{System}/`:
+Every provider implementation in `Feeviders/{System}/ThunderPropagator.Providers.DotNet.{System}/`:
 
 1. **{System}Provider.cs** — Inherits `AbstractProvider<TMessage, TConfig>`
    - Override `InternalExecuteAsync(TMessage, CancellationToken)`
@@ -57,11 +57,11 @@ services.AddKafkaProvider<MyKafkaMessage, MyKafkaConfig>(
 - **Platforms**: AnyCPU, x86, x64, ARM64
 - **Central Package Management**: Version-controlled via [Directory.Packages.props](../Directory.Packages.props)
   - Framework-specific versions: `Condition="'$(TargetFramework)' == 'net9.0'"`
-  - RapidStreamer dependencies use dynamic PackageId: `$(RapidStreamerPackageId)` and `$(BuildingBlocksPackageId)`
+  - ThunderPropagator dependencies use dynamic PackageId: `$(ThunderPropagatorPackageId)` and `$(BuildingBlocksPackageId)`
 
 ### Package Naming Convention
 Packages include configuration and platform suffixes:
-- **Debug**: `{ProjectName}.Debug.{Platform}` (e.g., `RapidStreamer.Feeders.Kafka.Debug.x64`)
+- **Debug**: `{ProjectName}.Debug.{Platform}` (e.g., `ThunderPropagator.Feeders.Kafka.Debug.x64`)
 - **Release**: `{ProjectName}.{Platform}` (AnyCPU omits platform suffix)
 - Controlled by: `PackageIdConfigurationSuffix` and `PackageIdPlatformSuffix` in Directory.Build.props
 
@@ -69,13 +69,13 @@ Packages include configuration and platform suffixes:
 Version: `1.0.1-beta.2` ([Directory.Build.props](../Directory.Build.props#L3))
 - Update manually in Directory.Build.props (`<Version>` property)
 - Version flows to all projects automatically
-- RapidStreamer dependency versions: Separate in Directory.Packages.props (`RapidStreamerVersion`, `BuildingBlocksVersion`)
+- ThunderPropagator dependency versions: Separate in Directory.Packages.props (`ThunderPropagatorVersion`, `BuildingBlocksVersion`)
 
 ## Development Workflows
 
 ### Building
 ```powershell
-dotnet build RapidStreamer.Feeviders.sln -c Release -p:Platform=AnyCPU
+dotnet build ThunderPropagator.Feeviders.sln -c Release -p:Platform=AnyCPU
 ```
 
 ### Testing
@@ -143,15 +143,15 @@ Feeviders/
 └── WebSocket/             # WebSocket real-time web
 
 Each system has 2-3 projects:
-  - RapidStreamer.Feeders.{System}           # Message consumer
-  - RapidStreamer.Providers.DotNet.{System}  # Message publisher
-  - RapidStreamer.Feeviders.{System}.SharedKernel  # Shared utilities (optional)
+  - ThunderPropagator.Feeders.{System}           # Message consumer
+  - ThunderPropagator.Providers.DotNet.{System}  # Message publisher
+  - ThunderPropagator.Feeviders.{System}.SharedKernel  # Shared utilities (optional)
 
 Tests/
 ├── DotNetClientTests/     # .NET client integration tests
-├── RapidStreamer.ArchTests/          # Architecture validation (NetArchTest)
-├── RapidStreamer.UnitTests/          # Core unit tests
-└── RapidStreamer.Web.LoadTests/      # Load/performance tests
+├── ThunderPropagator.ArchTests/          # Architecture validation (NetArchTest)
+├── ThunderPropagator.UnitTests/          # Core unit tests
+└── ThunderPropagator.Web.LoadTests/      # Load/performance tests
 
 docs/
 ├── README.md              # Framework overview and quick start
@@ -198,9 +198,9 @@ Most systems support multiple serialization formats via `SerializerType` enum:
 - **Kafka-specific**: `SchemaJson`, `Avro` (Confluent Schema Registry)
 
 ## External Dependencies
-- **Core**: RapidStreamer framework (GitHub Packages)
-  - RapidStreamer.BuildingBlocks — Common utilities and abstractions
-  - RapidStreamer — Core streaming framework
+- **Core**: ThunderPropagator framework (GitHub Packages)
+  - ThunderPropagator.BuildingBlocks — Common utilities and abstractions
+  - ThunderPropagator — Core streaming framework
 - **Testing**: xUnit, NSubstitute, coverlet, NetArchTest.Rules
 - **Messaging**: Confluent.Kafka, RabbitMQ.Client, MQTTnet, NATS.Net, DotPulsar, Apache.NMS.ActiveMQ, StackExchange.Redis
 - **Infrastructure**: Microsoft.Extensions.* (DI, caching, HTTP), OpenTelemetry.Api

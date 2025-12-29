@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-    <ItemGroup>
-        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Feeders.SharedKernel\RapidStreamer.Feeders.SharedKernel.csproj"/>
-        <ProjectReference Include="..\RapidStreamer.Feeviders.RabbitMQ.SharedKernel\RapidStreamer.Feeviders.RabbitMQ.SharedKernel.csproj"/>
-    </ItemGroup>
-
-</Project>

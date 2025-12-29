@@ -4,7 +4,7 @@
       "commandName": "DockerCompose",
       "commandVersion": "1.0",
       "serviceActions": {
-        "rapidstreamer.web": "StartDebugging"
+        "thunderpropagator.web": "StartDebugging"
       }
     }
   }

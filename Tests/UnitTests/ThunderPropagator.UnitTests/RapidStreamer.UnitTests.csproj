@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Bogus"/>
+        <PackageReference Include="JetBrains.Annotations"/>
+        <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+        <PackageReference Include="NJsonSchema"/>
+        <PackageReference Include="NSubstitute"/>
+        <PackageReference Include="xunit"/>
+        <PackageReference Include="xunit.runner.visualstudio"/>
+        <PackageReference Include="coverlet.collector"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\Feeviders\RabbitMQ\ThunderPropagator.Feeders.RabbitMQ\ThunderPropagator.Feeders.RabbitMQ.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\WebApi\ThunderPropagator.Feeders.WebApi\ThunderPropagator.Feeders.WebApi.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\WebApi\ThunderPropagator.Providers.DotNet.WebApi\ThunderPropagator.Providers.DotNet.WebApi.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\TcpSocket\ThunderPropagator.Feeders.TcpSocket\ThunderPropagator.Feeders.TcpSocket.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\TcpSocket\ThunderPropagator.Providers.DotNet.TcpSocket\ThunderPropagator.Providers.DotNet.TcpSocket.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\UdpClient\ThunderPropagator.Feeders.UdpClient\ThunderPropagator.Feeders.UdpClient.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\UdpClient\ThunderPropagator.Providers.DotNet.UdpClient\ThunderPropagator.Providers.DotNet.UdpClient.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\Mqtt\ThunderPropagator.Feeders.Mqtt\ThunderPropagator.Feeders.Mqtt.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\Mqtt\ThunderPropagator.Providers.DotNet.Mqtt\ThunderPropagator.Providers.DotNet.Mqtt.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\NATS\ThunderPropagator.Feeders.NATS\ThunderPropagator.Feeders.NATS.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\NATS\ThunderPropagator.Providers.DotNet.NATS\ThunderPropagator.Providers.DotNet.NATS.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\NATS\ThunderPropagator.Feeviders.NATS.SharedKernel\ThunderPropagator.Feeviders.NATS.SharedKernel.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\Kafka\ThunderPropagator.Feeders.Kafka\ThunderPropagator.Feeders.Kafka.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\Kafka\ThunderPropagator.Providers.DotNet.Kafka\ThunderPropagator.Providers.DotNet.Kafka.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\ActiveMQ\ThunderPropagator.Feeders.ActiveMQ\ThunderPropagator.Feeders.ActiveMQ.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\ActiveMQ\ThunderPropagator.Providers.DotNet.ActiveMQ\ThunderPropagator.Providers.DotNet.ActiveMQ.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\Pulsar\ThunderPropagator.Feeders.Pulsar\ThunderPropagator.Feeders.Pulsar.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\Pulsar\ThunderPropagator.Providers.DotNet.Pulsar\ThunderPropagator.Providers.DotNet.Pulsar.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\RabbitMQ\ThunderPropagator.Providers.DotNet.RabbitMQ\ThunderPropagator.Providers.DotNet.RabbitMQ.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\RedisPubSub\ThunderPropagator.Feeders.RedisPubSub\ThunderPropagator.Feeders.RedisPubSub.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\RedisPubSub\ThunderPropagator.Providers.DotNet.RedisPubSub\ThunderPropagator.Providers.DotNet.RedisPubSub.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\WebSocket\ThunderPropagator.Feeders.WebSocket\ThunderPropagator.Feeders.WebSocket.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\WebSocket\ThunderPropagator.Providers.DotNet.WebSocket\ThunderPropagator.Providers.DotNet.WebSocket.csproj" />
+    </ItemGroup>
+
+</Project>

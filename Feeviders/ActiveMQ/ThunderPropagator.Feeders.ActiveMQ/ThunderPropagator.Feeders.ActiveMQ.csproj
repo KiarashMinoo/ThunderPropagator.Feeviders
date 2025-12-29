@@ -1,0 +1,8 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\SharedKernel\ThunderPropagator.Feeders.SharedKernel\ThunderPropagator.Feeders.SharedKernel.csproj" />
+        <ProjectReference Include="..\ThunderPropagator.Feeviders.ActiveMQ.SharedKernel\ThunderPropagator.Feeviders.ActiveMQ.SharedKernel.csproj" />
+    </ItemGroup>
+
+</Project>

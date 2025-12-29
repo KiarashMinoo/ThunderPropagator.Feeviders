@@ -1,11 +1,11 @@
 ﻿using DotNetClientTests;
 using Newtonsoft.Json;
-using RapidStreamer.BuildingBlocks.Application.Helpers;
-using RapidStreamer.BuildingBlocks.Application.Objects;
-using RapidStreamer.Clients.DotNet.Clients;
-using RapidStreamer.Clients.DotNet.Connections.WebSocket;
-using RapidStreamer.Clients.DotNet.Infrastructure.Loggers;
-using RapidStreamer.Clients.DotNet.Models.Enums;
+using ThunderPropagator.BuildingBlocks.Application.Helpers;
+using ThunderPropagator.BuildingBlocks.Application.Objects;
+using ThunderPropagator.Clients.DotNet.Clients;
+using ThunderPropagator.Clients.DotNet.Connections.WebSocket;
+using ThunderPropagator.Clients.DotNet.Infrastructure.Loggers;
+using ThunderPropagator.Clients.DotNet.Models.Enums;
 
 var test = new TestUsr();
 test.UserSeens = Enumerable.Range(0, 10)
@@ -30,12 +30,12 @@ CancellationTokenSource cancellationTokenSource = new();
 
 //((System.Text.Json.JsonElement)System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(xxxx)["UserSeens"]).EnumerateArray()
 
-RapidStreamerWebSocketClient client = new(new RapidStreamerWebSocketConnectionConfiguration { Uri = "ws://127.0.0.1:8080/rapidStreamer" }, new LoggerProvider());
-//RapidStreamerInfiniteDataStreamClient client = new(new RapidStreamerInfiniteDataStreamConnectionConfiguration { Uri = "http://192.168.1.141:8080/rapidStreamer" }, new LoggerProvider());
-// RapidStreamerWebSocketClient client = new(new RapidStreamerWebSocketConnectionConfiguration { Uri = "ws://192.168.1.141:8080/rapidStreamer" }, new LoggerProvider());
+ThunderPropagatorWebSocketClient client = new(new ThunderPropagatorWebSocketConnectionConfiguration { Uri = "ws://127.0.0.1:8080/ThunderPropagator" }, new LoggerProvider());
+//ThunderPropagatorInfiniteDataStreamClient client = new(new ThunderPropagatorInfiniteDataStreamConnectionConfiguration { Uri = "http://192.168.1.141:8080/ThunderPropagator" }, new LoggerProvider());
+// ThunderPropagatorWebSocketClient client = new(new ThunderPropagatorWebSocketConnectionConfiguration { Uri = "ws://192.168.1.141:8080/ThunderPropagator" }, new LoggerProvider());
 await client.ConnectAsync(cancellationTokenSource.Token);
 var channel = await client.CreateChannelAsync("ClockChannel", cancellationToken: cancellationTokenSource.Token);
-var subscription = channel.CreateSubscription(new Dictionary<string, string> { { "Key", "UtcNow" } }, ["Date", "Time", "DateTime"], RapidStreamerSubscriptionMode.Modified);
+var subscription = channel.CreateSubscription(new Dictionary<string, string> { { "Key", "UtcNow" } }, ["Date", "Time", "DateTime"], ThunderPropagatorSubscriptionMode.Modified);
 // subscription.FieldUpdated += (sender, item, token) =>
 // {
 //     Console.WriteLine($"{item.FieldName} => {item.FieldValue}");

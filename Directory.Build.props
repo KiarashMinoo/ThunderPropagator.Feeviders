@@ -30,14 +30,14 @@
   <PropertyGroup Label="nuget">
     <IsPackable>true</IsPackable>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Authors>RapidStreamer</Authors>
+    <Authors>ThunderPropagator</Authors>
     <Description>Redefining real time data streaming; effortless, blazingly fast and cloud-native for maximum impact</Description>
-    <Copyright>Copyright ©2024 RapidStreamer Corporation</Copyright>
-    <PackageProjectUrl>https://www.rapidstreamer.com</PackageProjectUrl>
+    <Copyright>Copyright ©2024 ThunderPropagator Corporation</Copyright>
+    <PackageProjectUrl>https://www.thunderpropagator.com</PackageProjectUrl>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-    <RepositoryUrl>https://github.com/KiarashMinoo/RapidStreamer.Feeviders</RepositoryUrl>
+    <RepositoryUrl>https://github.com/KiarashMinoo/ThunderPropagator.Feeviders</RepositoryUrl>
     <PackageTags>Real-Time Data Streaming, Blazingly Fast, Cloud-Native, Data Streaming, Effortless Performance, High Impact, Real-Time Processing, Fast Data Pipelines, Cloud Solutions, Streaming Technology</PackageTags>
-    <PackageIcon>RapidStreamer.png</PackageIcon>
+    <PackageIcon>ThunderPropagator.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <AvoidCycleErrorOnSelfReference>true</AvoidCycleErrorOnSelfReference>
   </PropertyGroup>
@@ -45,7 +45,7 @@
     <PackageId>$(MSBuildProjectName)$(PackageIdConfigurationSuffix)$(PackageIdPlatformSuffix)</PackageId>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="..\..\..\RapidStreamer.png" Pack="true" Link="RapidStreamer.png" PackagePath="" />
+    <None Include="..\..\..\ThunderPropagator.png" Pack="true" Link="ThunderPropagator.png" PackagePath="" />
     <None Include="..\..\..\README.md" Pack="true" Link="README.md" PackagePath="" />
   </ItemGroup>
 </Project>

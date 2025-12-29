@@ -1,8 +1,0 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
-    <ItemGroup>
-        <ProjectReference Include="..\..\SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel\RapidStreamer.Providers.DotNet.SharedKernel.csproj"/>
-        <ProjectReference Include="..\RapidStreamer.Feeviders.Pulsar.SharedKernel\RapidStreamer.Feeviders.Pulsar.SharedKernel.csproj"/>
-    </ItemGroup>
-
-</Project>

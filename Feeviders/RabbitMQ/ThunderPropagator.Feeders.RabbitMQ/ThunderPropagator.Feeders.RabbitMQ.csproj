@@ -1,0 +1,8 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\SharedKernel\ThunderPropagator.Feeders.SharedKernel\ThunderPropagator.Feeders.SharedKernel.csproj"/>
+        <ProjectReference Include="..\ThunderPropagator.Feeviders.RabbitMQ.SharedKernel\ThunderPropagator.Feeviders.RabbitMQ.SharedKernel.csproj"/>
+    </ItemGroup>
+
+</Project>
