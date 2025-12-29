@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write        # commit & tag
   actions: write         # delete artifacts via gh api
+  packages: write        # publish to GitHub Packages and set visibility
 
 jobs:
   # --- 1) finalize version: strip -beta.*, commit if changed, create & push tag, GH Release ---
@@ -49,7 +50,7 @@ jobs:
           name: v${{ steps.ver.outputs.version }}
           body_path: release-notes.txt
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
   # --- 1b) propagate finalized version into 'develop' and push ---
   sync-develop-version:
@@ -120,6 +121,8 @@ jobs:
       - name: Build and Pack
         id: pack
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           pwsh ./.github/scripts/pack-solution.ps1 `
             -Configuration "${{ matrix.configuration }}" `
@@ -140,7 +143,7 @@ jobs:
           path: artifacts/pkg/*.snupkg
           if-no-files-found: ignore
 
-  # --- 3) publish to stable & delete ALL artifacts ---
+  # --- 3) publish to GitHub Packages AND NuGet.org simultaneously ---
   publish:
     needs: pack
     runs-on: ubuntu-latest
@@ -168,19 +171,42 @@ jobs:
           path: ./dist/symbols
           merge-multiple: true
 
-      - name: Publish packages to stable feed
+      - name: Publish packages to GitHub Packages (public)
         shell: pwsh
         env:
-          NUGET_SOURCE: ${{ secrets.NUGET_SOURCE }}
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           pwsh ./.github/scripts/publish-packages.ps1 `
-            -NuGetSource $env:NUGET_SOURCE `
-            -NuGetApiKey $env:NUGET_API_KEY
+            -NuGetSource 'https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json' `
+            -NuGetApiKey $env:GH_TOKEN `
+            -MakePublic `
+            -GitHubApiToken $env:GH_TOKEN `
+            -SkipCleanup
 
+      - name: Publish packages to NuGet.org (Release AnyCPU only)
+        shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if (-not $env:NUGET_API_KEY) { 
+            Write-Host 'NUGET_API_KEY secret not set; skipping NuGet.org publish.' 
+            exit 0 
+          }
+          # Only publish Release AnyCPU packages (exclude Debug, ARM64, x86, x64 variants)
+          pwsh ./.github/scripts/publish-packages.ps1 `
+            -NuGetSource 'https://api.nuget.org/v3/index.json' `
+            -NuGetApiKey $env:NUGET_API_KEY `
+            -FilterPattern '^(?!.*\.(Debug|ARM64|x86|x64)).*\.nupkg$'
+
+  # --- 4) cleanup: delete ALL run artifacts after publish job completes ---
+  cleanup:
+    needs: [publish]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
       - name: Delete ALL run artifacts
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts \
             --paginate --jq '.artifacts[].id' | while read -r id; do

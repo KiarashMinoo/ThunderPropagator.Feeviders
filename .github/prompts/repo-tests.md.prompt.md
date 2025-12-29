@@ -1,6 +1,6 @@
 ---
 mode: agent
-description: "Always scan and generate tests (no inputs). Reuse or create RapidStreamer.UnitTests and RapidStreamer.ArchTests, ensure they are in the .sln under a 'Tests' solution folder. Generate xUnit + NSubstitute unit tests mirroring source, and architecture tests with NetArchTest. Non-interactive and idempotent."
+description: "Always scan and generate tests (no inputs). Reuse or create ThunderPropagator.UnitTests and ThunderPropagator.ArchTests, ensure they are in the .sln under a 'Tests' solution folder. Generate xUnit + NSubstitute unit tests mirroring source, and architecture tests with NetArchTest. Non-interactive and idempotent."
 ---
 
 # Repo Test Generator (no inputs; always scan & update)
@@ -13,8 +13,8 @@ Act autonomously and **do not ask for confirmations**. Use safe defaults. Make i
 ## 0) Global behavior (no arguments)
 - Always perform a **full scan** of the repository.
 - **Reuse** existing test projects named:
-  - `RapidStreamer.UnitTests`
-  - `RapidStreamer.ArchTests`
+  - `ThunderPropagator.UnitTests`
+  - `ThunderPropagator.ArchTests`
 - If missing, **create** them under `Tests/UnitTests` and `Tests/ArchTests`.
 - **Always** make sure both projects are inside a **solution (`.sln`)** under a solution folder named **`Tests`**.  
   - If no `.sln` exists, create one at the repo root (name it after the repo folder).
@@ -42,7 +42,7 @@ Examples:
 ## 2) Test projects (reuse or create)
 
 ### Reuse if found
-- Search for csproj whose filename or `<AssemblyName>` equals **RapidStreamer.UnitTests** and **RapidStreamer.ArchTests** (case-insensitive).
+- Search for csproj whose filename or `<AssemblyName>` equals **ThunderPropagator.UnitTests** and **ThunderPropagator.ArchTests** (case-insensitive).
 - Record absolute paths; **keep original names/locations**.
 
 ### Create if missing

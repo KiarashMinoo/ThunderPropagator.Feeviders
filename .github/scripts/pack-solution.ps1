@@ -108,7 +108,9 @@ Write-Host "Solution: $SolutionPath" -ForegroundColor Green
 # Clean
 if (-not $SkipClean) {
     Write-Host "`n--- Clean ---" -ForegroundColor Yellow
-    dotnet clean $SolutionPath --nologo
+    dotnet clean $SolutionPath --nologo `
+        -c $Configuration `
+        -p:Platform="$platformSol"
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE 
     }

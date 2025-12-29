@@ -1,6 +1,6 @@
 ---
 mode: agent
-description: "Deep recursion docs under /docs (no src segments). Generate rich README.md for EVERY folder with real API details from *.cs; never leave a README empty. Parents only link to children. Exclude tests. Strip leading 'RapidStreamer' from segment names. Wipe /docs first. Merge duplicates only within the same source folder, then remove originals. Include RapidStreamer* NuGet metadata (GitHub Packages). Create /docs/README.md landing and update root/solution README **at the end**. Add per-folder retry (up to 3 passes) + empty-prevention rules + coverage audit so a single run converges. **Also: add/keep/update diagrams with Mermaid (and lightweight graphs) per-folder and at the docs root.** **Root/Solution README must include an auto-generated Docs Catalog built from /docs.**"
+description: "Deep recursion docs under /docs (no src segments). Generate rich README.md for EVERY folder with real API details from *.cs; never leave a README empty. Parents only link to children. Exclude tests. Strip leading 'ThunderPropagator' from segment names. Wipe /docs first. Merge duplicates only within the same source folder, then remove originals. Include ThunderPropagator* NuGet metadata (GitHub Packages). Create /docs/README.md landing and update root/solution README **at the end**. Add per-folder retry (up to 3 passes) + empty-prevention rules + coverage audit so a single run converges. **Also: add/keep/update diagrams with Mermaid (and lightweight graphs) per-folder and at the docs root.** **Root/Solution README must include an auto-generated Docs Catalog built from /docs.**"
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Docs-Only Mirror (deep recursion; no src; no tests; **no empty READMEs**; auto-retry; **diagram-aware**)
@@ -13,10 +13,10 @@ Act autonomously and **do not ask for confirmations** unless Copilot requires it
 * **Only README.md files** (plus `/docs/README.md` and **root/solution `/README.md` update at the end**).
 * **Parents link to direct children only** (no child content merged into parent).
 * **Drop all `src` segments** from docs paths (case-insensitive).
-* **Strip leading `RapidStreamer`** from each path segment (case-insensitive; optional `.`/`-`/`_`), but **do not split on `.`** beyond removing `RapidStreamer.`.
+* **Strip leading `ThunderPropagator`** from each path segment (case-insensitive; optional `.`/`-`/`_`), but **do not split on `.`** beyond removing `ThunderPropagator.`.
 * **Exclude tests** entirely.
 * **Wipe `/docs`** before rebuilding.
-* **RapidStreamer NuGet** hosted at **GitHub Packages**: `https://nuget.pkg.github.com/KiarashMinoo/index.json`.
+* **ThunderPropagator NuGet** hosted at **GitHub Packages**: `https://nuget.pkg.github.com/KiarashMinoo/index.json`.
 * **Create `/docs/README.md`** landing (link Application & Infrastructure if present).
 * **Update root/solution `/README.md` at the end** to link to `docs/README.md` and embed the auto-generated **Docs Catalog** (see policies below).
 * **No “Source Location” / file system paths** in docs. Use **cross-doc links + anchors** only.
@@ -73,7 +73,7 @@ A folder README **must not** be empty or skeletal. If initial extraction yields 
 
 1. Split repo path → segments.
 2. Remove every `src` segment (case-insensitive).
-3. For each remaining segment, strip leading `RapidStreamer` (regex `^(rapidstreamer)([.\-_])?`, case-insensitive).
+3. For each remaining segment, strip leading `ThunderPropagator` (regex `^(thunderpropagator)([.\-_])?`, case-insensitive).
 4. Normalize: collapse duplicate separators/dots/hyphens/underscores; trim; drop empties.
 5. Collision safety: if two sources canonicalize to the same docs path, keep the first; suffix later (e.g., `-rs` or short hash). Record in audit.
 6. Destination: /docs/<canonical>/README.md
@@ -128,7 +128,7 @@ A folder README **must not** be empty or skeletal. If initial extraction yields 
 
 * If a folder exposes **>2 public types** that collaborate, generate at least one diagram (sequence or class graph).
 * For folders named like `Pipelines`, `Adapters`, `Handlers`, `Controllers`, or `Stores`, include a **sequence** and a **component** diagram.
-* If a `*.csproj` references **RapidStreamer*** packages, add a small **dependency graph** (packages ↔ this assembly).
+* If a `*.csproj` references **ThunderPropagator*** packages, add a small **dependency graph** (packages ↔ this assembly).
 
 ### Mermaid templates
 
@@ -220,7 +220,7 @@ A folder README **must not** be empty or skeletal. If initial extraction yields 
 6. **Serialization & Contracts** (if applicable)
 7. **Validation & Constraints** (if applicable)
 8. **Performance Notes** (if applicable)
-9. **RapidStreamer Dependencies** (if used here)
+9. **ThunderPropagator Dependencies** (if used here)
 
    * Table (**Package | Version | Description | Links**)
    * Links: GitHub Packages feed, Repo URL (if any), internal anchors
@@ -241,14 +241,13 @@ A folder README **must not** be empty or skeletal. If initial extraction yields 
 * Optional sections as applicable
 * Back-to-top
 
-## RapidStreamer Dependencies (GitHub Packages)
+## ThunderPropagator Dependencies (GitHub Packages)
 
-* Treat all `RapidStreamer*` packages as hosted at `https://nuget.pkg.github.com/KiarashMinoo/index.json`.
+* Treat all `ThunderPropagator*` packages as hosted at `https://nuget.pkg.github.com/KiarashMinoo/index.json`.
 * Detect from `*.csproj`, `Directory.Packages.props`, `packages.lock.json`, optionally `dotnet list package`.
 * Record: `Id`, resolved `Version`, `Description`, `Project URL`, `Repository URL` (if any), `License`, `Authors`.
 * Per-folder README: add table + internal deep links to usage anchors.
-* Root `/README.md`: roll-up table of unique RapidStreamer packages with deep links to folders’ `#rapidstreamer-dependencies`.
-
+* Root `/README.md`: roll-up table of unique ThunderPropagator packages with deep links to folders’ `#thunderpropagator-dependencies`.
 ## Docs Landing + Root/Solution README
 
 * Create `/docs/README.md` (landing): title, short intro, links to `./Application/README.md` & `./Infrastructure/README.md` (if present), plus other top-level areas.
