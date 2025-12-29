@@ -4,9 +4,9 @@
     <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
   </PropertyGroup>
   <PropertyGroup Label="ThunderPropagatorPackages">
-    <BuildingBlocksVersion>1.0.1-beta.4</BuildingBlocksVersion>
+    <BuildingBlocksVersion>1.0.1-beta.14</BuildingBlocksVersion>
     <BuildingBlocksPackageId>ThunderPropagator.BuildingBlocks$(PackageIdConfigurationSuffix)$(PackageIdPlatformSuffix)</BuildingBlocksPackageId>
-    <ThunderPropagatorVersion>1.0.1-beta.5</ThunderPropagatorVersion>
+    <ThunderPropagatorVersion>1.0.1-beta.15</ThunderPropagatorVersion>
     <ThunderPropagatorPackageId>ThunderPropagator$(PackageIdConfigurationSuffix)$(PackageIdPlatformSuffix)</ThunderPropagatorPackageId>
   </PropertyGroup>
   <ItemGroup>
@@ -51,8 +51,8 @@
     <PackageVersion Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.12.0" />
     <PackageVersion Include="Confluent.SchemaRegistry.Serdes.Json" Version="2.12.0" />
     <PackageVersion Include="MQTTnet" Version="5.0.1.1416" />
-    <PackageVersion Include="NATS.Net" Version="2.6.11" />
-    <PackageVersion Include="DotPulsar" Version="5.1.0" />
+    <PackageVersion Include="NATS.Net" Version="2.7.0" />
+    <PackageVersion Include="DotPulsar" Version="5.1.1" />
     <PackageVersion Include="NJsonSchema" Version="11.5.2" />
     <PackageVersion Include="NJsonSchema.Annotations" Version="11.5.2" />
     <PackageVersion Include="RabbitMQ.Client" Version="7.2.0" />
