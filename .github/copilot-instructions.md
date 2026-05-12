@@ -1,216 +1,231 @@
-﻿# ThunderPropagator Feeviders Development Guide
+# ThunderPropagator - Real-Time Data Streaming
 
 ## Project Overview
-**ThunderPropagator Feeviders** is a comprehensive .NET messaging framework providing unified abstractions for 12+ messaging systems. Built with enterprise-grade requirements, it offers consistent APIs, OpenTelemetry integration, and production-ready reliability across diverse messaging technologies (Kafka, RabbitMQ, WebSocket, NATS, MQTT, Pulsar, RedisPubSub, ActiveMQ, TcpSocket, UdpClient, WebApi).
+ThunderPropagator is a real-time data streaming solution providing protocol-agnostic abstractions for WebSocket, MQTT 5.0, QUIC, and WebTransport. The solution targets .NET 8.0, 9.0, and 10.0 with multi-platform support (AnyCPU, x86, x64, ARM64). Internal codename: **Project ARC** (Application Runtime Components).
 
-## Architecture: Provider/Feeder Pattern
+## Architecture
 
-The framework follows a **bidirectional messaging pattern**:
-- **Feeders** consume messages from external systems (inbound)
-- **Providers** publish messages to external systems (outbound)
-- **SharedKernel** provides common abstractions and utilities
+### Layer Structure
+- **Application Layer** (`src/ThunderPropagator.Application/`): Protocol-agnostic streaming abstractions (channels, feeders, pipelines, subscriptions)
+- **Infrastructure Layer** (`src/ThunderPropagator.Infrastructure/`): Protocol-specific implementations (WebSocket, MQTT, QUIC, WebTransport)
+- **Dependency**: Both layers depend on `ThunderPropagator.BuildingBlocks` NuGet package for core utilities (DisposableObject, EquatableObject, helpers, collections)
 
-### Feeder Structure (Message Consumer)
-Every feeder implementation in `Feeviders/{System}/ThunderPropagator.Feeders.{System}/`:
+### Key Design Patterns
 
-1. **{System}Feeder.cs** — Inherits `IterativeFeeder<TChannel, TMessage, TConfig>` or `DelegativeFeeder<>`
-   - Mark `internal` and `sealed` in Release: `#if !DEBUG sealed #endif`
-   - Implement `ReceiveAsync()` returning `IAsyncEnumerable<FeederReceivedMessage<T>>`
-   - Set `HealthName` and `HealthTags` for monitoring
-2. **{System}FeederMessage.cs** — Abstract class extends `FeederMessage`
-3. **{System}FeederConfiguration.cs** — Abstract class implements `IAbstractFeederConfiguration`
-4. **{System}FeederExtensions.cs** — DI registration:
-   ```csharp
-   AddXyzFeeder<TChannel, TMessage, TConfig>(IConfigurationRoot, string)
-   AddXyzFeederResolver<TChannel, TMessage, TConfig>()
-   UseXyzFeederResolver<TChannel, TMessage, TConfig>(Guid, TConfig)
-   ```
+**1. Partial Class Channel Architecture**
+`AbstractChannel` is split across 6 files using `partial class` to organize concerns:
+- **AbstractChannel.cs** — Core properties, lifecycle, initialization
+- **AbstractChannel.Subscription.cs** — Subscription management (`AddSubscriptionAsync`, `RemoveSubscriptionAsync`)
+- **AbstractChannel.MessagesHandler.cs** — Message routing and distribution (`HandleMessageAsync`)
+- **AbstractChannel.Metadata.cs** — Metadata initialization and script execution
+- **AbstractChannel.HealthCheckSupport.cs** — Health check integration (`IHealthCheckSupport`)
+- **AbstractChannel.RecoveryHandler.cs** — Snapshot backup/restore (`IRecoveryHandler`)
 
-### Provider Structure (Message Publisher)
-Every provider implementation in `Feeviders/{System}/ThunderPropagator.Providers.DotNet.{System}/`:
-
-1. **{System}Provider.cs** — Inherits `AbstractProvider<TMessage, TConfig>`
-   - Override `InternalExecuteAsync(TMessage, CancellationToken)`
-   - Automatic serialization via `AbstractProvider`
-2. **{System}ProviderMessage.cs** — Abstract class extends `FeederMessage`
-3. **{System}ProviderConfiguration.cs** — Abstract class implements `IAbstractProviderConfiguration`
-4. **{System}ProviderExtensions.cs** — DI registration:
-   ```csharp
-   AddXyzProvider<TMessage, TConfig>(IConfigurationRoot, string)
-   ```
-
-### DI Registration Pattern
+**2. Three-Level Channel Inheritance**
+Channels use progressive specialization:
 ```csharp
-// Feeder registration (message consumption)
-services.AddKafkaFeeder<MyChannel, MyKafkaMessage, MyKafkaConfig>(
-    configuration, "Messaging:Kafka");
+// Base: No generics
+AbstractChannel : DisposableObject, IChannel
 
-// Provider registration (message publishing)
-services.AddKafkaProvider<MyKafkaMessage, MyKafkaConfig>(
-    configuration, "Messaging:Kafka");
+// Typed metadata
+AbstractChannel<TChannelMetadata> : AbstractChannel
+
+// Full specialization
+AbstractChannel<TChannelMetadata, TChannelConfiguration> : AbstractChannel<TChannelMetadata>
 ```
+See [AbstractChannel.cs](src/ThunderPropagator.Application/Channels/AbstractChannel.cs) and [docs](docs/Application/Channels/README.md)
 
-## Build System & Versioning
+**3. Protocol Container Pattern**
+Protocol implementations use container/handler separation:
+- **Container**: Manages connection pool, background jobs (cleanup, health probes, send queues), implements `IHealthCheckSupport`
+- **Handler**: Wraps individual connection, implements protocol-specific sending
+- Factory method: `CreateConnectionHandler()` in container creates handlers
+- Example: `WebSocketConnectionContainer` → `WebSocketConnectionHandler`
 
-### Multi-Targeting & Platforms
-- **Frameworks**: .NET 8, 9, 10 (`TargetFrameworks` in [Directory.Build.props](../Directory.Build.props))
-- **Platforms**: AnyCPU, x86, x64, ARM64
-- **Central Package Management**: Version-controlled via [Directory.Packages.props](../Directory.Packages.props)
-  - Framework-specific versions: `Condition="'$(TargetFramework)' == 'net9.0'"`
-  - ThunderPropagator dependencies use dynamic PackageId: `$(ThunderPropagatorPackageId)` and `$(BuildingBlocksPackageId)`
+**4. Event-Driven Configuration with C# Scripting**
+`AbstractChannelConfiguration` supports C# script hooks via `ChannelConfigurationEvents`:
+```csharp
+public class StockChannelConfiguration : AbstractChannelConfiguration
+{
+    public StockChannelConfiguration()
+    {
+        Events.MessageEmitting = @"(channel, message) => {
+            message[""timestamp""] = DateTime.UtcNow;
+        }";
+    }
+}
+```
+Scripts compiled at runtime using `Microsoft.CodeAnalysis.CSharp.Scripting`
 
-### Package Naming Convention
-Packages include configuration and platform suffixes:
-- **Debug**: `{ProjectName}.Debug.{Platform}` (e.g., `ThunderPropagator.Feeders.Kafka.Debug.x64`)
-- **Release**: `{ProjectName}.{Platform}` (AnyCPU omits platform suffix)
-- Controlled by: `PackageIdConfigurationSuffix` and `PackageIdPlatformSuffix` in Directory.Build.props
+**5. Subscription Key/Field Filtering**
+Messages filtered by key values and selected fields:
+- **SubscribedKey**: Key-value pairs (e.g., `symbol=AAPL`)
+- **SubscribedFields**: Dictionary of field descriptors (only selected fields sent)
+- **SubscriptionMode**: Full (all fields) or Incremental (changed fields only)
+- Managed by `Subscription` and `SubscriptionCollection` in [Channels/Subscribers](src/ThunderPropagator.Application/Channels/Subscribers/)
 
-### Version Management
-Version: `1.0.1-beta.2` ([Directory.Build.props](../Directory.Build.props#L3))
-- Update manually in Directory.Build.props (`<Version>` property)
-- Version flows to all projects automatically
-- ThunderPropagator dependency versions: Separate in Directory.Packages.props (`ThunderPropagatorVersion`, `BuildingBlocksVersion`)
+**6. Pipeline Chain Pattern**
+Request/response processing uses middleware-style pipelines:
+- **IReceivePipeline**: Processes incoming requests (subscribe, unsubscribe, custom actions)
+- **IPushPipeline**: Transforms outgoing messages before protocol sending
+- Delegates: `ReceivePipelineDelegate`, `PushPipelineDelegate`
+- Infrastructure provides: `SubscribePipeline`, `UnsubscribePipeline`, `AuthorizationPipeline`
 
-## Development Workflows
+## Build & Package Management
 
-### Building
+### Central Package Management
+- **Versioning**: All versions in `Directory.Build.props` (e.g., `1.0.1-beta.12`)
+- **Dependencies**: Centrally managed in `Directory.Packages.props` with `ManagePackageVersionsCentrally`
+- **Multi-targeting**: Projects target `net8.0;net9.0;net10.0` via `TargetFrameworks` in `Directory.Build.props`
+- **Multi-platform**: Supports AnyCPU, x86, x64, ARM64 via `Platforms` property
+- **BuildingBlocks Dependency**: Uses `$(BuildingBlocksPackageId)` variable for package reference
+
+### Build Commands
 ```powershell
-dotnet build ThunderPropagator.Feeviders.sln -c Release -p:Platform=AnyCPU
+dotnet restore
+dotnet build -c Release
+dotnet test
+dotnet pack -c Release -o artifacts/pkg
 ```
 
-### Testing
-- **Framework**: xUnit with NSubstitute (mocking) and Bogus (fake data)
-- **Run**: `dotnet test` or via Visual Studio Test Explorer
-- **Structure**: Tests in `Tests/` directory (UnitTests, ArchTests, LoadTests, DotNetClientTests)
+### Configuration Flags
+- `AllowUnsafeBlocks=true`: Enables unsafe code
+- `GenerateDocumentationFile=true`: XML docs required for all public APIs
+- `NoWarn`: Suppresses CS1591 (missing XML docs) and CS0067 (unused events)
+- `LangVersion=latestmajor`: Uses latest major C# version
+- Debug builds append `.Debug` suffix to package IDs
+- `EnablePreviewFeatures=true` in test projects only
 
 ### Package Publishing
-Uses GitHub Packages. See [nuget.config](../nuget.config) for feed configuration.
+- Package IDs: `ThunderPropagator.Application`, `ThunderPropagator.Infrastructure`
+- All packages include `ThunderPropagator.png` and `README.md`
+- Auto-generated on build when `IsPackable=true` and `GeneratePackageOnBuild=true`
+- Output to `artifacts/pkg/` directory
 
+## Testing Strategy
+
+### Test Organization
+- **Unit Tests**: `Tests/ThunderPropagator.UnitTests/` - xUnit with NSubstitute for mocking
+- **Arch Tests**: `Tests/ThunderPropagator.ArchTests/` - NetArchTest.Rules for architecture validation (currently minimal)
+- **Test Mocks**: `ChannelMock.cs`, `ServiceProviderMock.cs` for test infrastructure
+
+### Running Tests
 ```powershell
-# Pack all platforms
-dotnet pack -c Release -p:Platform=x64
-dotnet pack -c Release -p:Platform=ARM64
-dotnet pack -c Release -p:Platform=AnyCPU
-
-# Publish to GitHub Packages
-dotnet nuget push "bin/Release/*.nupkg" --source github --api-key $env:GH_TOKEN
+dotnet test -c Release
+# For specific test
+dotnet test --filter "FullyQualifiedName~ConnectionSubscriptionPushingMessageTest"
 ```
+
+## CI/CD Workflows
+
+### Release Process
+- **develop** branch → `develop-beta-ci.yml` → increments beta version (e.g., `1.0.1-beta.5`)
+- **release/** branch → `develop-release-ci.yml` → strips beta suffix, creates GitHub release, syncs back to develop
+- GitHub Packages feed: `https://nuget.pkg.github.com/KiarashMinoo/index.json`
+
+### Version Management
+Scripts in `.github/scripts/` handle version bumps. Never manually edit version in `Directory.Build.props` outside of release workflows.
 
 ## Code Conventions
 
-### Conditional Compilation
-- **DEBUG vs RELEASE**: Classes are `internal` and non-sealed in DEBUG for testability:
-  ```csharp
-  internal
-  #if !DEBUG
-      sealed
-  #endif
-      class KafkaFeeder<TChannel, TMessage, TConfig> : IterativeFeeder<...>
-  ```
+### Naming & Style
+- Use `CallerArgumentExpression` for guard clauses: `Guard.Against.Null(param)`
+- Internal fields: `_camelCase` with underscore prefix
+- Platform names: `MacOs` not `MacOS`, `onAcPower` not `onACPower`
+- Activity naming convention: `{ClassName}_{MethodName}` for telemetry
+- Sealed classes in DEBUG builds become non-sealed for testability
 
-### Documentation & Warnings
-- XML documentation enabled (`GenerateDocumentationFile`)
-- Suppressed warnings: `CS1591` (missing XML comments), `CS0067` (unused events)
-- Unsafe blocks allowed globally (`AllowUnsafeBlocks`)
+### FeederMessage Pattern
+`FeederMessage` is the core message abstraction from BuildingBlocks - a dictionary-based class implementing `IDictionary<string, object?>`:
+- Properties stored in internal `ConcurrentDictionary`
+- Use `GetValueOrDefault<T>()` and `SetValue()` for type-safe access
+- Supports correlation ID tracking via `ICorrelationIdSupport`
 
-### Nullability
-- Nullable reference types enabled: `<Nullable>enable</Nullable>`
-- Implicit usings enabled: `<ImplicitUsings>enable</ImplicitUsings>`
+### DisposableObject Base Class
+From BuildingBlocks - consistent disposal pattern for all resources:
+- Abstract base class with `IDisposable` and `IAsyncDisposable`
+- Override `DisposeManagedResources()` or `DisposeUnmanagedResources()`
+- Thread-safe disposal tracking with `IsDisposed` flag
 
-### Telemetry & Observability
-All feeders include:
-- **Activity tracing**: OpenTelemetry integration with `Activity.Current`
-- **Health monitoring**: Set `HealthName` and `HealthTags` properties
-  - Format: `feeder_{System}_{Identifier}` (e.g., `feeder_Kafka_my-group_topic1_topic2`)
-  - Tags include system name and relevant identifiers (topics, queues, etc.)
-- **Logging**: Use inherited `Logger` property from base classes
-
-## Project Organization
-
-```
-Feeviders/
-├── ActiveMQ/              # Apache ActiveMQ JMS messaging
-├── Kafka/                 # Apache Kafka event streaming
-├── Mqtt/                  # MQTT IoT protocol
-├── NATS/                  # NATS cloud-native messaging
-├── Pulsar/                # Apache Pulsar multi-tenant messaging
-├── RabbitMQ/              # RabbitMQ AMQP broker
-├── RedisPubSub/           # Redis Pub/Sub in-memory messaging
-├── SharedKernel/          # Core abstractions (Feeders & Providers)
-├── TcpSocket/             # TCP socket protocol
-├── UdpClient/             # UDP datagram protocol
-├── WebApi/                # HTTP/REST API
-└── WebSocket/             # WebSocket real-time web
-
-Each system has 2-3 projects:
-  - ThunderPropagator.Feeders.{System}           # Message consumer
-  - ThunderPropagator.Providers.DotNet.{System}  # Message publisher
-  - ThunderPropagator.Feeviders.{System}.SharedKernel  # Shared utilities (optional)
-
-Tests/
-├── DotNetClientTests/     # .NET client integration tests
-├── ThunderPropagator.ArchTests/          # Architecture validation (NetArchTest)
-├── ThunderPropagator.UnitTests/          # Core unit tests
-└── ThunderPropagator.Web.LoadTests/      # Load/performance tests
-
-docs/
-├── README.md              # Framework overview and quick start
-├── SharedKernel/          # Core abstractions documentation
-├── Kafka/                 # Kafka-specific docs
-├── RabbitMQ/              # RabbitMQ-specific docs
-└── [other systems]/       # Per-system documentation
-```
-
-## Key Implementation Patterns
-
-### Feeder Types
-1. **IterativeFeeder** — Pull-based consumption (Kafka, NATS, Pulsar)
-   - Override `ReceiveAsync()` returning `IAsyncEnumerable<FeederReceivedMessage<T>>`
-   - Use `[EnumeratorCancellation]` on cancellation token parameter
-2. **DelegativeFeeder** — Push-based consumption (WebSocket, WebApi, MQTT)
-   - Implement `EnqueueAsync(byte[], CancellationToken)` or `EnqueueAsync(string, CancellationToken)`
-   - Delegates message handling to internal queue
-
-### Configuration Pattern
-All configurations extend base classes with system-specific properties:
+### DI Registration Pattern
+Infrastructure components use extension methods on `IServiceCollection`:
 ```csharp
-// Feeder configuration
-public abstract class KafkaFeederConfiguration : ConsumerConfig, IAbstractFeederConfiguration
-{
-    public Guid Id { get; set; }
-    public SerializerType SerializerType { get; set; }
-    public string? EnrichmentScript { get; set; }
-    public string[]? MetadataReferences { get; set; }
-}
+services.AddThunderPropagator(configuration.GetSection("ThunderPropagator"));
+app.UseThunderPropagator();
+```
+See [ThunderPropagatorExtensions.cs](src/ThunderPropagator.Infrastructure/Extensions/ThunderPropagatorExtensions.cs)
 
-// Provider configuration
-public abstract class KafkaProviderConfiguration : ProducerConfig, IAbstractProviderConfiguration
+### Specialized Collections
+From BuildingBlocks package:
+- **BindingDictionary<TKey, TValue>**: Dictionary with data binding support
+- **GenericOrderedDictionary<TKey, TValue>**: Ordered dictionary implementation
+
+## Documentation
+
+- Main docs: `docs/README.md` - comprehensive catalog
+- Component-level: `docs/Application/README.md` and `docs/Infrastructure/README.md`
+- Feature docs: See `docs/Application/Channels/README.md` for detailed channel documentation
+
+## Common Tasks
+
+### Adding New Channel
+1. Create configuration class inheriting `AbstractChannelConfiguration`
+2. Define metadata class implementing `IChannelMetadata`
+3. Create channel class inheriting `AbstractChannel<TMetadata, TConfiguration>`
+4. Register in DI via `services.TryAddSingleton<YourChannel>()`
+5. Add to `ChannelManager` initialization
+6. Document in `docs/`
+
+### Adding New Protocol
+1. Create connection info class in `Protocols/{ProtocolName}/`
+2. Create connection handler inheriting `AbstractConnectionHandler<TGateway, TConnectionInfo, TPushMessageConfiguration>`
+3. Create connection container inheriting `AbstractConnectionContainer<...>`
+4. Implement `CreateConnectionHandler()` factory method in container
+5. Register container as singleton with `AddHealthCheckSupport<TContainer>()`
+6. Add protocol configuration to `ThunderPropagatorExtensions.AddThunderPropagator()`
+
+### Adding Pipeline
+1. Create pipeline class inheriting `AbstractReceivePipeline` or `AbstractPushPipeline`
+2. Override `InvokeAsync(context, next)` method
+3. Call `await next(context)` to continue chain
+4. Register in DI and configure in pipeline builder
+5. Add tests in `Tests/ThunderPropagator.UnitTests/Pipelines/`
+
+### Creating Custom FeederMessage
+Inherit from `FeederMessage` (from BuildingBlocks) and add strongly-typed properties:
+```csharp
+public class MyMessage : FeederMessage
 {
-    public SerializerType SerializerType { get; set; }
+    public Guid Id
+    {
+        get => GetValueOrDefault(Guid.NewGuid());
+        set => SetValue(value);
+    }
+    
+    public string? Name
+    {
+        get => GetValueOrNull<string>();
+        set => SetValue(value);
+    }
 }
 ```
 
-### Serialization Support
-Most systems support multiple serialization formats via `SerializerType` enum:
-- `Json` — System.Text.Json
-- `NJson` — Newtonsoft.Json
-- `NetJson` — NetJSON (high-performance)
-- **Kafka-specific**: `SchemaJson`, `Avro` (Confluent Schema Registry)
+### Creating Feeder
+Inherit from `AbstractFeeder` and implement data fetching:
+```csharp
+public class MyFeeder : IterativeFeeder<MyChannel, MyMessage, MyFeederConfiguration>
+{
+    protected override async Task<IEnumerable<MyMessage>> FetchAsync()
+    {
+        // Fetch data from source
+        return await _dataSource.GetLatestAsync();
+    }
+}
+```
 
-## External Dependencies
-- **Core**: ThunderPropagator framework (GitHub Packages)
-  - ThunderPropagator.BuildingBlocks — Common utilities and abstractions
-  - ThunderPropagator — Core streaming framework
-- **Testing**: xUnit, NSubstitute, coverlet, NetArchTest.Rules
-- **Messaging**: Confluent.Kafka, RabbitMQ.Client, MQTTnet, NATS.Net, DotPulsar, Apache.NMS.ActiveMQ, StackExchange.Redis
-- **Infrastructure**: Microsoft.Extensions.* (DI, caching, HTTP), OpenTelemetry.Api
-- **Utilities**: Bogus (fake data), NodaTime (timezones), JetBrains.Annotations, NJsonSchema
-
-## Key Files
-- [Directory.Build.props](../Directory.Build.props) — Global MSBuild properties & versioning
-- [Directory.Packages.props](../Directory.Packages.props) — Centralized package versions with framework conditions
-- [nuget.config](../nuget.config) — NuGet feed configuration (GitHub Packages with credentials)
-- [global.json](../global.json) — .NET SDK version pinning (10.0.0)
-- [docs/README.md](../docs/README.md) — Complete framework documentation with performance comparison
-- [Generate-Changelog.ps1](../Generate-Changelog.ps1) — Conventional Commits changelog generator
-- [Generate-ReleaseNotes.ps1](../Generate-ReleaseNotes.ps1) — Release notes generator
+### Publishing Packages
+Packages auto-publish via GitHub Actions. Manual publish:
+```powershell
+dotnet pack -c Release -o artifacts/pkg
+dotnet nuget push artifacts/pkg/*.nupkg --source github --api-key $GITHUB_TOKEN
+```
