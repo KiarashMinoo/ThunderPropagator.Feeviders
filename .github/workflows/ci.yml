@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, release/**]
+  workflow_dispatch: {}
+
+jobs:
+  beta-ci:
+    if: github.ref == 'refs/heads/develop'
+    uses: KiarashMinoo/.github/.github/workflows/reusable-beta-ci.yml@main
+    with:
+      solution-path: 'ThunderPropagator.BuildingBlocks.sln'
+    secrets:
+      gh-token: ${{ secrets.GH_TOKEN }}
+      nuget-api-key: ${{ secrets.NUGET_API_KEY }}
+
+  release-ci:
+    if: startsWith(github.ref, 'refs/heads/release/')
+    uses: KiarashMinoo/.github/.github/workflows/reusable-release-ci.yml@main
+    with:
+      solution-path: 'ThunderPropagator.BuildingBlocks.sln'
+    secrets:
+      gh-token: ${{ secrets.GH_TOKEN }}
+      nuget-api-key: ${{ secrets.NUGET_API_KEY }}

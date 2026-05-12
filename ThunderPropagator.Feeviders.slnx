@@ -1,0 +1,215 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Feeviders/" />
+  <Folder Name="/Feeviders/ActiveMQ/">
+    <Project Path="Feeviders/ActiveMQ/ThunderPropagator.Feeders.ActiveMQ/ThunderPropagator.Feeders.ActiveMQ.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/ActiveMQ/ThunderPropagator.Feeviders.ActiveMQ.SharedKernel/ThunderPropagator.Feeviders.ActiveMQ.SharedKernel.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/ActiveMQ/ThunderPropagator.Providers.DotNet.ActiveMQ/ThunderPropagator.Providers.DotNet.ActiveMQ.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
+  <Folder Name="/Feeviders/Kafka/">
+    <Project Path="Feeviders/Kafka/ThunderPropagator.Feeders.Kafka/ThunderPropagator.Feeders.Kafka.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/Kafka/ThunderPropagator.Providers.DotNet.Kafka/ThunderPropagator.Providers.DotNet.Kafka.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
+  <Folder Name="/Feeviders/Mqtt/">
+    <Project Path="Feeviders/Mqtt/ThunderPropagator.Feeders.Mqtt/ThunderPropagator.Feeders.Mqtt.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/Mqtt/ThunderPropagator.Feeviders.Mqtt.SharedKernel/ThunderPropagator.Feeviders.Mqtt.SharedKernel.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/Mqtt/ThunderPropagator.Providers.DotNet.Mqtt/ThunderPropagator.Providers.DotNet.Mqtt.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
+  <Folder Name="/Feeviders/NATS/">
+    <Project Path="Feeviders/NATS/ThunderPropagator.Feeders.NATS/ThunderPropagator.Feeders.NATS.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/NATS/ThunderPropagator.Feeviders.NATS.SharedKernel/ThunderPropagator.Feeviders.NATS.SharedKernel.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/NATS/ThunderPropagator.Providers.DotNet.NATS/ThunderPropagator.Providers.DotNet.NATS.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
+  <Folder Name="/Feeviders/Pulsar/">
+    <Project Path="Feeviders/Pulsar/ThunderPropagator.Feeders.Pulsar/ThunderPropagator.Feeders.Pulsar.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/Pulsar/ThunderPropagator.Feeviders.Pulsar.SharedKernel/ThunderPropagator.Feeviders.Pulsar.SharedKernel.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/Pulsar/ThunderPropagator.Providers.DotNet.Pulsar/ThunderPropagator.Providers.DotNet.Pulsar.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
+  <Folder Name="/Feeviders/RabbitMQ/">
+    <Project Path="Feeviders/RabbitMQ/ThunderPropagator.Feeders.RabbitMQ/ThunderPropagator.Feeders.RabbitMQ.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/RabbitMQ/ThunderPropagator.Feeviders.RabbitMQ.SharedKernel/ThunderPropagator.Feeviders.RabbitMQ.SharedKernel.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/RabbitMQ/ThunderPropagator.Providers.DotNet.RabbitMQ/ThunderPropagator.Providers.DotNet.RabbitMQ.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
+  <Folder Name="/Feeviders/RedisPubSub/">
+    <Project Path="Feeviders/RedisPubSub/ThunderPropagator.Feeders.RedisPubSub/ThunderPropagator.Feeders.RedisPubSub.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/RedisPubSub/ThunderPropagator.Providers.DotNet.RedisPubSub/ThunderPropagator.Providers.DotNet.RedisPubSub.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
+  <Folder Name="/Feeviders/SharedKernel/">
+    <Project Path="Feeviders/SharedKernel/ThunderPropagator.Feeders.SharedKernel/ThunderPropagator.Feeders.SharedKernel.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/SharedKernel/ThunderPropagator.Providers.DotNet.SharedKernel/ThunderPropagator.Providers.DotNet.SharedKernel.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
+  <Folder Name="/Feeviders/TcpSocket/">
+    <Project Path="Feeviders/TcpSocket/ThunderPropagator.Feeders.TcpSocket/ThunderPropagator.Feeders.TcpSocket.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/TcpSocket/ThunderPropagator.Feeviders.TcpSocket.SharedKernel/ThunderPropagator.Feeviders.TcpSocket.SharedKernel.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/TcpSocket/ThunderPropagator.Providers.DotNet.TcpSocket/ThunderPropagator.Providers.DotNet.TcpSocket.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
+  <Folder Name="/Feeviders/UdpClient/">
+    <Project Path="Feeviders/UdpClient/ThunderPropagator.Feeders.UdpClient/ThunderPropagator.Feeders.UdpClient.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/UdpClient/ThunderPropagator.Providers.DotNet.UdpClient/ThunderPropagator.Providers.DotNet.UdpClient.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
+  <Folder Name="/Feeviders/WebApi/">
+    <Project Path="Feeviders/WebApi/ThunderPropagator.Feeders.WebApi/ThunderPropagator.Feeders.WebApi.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/WebApi/ThunderPropagator.Providers.DotNet.WebApi/ThunderPropagator.Providers.DotNet.WebApi.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
+  <Folder Name="/Feeviders/WebSocket/">
+    <Project Path="Feeviders/WebSocket/ThunderPropagator.Feeders.WebSocket/ThunderPropagator.Feeders.WebSocket.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/WebSocket/ThunderPropagator.Providers.DotNet.WebSocket/ThunderPropagator.Providers.DotNet.WebSocket.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/Solution Items/.github/" />
+  <Folder Name="/Solution Items/.github/workflows/" />
+  <Folder Name="/Tests/">
+    <Project Path="Tests/ThunderPropagator.ArchTests/ThunderPropagator.ArchTests.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+      <Build Solution="*|ARM64" Project="false" />
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+      <Build Solution="Release|Any CPU" Project="false" />
+    </Project>
+  </Folder>
+  <Folder Name="/Tests/UnitTests/">
+    <Project Path="Tests/UnitTests/ThunderPropagator.UnitTests/ThunderPropagator.UnitTests.csproj">
+      <BuildType Solution="Release|Any CPU" Project="Debug" />
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+      <Build Solution="*|ARM64" Project="false" />
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+      <Build Solution="Release|Any CPU" Project="false" />
+    </Project>
+  </Folder>
+</Solution>
