@@ -10,16 +10,135 @@ jobs:
     if: github.ref == 'refs/heads/develop'
     uses: KiarashMinoo/.github/.github/workflows/reusable-beta-ci.yml@main
     with:
-      solution-path: 'ThunderPropagator.BuildingBlocks.sln'
+      solution-path: 'ThunderPropagator.BuildingBlocks.slnx'
     secrets:
-      gh-token: ${{ secrets.GH_TOKEN }}
-      nuget-api-key: ${{ secrets.NUGET_API_KEY }}
+      gh-token: ${{ secrets.GITHUB_TOKEN }}
+
+  # NuGet.org Trusted Publishing requires the NuGet/login OIDC step to run in
+  # THIS repo's own workflow file (see reusable-beta-ci.yml for why it can't
+  # live in the shared .github workflow).
+  publish-nuget-beta:
+    name: Publish to NuGet.org (beta)
+    needs: beta-ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout tagged version
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/v${{ needs.beta-ci.outputs.version }}
+
+      - name: Download all packages artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: pkg-*
+          path: ./dist/packages
+          merge-multiple: true
+
+      - name: Download all symbols artifacts (optional)
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          pattern: symbols-*
+          path: ./dist/symbols
+          merge-multiple: true
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with: { dotnet-version: 8.0.x }
+
+      - name: NuGet login (OIDC to temp API key — Trusted Publishing)
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Publish packages to NuGet.org
+        shell: bash
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: |
+          shopt -s nullglob
+          for package in ./dist/packages/*.nupkg; do
+            dotnet nuget push "$package" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
+          for symbols in ./dist/symbols/*.snupkg; do
+            dotnet nuget push "$symbols" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
+
+  cleanup-beta:
+    needs: publish-nuget-beta
+    if: always()
+    uses: KiarashMinoo/.github/.github/workflows/reusable-cleanup-artifacts.yml@main
+    secrets:
+      gh-token: ${{ secrets.GITHUB_TOKEN }}
 
   release-ci:
     if: startsWith(github.ref, 'refs/heads/release/')
     uses: KiarashMinoo/.github/.github/workflows/reusable-release-ci.yml@main
     with:
-      solution-path: 'ThunderPropagator.BuildingBlocks.sln'
+      solution-path: 'ThunderPropagator.BuildingBlocks.slnx'
     secrets:
-      gh-token: ${{ secrets.GH_TOKEN }}
-      nuget-api-key: ${{ secrets.NUGET_API_KEY }}
+      gh-token: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-nuget-release:
+    name: Publish to NuGet.org (release)
+    needs: release-ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout tagged version
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/v${{ needs.release-ci.outputs.version }}
+
+      - name: Download all packages artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: pkg-*
+          path: ./dist/packages
+          merge-multiple: true
+
+      - name: Download all symbols artifacts (optional)
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          pattern: symbols-*
+          path: ./dist/symbols
+          merge-multiple: true
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with: { dotnet-version: 8.0.x }
+
+      - name: NuGet login (OIDC to temp API key — Trusted Publishing)
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Publish packages to NuGet.org
+        shell: bash
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: |
+          shopt -s nullglob
+          for package in ./dist/packages/*.nupkg; do
+            dotnet nuget push "$package" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
+          for symbols in ./dist/symbols/*.snupkg; do
+            dotnet nuget push "$symbols" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
+
+  cleanup-release:
+    needs: publish-nuget-release
+    if: always()
+    uses: KiarashMinoo/.github/.github/workflows/reusable-cleanup-artifacts.yml@main
+    secrets:
+      gh-token: ${{ secrets.GITHUB_TOKEN }}
