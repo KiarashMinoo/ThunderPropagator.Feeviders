@@ -2,6 +2,7 @@
 
     <ItemGroup>
         <PackageReference Include="$(BuildingBlocksPackageId)"/>
+        <PackageReference Include="JetBrains.Annotations" />
         <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks"/>
         <PackageReference Include="Microsoft.Extensions.Configuration.Binder"/>
         <PackageReference Include="OpenTelemetry.Api"/>
