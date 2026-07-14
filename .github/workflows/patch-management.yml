@@ -30,6 +30,10 @@ on:
         type: number
         default: 7
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   issues: write
@@ -51,4 +55,3 @@ jobs:
       owasp-suppression-file: 'owasp-suppression.xml'
     secrets:
       gh-token: ${{ secrets.GITHUB_TOKEN }}
-      nvd-api-key: ${{ secrets.NVD_API_KEY }}

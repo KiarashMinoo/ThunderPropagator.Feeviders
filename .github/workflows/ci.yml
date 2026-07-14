@@ -2,143 +2,92 @@ name: CI
 
 on:
   push:
-    branches: [develop, release/**]
-  workflow_dispatch: {}
+    branches: [develop] # beta invokes automatically on every push. Manual dispatch covers both beta and release.
+  workflow_dispatch:
+    inputs:
+      release-mode:
+        description: Channel for this manual run -- 'beta' or 'release'. Defaults to 'beta' if left unset.
+        type: choice
+        options:
+          - beta
+          - release
+        default: beta
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/develop' }}
 
 jobs:
+  # NuGet.org Trusted Publishing (OIDC) is built directly into reusable-ci.yml (it has
+  # its own inline publish-nuget job) — this repo doesn't need its own. reusable-ci.yml
+  # defaults to nuget-auth-mode: 'classic', which pushes with a plain NuGet.org API key
+  # (secrets.nuget-api-key) instead of OIDC Trusted Publishing -- OIDC doesn't work
+  # through a reusable workflow hosted in a different repo (see reusable-ci.yml's
+  # nuget-auth-mode input description for the full explanation). Set a repo secret
+  # named NUGET_API_KEY (Settings > Secrets and variables > Actions > Secrets) with a
+  # classic API key from nuget.org > API Keys, scoped to this package/owner.
+  #
+  # ADMIN_PUSH_TOKEN: develop has a classic "Require a pull request before merging"
+  # branch protection rule with no usable bypass for the default GITHUB_TOKEN identity
+  # (github-actions[bot]) -- neither classic protection's "administrators can bypass"
+  # toggle nor this (personal, non-org) repo's Ruleset bypass list can be granted to
+  # that identity, only to a real admin-role account. So a Personal Access Token
+  # belonging to an account with Admin role on this repo is stored as the ADMIN_PUSH_TOKEN
+  # secret and passed through as push-token, which reusable-ci.yml's version job uses
+  # (instead of gh-token) ONLY for the checkout that sets up the git credential the
+  # later version-bump commit push reuses. That admin account's role must also be added
+  # to the branch protection/ruleset's bypass list on GitHub's side for this to work.
+  #
+  # IMPORTANT: a job-level `permissions:` block is exhaustive, not additive -- any
+  # scope not listed here is implicitly set to "none" for every nested job the called
+  # reusable workflow runs, regardless of what that nested job requests for itself.
+  # This must list every scope ANY job in reusable-ci.yml needs across the whole run:
+  # contents:write (version/changelog commit, tag, GitHub Release), packages:write +
+  # id-token:write (publish-nuget, for GitHub Packages / OIDC respectively, if ever
+  # switched on), actions:write (cleanup-nuget-artifacts, to delete run artifacts).
+  #
+  # beta-ci and manual-ci are gated by BOTH github.event_name and github.ref (not ref
+  # alone) so a manual workflow_dispatch run from develop can't accidentally trigger
+  # both jobs at once: beta-ci only ever fires on an automatic push to develop.
+  # manual-ci only ever fires on a manual dispatch (from develop -- this repo doesn't
+  # cut separate release/** branches -- or a release/** branch if it ever does), and
+  # uses whatever channel the release-mode input was set to, defaulting to 'beta' if
+  # the dispatcher left it unset -- so an unconfigured manual run is still just a beta,
+  # not an accidental release.
   beta-ci:
-    if: github.ref == 'refs/heads/develop'
-    uses: KiarashMinoo/.github/.github/workflows/reusable-beta-ci.yml@main
-    with:
-      solution-path: 'ThunderPropagator.BuildingBlocks.slnx'
-    secrets:
-      gh-token: ${{ secrets.GITHUB_TOKEN }}
-
-  # NuGet.org Trusted Publishing requires the NuGet/login OIDC step to run in
-  # THIS repo's own workflow file (see reusable-beta-ci.yml for why it can't
-  # live in the shared .github workflow).
-  publish-nuget-beta:
-    name: Publish to NuGet.org (beta)
-    needs: beta-ci
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     permissions:
-      contents: read
+      contents: write
+      packages: write
       id-token: write
-    steps:
-      - name: Checkout tagged version
-        uses: actions/checkout@v7
-        with:
-          ref: refs/tags/v${{ needs.beta-ci.outputs.version }}
-
-      - name: Download all packages artifacts
-        uses: actions/download-artifact@v8
-        with:
-          pattern: pkg-*
-          path: ./dist/packages
-          merge-multiple: true
-
-      - name: Download all symbols artifacts (optional)
-        continue-on-error: true
-        uses: actions/download-artifact@v8
-        with:
-          pattern: symbols-*
-          path: ./dist/symbols
-          merge-multiple: true
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
-        with: { dotnet-version: 8.0.x }
-
-      - name: NuGet login (OIDC to temp API key — Trusted Publishing)
-        id: login
-        uses: NuGet/login@v1
-        with:
-          user: ${{ secrets.NUGET_USER }}
-
-      - name: Publish packages to NuGet.org
-        shell: bash
-        env:
-          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
-        run: |
-          shopt -s nullglob
-          for package in ./dist/packages/*.nupkg; do
-            dotnet nuget push "$package" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
-          done
-          for symbols in ./dist/symbols/*.snupkg; do
-            dotnet nuget push "$symbols" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
-          done
-
-  cleanup-beta:
-    needs: publish-nuget-beta
-    if: always()
-    uses: KiarashMinoo/.github/.github/workflows/reusable-cleanup-artifacts.yml@main
-    secrets:
-      gh-token: ${{ secrets.GITHUB_TOKEN }}
-
-  release-ci:
-    if: startsWith(github.ref, 'refs/heads/release/')
-    uses: KiarashMinoo/.github/.github/workflows/reusable-release-ci.yml@main
+      actions: write
+    uses: KiarashMinoo/.github/.github/workflows/reusable-ci.yml@main
     with:
-      solution-path: 'ThunderPropagator.BuildingBlocks.slnx'
+      channel: beta
+      solution-path: 'ThunderPropagator.Feeviders.slnx'
+      publish-to-nuget: true
+      nuget-target: 'nuget.org'
+      nuget-auth-mode: 'classic'
     secrets:
       gh-token: ${{ secrets.GITHUB_TOKEN }}
+      push-token: ${{ secrets.ADMIN_PUSH_TOKEN }}
+      nuget-api-key: ${{ secrets.NUGET_API_KEY }}
 
-  publish-nuget-release:
-    name: Publish to NuGet.org (release)
-    needs: release-ci
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+  manual-ci:
+    if: github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/'))
     permissions:
-      contents: read
+      contents: write
+      packages: write
       id-token: write
-    steps:
-      - name: Checkout tagged version
-        uses: actions/checkout@v7
-        with:
-          ref: refs/tags/v${{ needs.release-ci.outputs.version }}
-
-      - name: Download all packages artifacts
-        uses: actions/download-artifact@v8
-        with:
-          pattern: pkg-*
-          path: ./dist/packages
-          merge-multiple: true
-
-      - name: Download all symbols artifacts (optional)
-        continue-on-error: true
-        uses: actions/download-artifact@v8
-        with:
-          pattern: symbols-*
-          path: ./dist/symbols
-          merge-multiple: true
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
-        with: { dotnet-version: 8.0.x }
-
-      - name: NuGet login (OIDC to temp API key — Trusted Publishing)
-        id: login
-        uses: NuGet/login@v1
-        with:
-          user: ${{ secrets.NUGET_USER }}
-
-      - name: Publish packages to NuGet.org
-        shell: bash
-        env:
-          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
-        run: |
-          shopt -s nullglob
-          for package in ./dist/packages/*.nupkg; do
-            dotnet nuget push "$package" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
-          done
-          for symbols in ./dist/symbols/*.snupkg; do
-            dotnet nuget push "$symbols" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
-          done
-
-  cleanup-release:
-    needs: publish-nuget-release
-    if: always()
-    uses: KiarashMinoo/.github/.github/workflows/reusable-cleanup-artifacts.yml@main
+      actions: write
+    uses: KiarashMinoo/.github/.github/workflows/reusable-ci.yml@main
+    with:
+      channel: ${{ inputs.release-mode }}
+      solution-path: 'ThunderPropagator.Feeviders.slnx'
+      publish-to-nuget: true
+      nuget-target: 'nuget.org'
+      nuget-auth-mode: 'classic'
     secrets:
       gh-token: ${{ secrets.GITHUB_TOKEN }}
+      push-token: ${{ secrets.ADMIN_PUSH_TOKEN }}
+      nuget-api-key: ${{ secrets.NUGET_API_KEY }}
