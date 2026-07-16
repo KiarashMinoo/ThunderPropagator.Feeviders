@@ -40,8 +40,11 @@ namespace ThunderPropagator.Feeders.Mqtt
             HealthName = $"feeder_{nameof(Mqtt)}_{_mqttFeederConfiguration.Topic}";
             HealthTags = [.. HealthTags, nameof(Mqtt), _mqttFeederConfiguration.Topic];
 
-            Logger.LogInformation($"{GetType().GetTypeInfo().Name}/{channel.Metadata.ChannelName} on topic {{Topic}} has subscribed.",
-                string.Join(", ", _mqttFeederConfiguration.Topic));
+            Logger.LogInformation(
+                "{FeederName}/{ChannelName} on topic {Topic} has subscribed.",
+                GetType().Name,
+                channel.Metadata.ChannelName,
+                _mqttFeederConfiguration.Topic);
         }
 
         private async Task StartAsync(object? state)

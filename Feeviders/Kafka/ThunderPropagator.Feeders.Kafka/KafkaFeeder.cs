@@ -70,8 +70,11 @@ namespace ThunderPropagator.Feeders.Kafka
 
             _consumer.Subscribe(_kafkaFeederConfiguration.TopicNames);
 
-            Logger.LogInformation($"{GetType().GetTypeInfo().Name}/{channel.Metadata.ChannelName} on topic(s) {{TopicNames}} has subscribed.",
-                string.Join(", ", _kafkaFeederConfiguration.TopicNames));
+            Logger.LogInformation(
+                "{FeederName}/{ChannelName} on topic(s) {TopicNames} has subscribed.",
+                GetType().Name,
+                channel.Metadata.ChannelName,
+                _kafkaFeederConfiguration.TopicNames);
         }
 
         protected override async IAsyncEnumerable<FeederReceivedMessage<TKafkaFeederMessage>> ReceiveAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
