@@ -392,7 +392,7 @@ namespace ThunderPropagator.Feeviders.Mqtt.SharedKernel
             {
                 foreach (var userProperty in UserProperties)
                 {
-                    mqttClientOptionsBuilder.WithUserProperty(userProperty.Key, userProperty.Value);
+                    mqttClientOptionsBuilder.WithUserProperty(userProperty.Key, Encoding.UTF8.GetBytes(userProperty.Value).AsMemory());
                 }
             }
 
@@ -400,7 +400,7 @@ namespace ThunderPropagator.Feeviders.Mqtt.SharedKernel
             {
                 foreach (var userProperty in WillUserProperties)
                 {
-                    mqttClientOptionsBuilder.WithWillUserProperty(userProperty.Key, userProperty.Value);
+                    mqttClientOptionsBuilder.WithWillUserProperty(userProperty.Key, Encoding.UTF8.GetBytes(userProperty.Value).AsMemory());
                 }
             }
 

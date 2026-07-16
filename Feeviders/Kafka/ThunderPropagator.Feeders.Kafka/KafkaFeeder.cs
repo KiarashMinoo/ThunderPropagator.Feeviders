@@ -146,7 +146,7 @@ namespace ThunderPropagator.Feeders.Kafka
             return true;
         }
 
-        protected override Task StopAsync(CancellationToken cancellationToken = default)
+        protected override Task StoppingAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -157,7 +157,7 @@ namespace ThunderPropagator.Feeders.Kafka
                 Logger.LogWarning(ex, "Exception while closing Kafka consumer.");
             }
 
-            return base.StopAsync(cancellationToken);
+            return base.StoppingAsync(cancellationToken);
         }
 
         protected override void DisposeManagedResources()

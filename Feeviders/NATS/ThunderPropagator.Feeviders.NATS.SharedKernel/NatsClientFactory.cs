@@ -49,7 +49,7 @@ namespace ThunderPropagator.Feeviders.NATS.SharedKernel
                 SerializerRegistry = new JsonNatsSerializerRegistry(configuration.SerializerType)
             };
 
-            return new NatsClient(natsOpts, configuration.BoundedChannelFullMode);
+            return new NatsClient(natsOpts);
         }
     }
 }

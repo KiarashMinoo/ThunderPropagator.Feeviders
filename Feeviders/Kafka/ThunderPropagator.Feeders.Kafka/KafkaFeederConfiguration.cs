@@ -63,6 +63,42 @@ namespace ThunderPropagator.Feeders.Kafka
             }
         }
 
+        public TimeSpan ReceiveTimeout
+        {
+            get => TimeSpan.TryParse(Get("receive.timeout"), out var value) ? value : TimeSpan.FromHours(1);
+            set => Set("receive.timeout", value.ToString());
+        }
+
+        public TimeSpan StartupTimeout
+        {
+            get => TimeSpan.TryParse(Get("startup.timeout"), out var value) ? value : TimeSpan.FromSeconds(30);
+            set => Set("startup.timeout", value.ToString());
+        }
+
+        public TimeSpan MessageHandlerTimeout
+        {
+            get => TimeSpan.TryParse(Get("message.handler.timeout"), out var value) ? value : TimeSpan.FromHours(1);
+            set => Set("message.handler.timeout", value.ToString());
+        }
+
+        public double MemoryPressurePauseThreshold
+        {
+            get => GetDouble("memory.pressure.pause.threshold") ?? 0.0;
+            set => Set("memory.pressure.pause.threshold", value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        public double MemoryPressureResumeThreshold
+        {
+            get => GetDouble("memory.pressure.resume.threshold") ?? 0.70;
+            set => Set("memory.pressure.resume.threshold", value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        public TimeSpan MemoryPressurePollingInterval
+        {
+            get => TimeSpan.TryParse(Get("memory.pressure.polling.interval"), out var value) ? value : TimeSpan.FromSeconds(5);
+            set => Set("memory.pressure.polling.interval", value.ToString());
+        }
+
         protected KafkaFeederConfiguration()
         {
             AutoOffsetReset = Confluent.Kafka.AutoOffsetReset.Latest;

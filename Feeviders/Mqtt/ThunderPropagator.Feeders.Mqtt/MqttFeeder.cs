@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
+using MQTTnet.Packets;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
 using OpenTelemetry;
@@ -57,8 +58,8 @@ namespace ThunderPropagator.Feeders.Mqtt
             {
                 try
                 {
-                    var activityContext = args.ApplicationMessage.UserProperties.Find(x => x.Name == nameof(ActivityContext))?.Value.FromNJsonBase64<ActivityContext>();
-                    var baggage = args.ApplicationMessage.UserProperties.Find(x => x.Name == nameof(Baggage))?.Value.FromNJsonBase64<Baggage>();
+                    var activityContext = args.ApplicationMessage.UserProperties.Find(x => x.Name == nameof(ActivityContext))?.ReadValueAsString().FromNJsonBase64<ActivityContext>();
+                    var baggage = args.ApplicationMessage.UserProperties.Find(x => x.Name == nameof(Baggage))?.ReadValueAsString().FromNJsonBase64<Baggage>();
 
                     await ReceiveAsync(args.ApplicationMessage.Payload.ToArray(),
                         activityContext,
