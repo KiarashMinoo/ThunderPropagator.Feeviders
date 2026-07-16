@@ -4,6 +4,7 @@
         <PackageReference Include="$(BuildingBlocksPackageId)"/>
         <PackageReference Include="Apache.NMS"/>
         <PackageReference Include="Apache.NMS.ActiveMQ"/>
+        <PackageReference Include="JetBrains.Annotations" />
     </ItemGroup>
 
 </Project>

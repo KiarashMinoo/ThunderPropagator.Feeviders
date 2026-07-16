@@ -2,6 +2,7 @@
 
     <ItemGroup>
         <PackageReference Include="$(BuildingBlocksPackageId)"/>
+        <PackageReference Include="JetBrains.Annotations" />
         <PackageReference Include="NATS.Net"/>
     </ItemGroup>
 

@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
+        <PackageReference Include="JetBrains.Annotations" />
         <ProjectReference Include="..\..\SharedKernel\ThunderPropagator.Providers.DotNet.SharedKernel\ThunderPropagator.Providers.DotNet.SharedKernel.csproj"/>
         <ProjectReference Include="..\ThunderPropagator.Feeviders.TcpSocket.SharedKernel\ThunderPropagator.Feeviders.TcpSocket.SharedKernel.csproj"/>
     </ItemGroup>

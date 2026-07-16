@@ -3,6 +3,7 @@
     <ItemGroup>
         <PackageReference Include="$(BuildingBlocksPackageId)"/>
         <PackageReference Include="DotPulsar"/>
+        <PackageReference Include="JetBrains.Annotations" />
     </ItemGroup>
 
 </Project>
