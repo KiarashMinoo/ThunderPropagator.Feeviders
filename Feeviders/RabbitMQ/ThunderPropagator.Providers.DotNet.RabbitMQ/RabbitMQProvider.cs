@@ -47,11 +47,9 @@ namespace ThunderPropagator.Providers.DotNet.RabbitMQ
 
         protected override async Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)
         {
-            if (_channel is null)
-                return;
-
             try
             {
+                var channel = GetReadyChannel(_channel, _rabbitMQProviderConfiguration.Queue);
                 var channelProperties = new BasicProperties
                 {
                     ContentType = "application/json",
@@ -77,7 +75,7 @@ namespace ThunderPropagator.Providers.DotNet.RabbitMQ
                             });
                 }
 
-                await _channel.BasicPublishAsync(_rabbitMQProviderConfiguration.Exchange,
+                await channel.BasicPublishAsync(_rabbitMQProviderConfiguration.Exchange,
                     _rabbitMQProviderConfiguration.RoutingKey,
                     body: new ReadOnlyMemory<byte>(bytes),
                     basicProperties: channelProperties,
@@ -91,6 +89,17 @@ namespace ThunderPropagator.Providers.DotNet.RabbitMQ
                     _rabbitMQProviderConfiguration.Queue);
                 throw;
             }
+        }
+
+        internal static IChannel GetReadyChannel(IChannel? channel, string queue)
+        {
+            if (channel is null || !channel.IsOpen)
+            {
+                throw new InvalidOperationException(
+                    $"RabbitMQ provider channel for Queue '{queue}' is not ready. The message was not published.");
+            }
+
+            return channel;
         }
 
         protected override async ValueTask DisposeManagedResourcesAsync()
