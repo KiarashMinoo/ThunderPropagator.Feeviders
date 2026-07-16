@@ -26,8 +26,8 @@ namespace ThunderPropagator.Feeders.NATS
     {
         private readonly INatsClient _client;
         private INatsJSConsumer? _natsJsConsumer;
-        // Initialization task for JetStream consumer when created async
-        private readonly Task? _jetStreamInitTask;
+        private Exception? _jetStreamInitializationException;
+        private bool _isJetStreamReady;
 
         public NatsFeeder(TChannel channel,
             TNatsFeederConfiguration feederConfiguration,
@@ -41,9 +41,26 @@ namespace ThunderPropagator.Feeders.NATS
             {
                 ArgumentException.ThrowIfNullOrWhiteSpace(FeederConfiguration.StreamName);
                 ArgumentNullException.ThrowIfNull(FeederConfiguration.ConsumerConfig);
-                // initialize JetStream consumer asynchronously and store the task so other methods can await it
-                _jetStreamInitTask = InitializeJetStreamConsumerAsync(serviceProvider.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping);
             }
+        }
+
+        protected override async Task StartingAsync(CancellationToken cancellationToken = default)
+        {
+            if (FeederConfiguration.MessagingType == MessagingType.JetStream)
+            {
+                try
+                {
+                    await InitializeJetStreamConsumerAsync(cancellationToken).ConfigureAwait(false);
+                    _isJetStreamReady = true;
+                }
+                catch (Exception exception)
+                {
+                    _jetStreamInitializationException = exception;
+                    throw;
+                }
+            }
+
+            await base.StartingAsync(cancellationToken).ConfigureAwait(false);
         }
 
         protected override async IAsyncEnumerable<FeederReceivedMessage<TNatsFeederMessage>> ReceiveAsync([EnumeratorCancellation] CancellationToken cancellationToken = new())
@@ -61,9 +78,15 @@ namespace ThunderPropagator.Feeders.NATS
 
                     break;
                 case MessagingType.JetStream:
-                    // ensure initialization completed (or fail) before beginning to consume
-                    if (_jetStreamInitTask is not null)
-                        await _jetStreamInitTask.ConfigureAwait(false);
+                    if (!_isJetStreamReady)
+                    {
+                        var exception = _jetStreamInitializationException ??
+                                        new InvalidOperationException("The JetStream consumer has not been initialized.");
+                        ReportHealth(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy, exception);
+                        await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken)
+                            .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+                        break;
+                    }
 
                     ArgumentNullException.ThrowIfNull(_natsJsConsumer);
 

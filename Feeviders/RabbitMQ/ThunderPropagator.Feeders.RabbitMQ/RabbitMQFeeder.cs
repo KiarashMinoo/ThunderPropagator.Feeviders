@@ -8,9 +8,8 @@ using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.Feeviders.RabbitMQ.SharedKernel;
 using System.Reflection;
 using System.Text;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using OpenTelemetry;
+using ThunderPropagator.Feeders.SharedKernel;
 
 namespace ThunderPropagator.Feeders.RabbitMQ
 {
@@ -26,6 +25,8 @@ namespace ThunderPropagator.Feeders.RabbitMQ
         private IChannel? _channel;
         private IConnection? _connection;
         private AsyncEventingBasicConsumer? _consumer;
+        private readonly InFlightMessageTracker _inFlightMessages = new();
+        private readonly CancellationTokenSource _receiveCancellation = new();
 
         private readonly TextMapPropagator _propagator = Propagators.DefaultTextMapPropagator;
 
@@ -35,82 +36,61 @@ namespace ThunderPropagator.Feeders.RabbitMQ
             IServiceProvider serviceProvider)
             : base(channel, rabbitMqFeederConfiguration, feederHandler, serviceProvider)
         {
-            var applicationLifetime = serviceProvider.GetRequiredService<IHostApplicationLifetime>();
-
-            _ = Task.Run(() => StartAsync_CatchAll(applicationLifetime.ApplicationStopping), applicationLifetime.ApplicationStopping);
-
             HealthName = $"feeder_{nameof(RabbitMQ)}_{rabbitMqFeederConfiguration.Queue}";
             HealthTags = [.. HealthTags, nameof(RabbitMQ), rabbitMqFeederConfiguration.Queue];
         }
 
-        private async Task StartAsync(object? state)
+        protected override async Task StartAsync(CancellationToken cancellationToken = default)
         {
-            if (state is not CancellationToken cancellationToken)
-                cancellationToken = CancellationToken.None;
+            (_connection, _channel) = await RabbitMQFeeviderConnectionFactory.InitializeChannelAsync(FeederConfiguration, cancellationToken).ConfigureAwait(false);
 
-            try
+            _consumer = new AsyncEventingBasicConsumer(_channel);
+
+            _consumer.ReceivedAsync += async (_, eventArgs) =>
             {
-                (_connection, _channel) = await RabbitMQFeeviderConnectionFactory.InitializeChannelAsync(FeederConfiguration, cancellationToken).ConfigureAwait(false);
+                if (!_inFlightMessages.TryBegin())
+                    return;
 
-                _consumer = new AsyncEventingBasicConsumer(_channel);
-
-                _consumer.ReceivedAsync += async (_, eventArgs) =>
+                try
                 {
-                    try
-                    {
-                        var parentContext = _propagator.Extract(default, eventArgs.BasicProperties, ExtractTraceContextFromBasicProperties);
+                    var parentContext = _propagator.Extract(default, eventArgs.BasicProperties, ExtractTraceContextFromBasicProperties);
 
-                        ActivityContext? activityContext = parentContext.ActivityContext;
-                        Baggage? baggage = parentContext.Baggage;
+                    ActivityContext? activityContext = parentContext.ActivityContext;
+                    Baggage? baggage = parentContext.Baggage;
 
-                        await ReceiveAsync(eventArgs.Body.ToArray(),
-                            activityContext,
-                            baggage,
-                            new Dictionary<string, object?>
-                            {
-                                { nameof(eventArgs.Exchange), eventArgs.Exchange },
-                                { nameof(eventArgs.ConsumerTag), eventArgs.ConsumerTag },
-                                { nameof(eventArgs.DeliveryTag), eventArgs.DeliveryTag },
-                                { nameof(eventArgs.RoutingKey), eventArgs.RoutingKey },
-                            },
-                            cancellationToken).ConfigureAwait(false);
+                    await ReceiveAsync(eventArgs.Body.ToArray(),
+                        activityContext,
+                        baggage,
+                        new Dictionary<string, object?>
+                        {
+                            { nameof(eventArgs.Exchange), eventArgs.Exchange },
+                            { nameof(eventArgs.ConsumerTag), eventArgs.ConsumerTag },
+                            { nameof(eventArgs.DeliveryTag), eventArgs.DeliveryTag },
+                            { nameof(eventArgs.RoutingKey), eventArgs.RoutingKey },
+                        },
+                        _receiveCancellation.Token).ConfigureAwait(false);
 
-                        ReportHealth(HealthStatus.Healthy);
-                    }
-                    catch (Exception exception)
-                    {
-                        ReportHealth(HealthStatus.Unhealthy, exception);
+                    ReportHealth(HealthStatus.Healthy);
+                }
+                catch (Exception exception)
+                {
+                    ReportHealth(HealthStatus.Unhealthy, exception);
 
-                        Logger.LogError(exception, "error has occured while consuming messages on Queue {Queue}.", FeederConfiguration.Queue);
-                    }
-                };
+                    Logger.LogError(exception, "error has occured while consuming messages on Queue {Queue}.", FeederConfiguration.Queue);
+                }
+                finally
+                {
+                    _inFlightMessages.Complete();
+                }
+            };
 
-                await _channel.BasicConsumeAsync(FeederConfiguration.Queue, FeederConfiguration.AutoAck, _consumer, cancellationToken: cancellationToken).ConfigureAwait(false);
+            await _channel.BasicConsumeAsync(FeederConfiguration.Queue, FeederConfiguration.AutoAck, _consumer, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                Logger.LogInformation(
-                    "{Name}/{ChannelName} on Queue {Queue} has configured.",
-                    GetType().GetTypeInfo().Name,
-                    Channel.Metadata.ChannelName,
-                    FeederConfiguration.Queue);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Failed to initialize RabbitMQ feeder or consumer.");
-                ReportHealth(HealthStatus.Unhealthy, ex);
-            }
-        }
-
-        private async Task StartAsync_CatchAll(object? state)
-        {
-            try
-            {
-                await StartAsync(state).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Unhandled exception in RabbitMQ feeder background loop.");
-                ReportHealth(HealthStatus.Unhealthy, ex);
-            }
+            Logger.LogInformation(
+                "{Name}/{ChannelName} on Queue {Queue} has configured.",
+                GetType().GetTypeInfo().Name,
+                Channel.Metadata.ChannelName,
+                FeederConfiguration.Queue);
         }
 
         private IEnumerable<string> ExtractTraceContextFromBasicProperties(IReadOnlyBasicProperties props, string key)
@@ -130,6 +110,9 @@ namespace ThunderPropagator.Feeders.RabbitMQ
 
         protected override async Task StopAsync(CancellationToken cancellationToken = default)
         {
+            await _inFlightMessages.DrainAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+            await _receiveCancellation.CancelAsync().ConfigureAwait(false);
+
             if (_channel is not null)
                 await _channel.CloseAsync(cancellationToken: cancellationToken);
 
@@ -148,6 +131,8 @@ namespace ThunderPropagator.Feeders.RabbitMQ
 
             if (_connection is not null)
                 await _connection.DisposeAsync();
+
+            _receiveCancellation.Dispose();
         }
     }
 }
