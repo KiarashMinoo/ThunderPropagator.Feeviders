@@ -14,6 +14,7 @@ using System.Security.Authentication;
 using System.Text;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application;
+using ThunderPropagator.Feeders.SharedKernel;
 
 namespace ThunderPropagator.Feeders.TcpSocket
 {
@@ -73,8 +74,10 @@ namespace ThunderPropagator.Feeders.TcpSocket
 
 
         private readonly TTcpSocketFeederConfiguration _tcpSocketFeederConfiguration;
-        private readonly IHostApplicationLifetime _applicationLifetime;
         private readonly TcpListener _listener;
+        private readonly InFlightMessageTracker _inFlightMessages = new();
+        private readonly CancellationTokenSource _receiveCancellation = new();
+        private Task _backgroundTask = Task.CompletedTask;
         private readonly ReadOnlyMemory<byte> _eomBytes;
         private readonly ReadOnlyMemory<byte> _authenticationPrefixBytes;
         private readonly ReadOnlyMemory<byte> _usernamePrefixBytes;
@@ -89,7 +92,6 @@ namespace ThunderPropagator.Feeders.TcpSocket
             : base(channel, tcpSocketFeederConfiguration, feederHandler, serviceProvider)
         {
             _tcpSocketFeederConfiguration = tcpSocketFeederConfiguration;
-            _applicationLifetime = serviceProvider.GetRequiredService<IHostApplicationLifetime>();
 
             // Pre-compute byte arrays to avoid repeated allocations
             _eomBytes = Encoding.UTF8.GetBytes(Constants.Eom);
@@ -105,22 +107,31 @@ namespace ThunderPropagator.Feeders.TcpSocket
             HealthTags = [.. HealthTags, nameof(TcpSocket), tcpSocketFeederConfiguration.Port.ToString()];
 
             _listener = new TcpListener(IPAddress.Any, tcpSocketFeederConfiguration.Port);
-            _listener.Start();
-
-            // Use Task.Run instead of new Thread for better async integration and observe top-level errors
-            _ = Task.Run(() => StartAsync_CatchAll(), _applicationLifetime.ApplicationStopping);
         }
 
-        private async Task StartAsync()
+        protected override Task StartAsync(CancellationToken cancellationToken = default)
         {
-            while (!IsStopped)
+            _listener.Start();
+            _backgroundTask = Task.Factory
+                .StartNew(StartAsync_CatchAll,
+                    CancellationToken.None,
+                    TaskCreationOptions.LongRunning,
+                    TaskScheduler.Default)
+                .Unwrap();
+
+            return Task.CompletedTask;
+        }
+
+        private async Task RunAsync()
+        {
+            while (!IsStopped && !_receiveCancellation.IsCancellationRequested)
             {
                 TcpClient? client = null;
                 Stream? stream = null;
 
                 try
                 {
-                    client = await _listener.AcceptTcpClientAsync(_applicationLifetime.ApplicationStopping).ConfigureAwait(false);
+                    client = await _listener.AcceptTcpClientAsync(_receiveCancellation.Token).ConfigureAwait(false);
 
                     if (!CheckAllowance(client.Client.RemoteEndPoint))
                     {
@@ -147,7 +158,7 @@ namespace ThunderPropagator.Feeders.TcpSocket
 
                     // Read message data
                     var reader = new FramedStreamReader(stream, _eomBytes.Span);
-                    var bytes = await reader.ReadUntilEomAsync(_tcpSocketFeederConfiguration.BufferSize, _applicationLifetime.ApplicationStopping).ConfigureAwait(false);
+                    var bytes = await reader.ReadUntilEomAsync(_tcpSocketFeederConfiguration.BufferSize, _receiveCancellation.Token).ConfigureAwait(false);
 
                     if (bytes.Length == 0)
                     {
@@ -163,14 +174,28 @@ namespace ThunderPropagator.Feeders.TcpSocket
                     }
 
                     // Process the message
-                    var tcpSocketFeederMessage = Deserialize(bytes) ??
-                                                 throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
+                    if (!_inFlightMessages.TryBegin())
+                        continue;
 
-                    var activityContext = tcpSocketFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
-                    var baggage = tcpSocketFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
-                    await ReceiveAsync(tcpSocketFeederMessage, activityContext, baggage).ConfigureAwait(false);
+                    try
+                    {
+                        var tcpSocketFeederMessage = Deserialize(bytes) ??
+                                                     throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
 
-                    ReportHealth(HealthStatus.Healthy);
+                        var activityContext = tcpSocketFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
+                        var baggage = tcpSocketFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
+                        await ReceiveAsync(tcpSocketFeederMessage, activityContext, baggage, cancellationToken: _receiveCancellation.Token).ConfigureAwait(false);
+
+                        ReportHealth(HealthStatus.Healthy);
+                    }
+                    finally
+                    {
+                        _inFlightMessages.Complete();
+                    }
+                }
+                catch (Exception) when (IsStopped || _receiveCancellation.IsCancellationRequested)
+                {
+                    // Expected when shutdown stops the listener or cancels an active read.
                 }
                 catch (Exception exception) when (exception is not OperationCanceledException)
                 {
@@ -190,13 +215,23 @@ namespace ThunderPropagator.Feeders.TcpSocket
         {
             try
             {
-                await StartAsync().ConfigureAwait(false);
+                await RunAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 ReportHealth(HealthStatus.Unhealthy, ex);
                 Logger.LogError(ex, "Unhandled exception in TCP socket feeder background loop.");
             }
+        }
+
+        protected override async Task StopAsync(CancellationToken cancellationToken = default)
+        {
+            var drainTask = _inFlightMessages.DrainAsync(TimeSpan.FromSeconds(5), cancellationToken);
+            _listener.Stop();
+            await drainTask.ConfigureAwait(false);
+            await _receiveCancellation.CancelAsync().ConfigureAwait(false);
+            await _backgroundTask.WaitAsync(cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            await base.StopAsync(cancellationToken).ConfigureAwait(false);
         }
 
         private void ConfigureStreamTimeouts(Stream stream)
@@ -261,6 +296,8 @@ namespace ThunderPropagator.Feeders.TcpSocket
         {
             _listener.Stop();
             _listener.Dispose();
+            _receiveCancellation.Dispose();
+            base.DisposeManagedResources();
         }
     }
 }

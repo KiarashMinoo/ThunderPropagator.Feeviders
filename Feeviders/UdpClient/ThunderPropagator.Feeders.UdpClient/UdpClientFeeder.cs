@@ -13,6 +13,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
+using ThunderPropagator.Feeders.SharedKernel;
 
 namespace ThunderPropagator.Feeders.UdpClient
 {
@@ -26,10 +27,12 @@ namespace ThunderPropagator.Feeders.UdpClient
         where TUdpClientFeederConfiguration : UdpClientFeederConfiguration
     {
         private readonly TUdpClientFeederConfiguration _udpClientFeederConfiguration;
-        private readonly IHostApplicationLifetime _applicationLifetime;
         private readonly Socket _socket;
         private readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Shared;
         private readonly HashSet<string>? _allowedAddressesSet;
+        private readonly InFlightMessageTracker _inFlightMessages = new();
+        private readonly CancellationTokenSource _receiveCancellation = new();
+        private Task _backgroundTask = Task.CompletedTask;
 
         // Encryption support
         private readonly Aes? _aes;
@@ -43,10 +46,7 @@ namespace ThunderPropagator.Feeders.UdpClient
         {
             _udpClientFeederConfiguration = udpClientFeederConfiguration;
 
-            _applicationLifetime = serviceProvider.GetRequiredService<IHostApplicationLifetime>();
-
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            _socket.Bind(new IPEndPoint(IPAddress.Any, udpClientFeederConfiguration.Port));
 
             // Pre-compute allowed addresses set for efficient lookups
             _allowedAddressesSet = _udpClientFeederConfiguration.AllowedAddresses is not null && _udpClientFeederConfiguration.AllowedAddresses.Length > 0
@@ -66,22 +66,37 @@ namespace ThunderPropagator.Feeders.UdpClient
 
             HealthName = $"feeder_{nameof(UdpClient)}_{udpClientFeederConfiguration.Port.ToString()}";
             HealthTags = [.. HealthTags, nameof(UdpClient), udpClientFeederConfiguration.Port.ToString()];
-
-            _ = Task.Run(() => StartAsync_CatchAll(_applicationLifetime.ApplicationStopping), _applicationLifetime.ApplicationStopping);
         }
 
-        private async Task StartAsync(object? state)
+        protected override Task StartAsync(CancellationToken cancellationToken = default)
+        {
+            _socket.Bind(new IPEndPoint(IPAddress.Any, _udpClientFeederConfiguration.Port));
+            _backgroundTask = Task.Factory
+                .StartNew(StartAsync_CatchAll,
+                    CancellationToken.None,
+                    TaskCreationOptions.LongRunning,
+                    TaskScheduler.Default)
+                .Unwrap();
+
+            return Task.CompletedTask;
+        }
+
+        private async Task RunAsync()
         {
             var buffer = _bufferPool.Rent(_udpClientFeederConfiguration.BufferSize);
 
             try
             {
-                while (!IsStopped)
+                while (!IsStopped && !_receiveCancellation.IsCancellationRequested)
                 {
                     try
                     {
                         EndPoint remoteEndpoint = new IPEndPoint(IPAddress.Any, 0);
-                        var result = await _socket.ReceiveFromAsync(buffer, SocketFlags.None, remoteEndpoint).ConfigureAwait(false);
+                        var result = await _socket.ReceiveFromAsync(
+                            buffer.AsMemory(0, _udpClientFeederConfiguration.BufferSize),
+                            SocketFlags.None,
+                            remoteEndpoint,
+                            _receiveCancellation.Token).ConfigureAwait(false);
 
                         Logger.LogInformation($"Received from {result.RemoteEndPoint}");
 
@@ -92,13 +107,27 @@ namespace ThunderPropagator.Feeders.UdpClient
                         var receivedSpan = buffer.AsSpan(0, result.ReceivedBytes);
                         byte[] messageBytes = ( _aes is not null && _hmac is not null ) ? DecryptMessage(receivedSpan.ToArray()) : receivedSpan.ToArray();
 
-                        var udpClientFeederMessage = Deserialize(messageBytes) ?? throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
+                        if (!_inFlightMessages.TryBegin())
+                            continue;
 
-                        var activityContext = udpClientFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
-                        var baggage = udpClientFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
-                        await ReceiveAsync(udpClientFeederMessage, activityContext, baggage).ConfigureAwait(false);
+                        try
+                        {
+                            var udpClientFeederMessage = Deserialize(messageBytes) ?? throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
 
-                        ReportHealth(HealthStatus.Healthy);
+                            var activityContext = udpClientFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
+                            var baggage = udpClientFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
+                            await ReceiveAsync(udpClientFeederMessage, activityContext, baggage, cancellationToken: _receiveCancellation.Token).ConfigureAwait(false);
+
+                            ReportHealth(HealthStatus.Healthy);
+                        }
+                        finally
+                        {
+                            _inFlightMessages.Complete();
+                        }
+                    }
+                    catch (Exception) when (IsStopped || _receiveCancellation.IsCancellationRequested)
+                    {
+                        // Expected when shutdown closes the socket or cancels a receive.
                     }
                     catch (Exception exception)
                     {
@@ -114,17 +143,26 @@ namespace ThunderPropagator.Feeders.UdpClient
             }
         }
 
-        private async Task StartAsync_CatchAll(object? state)
+        private async Task StartAsync_CatchAll()
         {
             try
             {
-                await StartAsync(state).ConfigureAwait(false);
+                await RunAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Unhandled exception in UDP feeder background loop.");
                 ReportHealth(HealthStatus.Unhealthy, ex);
             }
+        }
+
+        protected override async Task StopAsync(CancellationToken cancellationToken = default)
+        {
+            var drainTask = _inFlightMessages.DrainAsync(TimeSpan.FromSeconds(5), cancellationToken);
+            await drainTask.ConfigureAwait(false);
+            await _receiveCancellation.CancelAsync().ConfigureAwait(false);
+            await _backgroundTask.WaitAsync(cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            await base.StopAsync(cancellationToken).ConfigureAwait(false);
         }
 
         private bool CheckAllowance(EndPoint? endPoint)
@@ -177,6 +215,9 @@ namespace ThunderPropagator.Feeders.UdpClient
             {
                 Logger.LogWarning(ex, "Exception while disposing UDP socket.");
             }
+
+            _receiveCancellation.Dispose();
+            base.DisposeManagedResources();
         }
     }
 }

@@ -1,8 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
 using System.Reflection;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
 using MQTTnet.Packets;
@@ -11,6 +9,7 @@ using ThunderPropagator.Application.Feeders;
 using OpenTelemetry;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using ThunderPropagator.Feeders.SharedKernel;
 
 namespace ThunderPropagator.Feeders.Mqtt
 {
@@ -25,6 +24,8 @@ namespace ThunderPropagator.Feeders.Mqtt
     {
         private readonly TMqttFeederConfiguration _mqttFeederConfiguration;
         private IMqttClient? _mqttClient;
+        private readonly InFlightMessageTracker _inFlightMessages = new();
+        private readonly CancellationTokenSource _receiveCancellation = new();
 
         public MqttFeeder(TChannel channel,
             TMqttFeederConfiguration mqttFeederConfiguration,
@@ -33,9 +34,6 @@ namespace ThunderPropagator.Feeders.Mqtt
             : base(channel, mqttFeederConfiguration, feederHandler, serviceProvider)
         {
             _mqttFeederConfiguration = mqttFeederConfiguration;
-            var applicationLifetime = serviceProvider.GetRequiredService<IHostApplicationLifetime>();
-
-            _ = Task.Run(() => StartAsync_CatchAll(applicationLifetime.ApplicationStopping), applicationLifetime.ApplicationStopping);
 
             HealthName = $"feeder_{nameof(Mqtt)}_{_mqttFeederConfiguration.Topic}";
             HealthTags = [.. HealthTags, nameof(Mqtt), _mqttFeederConfiguration.Topic];
@@ -47,11 +45,8 @@ namespace ThunderPropagator.Feeders.Mqtt
                 _mqttFeederConfiguration.Topic);
         }
 
-        private async Task StartAsync(object? state)
+        protected override async Task StartAsync(CancellationToken cancellationToken = default)
         {
-            if (state is not CancellationToken cancellationToken)
-                cancellationToken = CancellationToken.None;
-
             var mqttFactory = new MqttClientFactory();
             _mqttClient = mqttFactory.CreateMqttClient();
 
@@ -59,6 +54,9 @@ namespace ThunderPropagator.Feeders.Mqtt
 
             _mqttClient.ApplicationMessageReceivedAsync += async args =>
             {
+                if (!_inFlightMessages.TryBegin())
+                    return;
+
                 try
                 {
                     var activityContext = args.ApplicationMessage.UserProperties.Find(x => x.Name == nameof(ActivityContext))?.ReadValueAsString().FromNJsonBase64<ActivityContext>();
@@ -73,7 +71,7 @@ namespace ThunderPropagator.Feeders.Mqtt
                             { nameof(args.Tag), args.Tag },
                             { nameof(args.ApplicationMessage.Topic), args.ApplicationMessage.Topic },
                         },
-                        cancellationToken).ConfigureAwait(false);
+                        _receiveCancellation.Token).ConfigureAwait(false);
 
                     ReportHealth(HealthStatus.Healthy);
                 }
@@ -82,6 +80,10 @@ namespace ThunderPropagator.Feeders.Mqtt
                     ReportHealth(HealthStatus.Unhealthy, exception);
 
                     Logger.LogError(exception, "error has occured while consuming messages on Topic {Topic}.", FeederConfiguration.Topic);
+                }
+                finally
+                {
+                    _inFlightMessages.Complete();
                 }
             };
 
@@ -95,22 +97,11 @@ namespace ThunderPropagator.Feeders.Mqtt
             await _mqttClient.SubscribeAsync(mqttSubscribeOptions, cancellationToken).ConfigureAwait(false);
         }
 
-        // StartAsync runs as a background task - ensure top-level exceptions are observed and logged
-        private async Task StartAsync_CatchAll(object? state)
-        {
-            try
-            {
-                await StartAsync(state).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Unhandled exception in MQTT feeder background loop.");
-                ReportHealth(HealthStatus.Unhealthy, ex);
-            }
-        }
-
         protected override async Task StopAsync(CancellationToken cancellationToken = default)
         {
+            await _inFlightMessages.DrainAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+            await _receiveCancellation.CancelAsync().ConfigureAwait(false);
+
             try
             {
                 if (_mqttClient is not null)
@@ -134,7 +125,8 @@ namespace ThunderPropagator.Feeders.Mqtt
             {
                 Logger.LogWarning(ex, "Exception while disposing MQTT client.");
             }
-            
+
+            _receiveCancellation.Dispose();
             base.DisposeManagedResources();
         }
     }
