@@ -76,7 +76,9 @@ namespace ThunderPropagator.Feeders.Kafka
 
         protected override async IAsyncEnumerable<FeederReceivedMessage<TKafkaFeederMessage>> ReceiveAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var consumeResult = _consumer.Consume(cancellationToken);
+            var consumeResult = await BlockingOperationRunner.RunAsync(
+                () => _consumer.Consume(cancellationToken),
+                cancellationToken).ConfigureAwait(false);
 
             if (consumeResult is not null)
             {
