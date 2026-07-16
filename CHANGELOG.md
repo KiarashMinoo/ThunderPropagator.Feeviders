@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.8] — 2026-07-16
+
+### 🏠 Chores
+
+- Coordinate feeder background lifecycles `(e94ba84)` — Kiarash Minoo
+
 ## [1.0.1-beta.7] — 2026-07-16
 
 ### 🏠 Chores
