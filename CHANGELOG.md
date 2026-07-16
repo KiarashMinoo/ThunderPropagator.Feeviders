@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.10] — 2026-07-16
+
+### 🏠 Chores
+
+- Add MQTT feeder topic subscription `(c89dfa2)` — Kiarash Minoo
+
 ## [1.0.1-beta.9] — 2026-07-16
 
 ### 🏠 Chores
