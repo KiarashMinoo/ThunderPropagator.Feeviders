@@ -107,6 +107,15 @@ namespace ThunderPropagator.Feeviders.RabbitMQ.SharedKernel
                 configuration.Arguments,
                 cancellationToken: cancellationToken);
 
+            if (!string.IsNullOrWhiteSpace(configuration.Exchange))
+            {
+                await channel.QueueBindAsync(configuration.Queue,
+                    configuration.Exchange,
+                    configuration.RoutingKey,
+                    null,
+                    cancellationToken: cancellationToken);
+            }
+
             return (connection, channel);
         }
     }
