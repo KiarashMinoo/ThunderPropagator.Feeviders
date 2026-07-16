@@ -87,12 +87,7 @@ namespace ThunderPropagator.Feeders.Mqtt
                 }
             };
 
-            var mqttSubscribeOptionsBuilder = mqttFactory.CreateSubscribeOptionsBuilder();
-
-            if (_mqttFeederConfiguration.SubscriptionIdentifier is not null)
-                mqttSubscribeOptionsBuilder.WithSubscriptionIdentifier(_mqttFeederConfiguration.SubscriptionIdentifier.Value);
-
-            var mqttSubscribeOptions = mqttSubscribeOptionsBuilder.Build();
+            var mqttSubscribeOptions = MqttSubscriptionOptionsFactory.Create(mqttFactory, _mqttFeederConfiguration);
 
             await _mqttClient.SubscribeAsync(mqttSubscribeOptions, cancellationToken).ConfigureAwait(false);
         }
