@@ -1,5 +1,5 @@
-## [1.0.1-beta.10] — 2026-07-16
+## [1.0.1-beta.11] — 2026-07-16
 
 ### 🏠 Chores
 
-- Add MQTT feeder topic subscription `(c89dfa2)` — Kiarash Minoo
+- Reconnect RabbitMQ feeder after shutdown `(4c876cb)` — Kiarash Minoo
