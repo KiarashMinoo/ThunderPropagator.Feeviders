@@ -1,5 +1,5 @@
-## [1.0.1-beta.8] — 2026-07-16
+## [1.0.1-beta.9] — 2026-07-16
 
 ### 🏠 Chores
 
-- Coordinate feeder background lifecycles `(e94ba84)` — Kiarash Minoo
+- Delegate provider serialization to format registry `(7ed33f1)` — Kiarash Minoo
