@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.5] — 2026-07-16
+
+### 🏠 Chores
+
+- Move Kafka consume work off the ThreadPool `(a7aa105)` — Kiarash Minoo
+
 ## [1.0.1-beta.4] — 2026-07-16
 
 ### 🏠 Chores
