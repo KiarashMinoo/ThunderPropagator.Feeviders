@@ -26,6 +26,8 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
                     serializerSettings.TypeNameHandling = TypeNameHandling.Auto;
                     return serializerSettings;
                 }),
+                SerializerType.Protobuf => feederMessage.ToProtobufBase64(),
+                SerializerType.MessagePack => feederMessage.ToMessagePackBase64(),
                 _ => throw new ArgumentOutOfRangeException()
             };
 
@@ -38,6 +40,8 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
                     serializerSettings.TypeNameHandling = TypeNameHandling.Auto;
                     return serializerSettings;
                 }),
+                SerializerType.Protobuf => feederMessage.ToProtobufBytes(),
+                SerializerType.MessagePack => feederMessage.ToMessagePackBytes(),
                 _ => throw new ArgumentOutOfRangeException()
             };
     }
