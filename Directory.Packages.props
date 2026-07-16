@@ -43,7 +43,7 @@
   <ItemGroup>
     <PackageVersion Include="Bogus" Version="35.6.5" />
     <PackageVersion Include="NodaTime" Version="3.2.2" />
-    <PackageVersion Include="OpenTelemetry.Api" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.16.0" />
     <PackageVersion Include="Apache.NMS" Version="2.2.0" />
     <PackageVersion Include="Apache.NMS.ActiveMQ" Version="2.2.0" />
     <PackageVersion Include="Confluent.Kafka" Version="2.15.0" />
