@@ -1,5 +1,5 @@
-## [1.0.1-beta.5] — 2026-07-16
+## [1.0.1-beta.6] — 2026-07-16
 
 ### 🏠 Chores
 
-- Move Kafka consume work off the ThreadPool `(a7aa105)` — Kiarash Minoo
+- Preserve structured feeder subscription logs `(2919065)` — Kiarash Minoo
