@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using ThunderPropagator.BuildingBlocks.Application;
 
 namespace ThunderPropagator.Providers.DotNet.SharedKernel.Extensions
@@ -14,6 +15,8 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel.Extensions
         {
             services.TryAdd(new ServiceDescriptor(typeof(IProvider<TProviderMessage>), typeof(TProvider), serviceLifetime));
             services.TryAddSingleton<IFeederMessageSerializer<TProviderMessage, TProviderConfiguration>, FeederMessageSerializer<TProviderMessage, TProviderConfiguration>>();
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService,
+                ProviderSerializerValidationHostedService<TProviderMessage, TProviderConfiguration>>());
 
             return services;
         }

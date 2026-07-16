@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json;
 using ThunderPropagator.BuildingBlocks.Application;
-using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
 
 namespace ThunderPropagator.Providers.DotNet.SharedKernel
@@ -13,36 +11,26 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
         where TProviderMessage : FeederMessage
         where TProviderConfiguration : class, IAbstractProviderConfiguration
     {
-        private readonly TProviderConfiguration _feederConfiguration;
+        private readonly IFormatSerializer _serializer;
 
-        public FeederMessageSerializer(TProviderConfiguration feederConfiguration) => _feederConfiguration = feederConfiguration;
+        public FeederMessageSerializer(TProviderConfiguration feederConfiguration, IFormatSerializerRegistry serializerRegistry)
+        {
+            try
+            {
+                _serializer = serializerRegistry.GetSerializer(feederConfiguration.SerializerType);
+            }
+            catch (InvalidOperationException exception)
+            {
+                throw new InvalidOperationException(
+                    $"No format serializer is registered for SerializerType '{feederConfiguration.SerializerType}' configured by '{typeof(TProviderConfiguration).Name}'. Register a matching IFormatSerializer before adding the provider.",
+                    exception);
+            }
+        }
 
         public string Serialize(TProviderMessage feederMessage, CancellationToken cancellationToken = default)
-            => _feederConfiguration.SerializerType switch
-            {
-                SerializerType.Json => feederMessage.ToJson(),
-                SerializerType.NJson => feederMessage.ToNJson(serializerSettings =>
-                {
-                    serializerSettings.TypeNameHandling = TypeNameHandling.Auto;
-                    return serializerSettings;
-                }),
-                SerializerType.Protobuf => feederMessage.ToProtobufBase64(),
-                SerializerType.MessagePack => feederMessage.ToMessagePackBase64(),
-                _ => throw new ArgumentOutOfRangeException()
-            };
+            => _serializer.Serialize(feederMessage);
 
         public byte[] SerializeToBytes(TProviderMessage feederMessage, CancellationToken cancellationToken = default)
-            => _feederConfiguration.SerializerType switch
-            {
-                SerializerType.Json => feederMessage.ToJsonBytes(),
-                SerializerType.NJson => feederMessage.ToNJsonBytes(serializerSettings =>
-                {
-                    serializerSettings.TypeNameHandling = TypeNameHandling.Auto;
-                    return serializerSettings;
-                }),
-                SerializerType.Protobuf => feederMessage.ToProtobufBytes(),
-                SerializerType.MessagePack => feederMessage.ToMessagePackBytes(),
-                _ => throw new ArgumentOutOfRangeException()
-            };
+            => _serializer.SerializeToBytes(feederMessage);
     }
 }

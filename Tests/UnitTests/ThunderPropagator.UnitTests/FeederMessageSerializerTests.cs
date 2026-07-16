@@ -1,80 +1,135 @@
-using ProtoBuf;
+using NSubstitute;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using ThunderPropagator.BuildingBlocks.Application;
-using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
+using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.UnitTests
 {
     public class FeederMessageSerializerTests
     {
-        [Fact]
-        public void SerializeToBytes_ShouldRoundTripProtobuf()
+        public static TheoryData<SerializerType> SerializerTypes
+            => new(Enum.GetValues<SerializerType>());
+
+        [Theory]
+        [MemberData(nameof(SerializerTypes))]
+        public void Constructor_ShouldResolveEverySerializerTypeFromRegistry(SerializerType serializerType)
         {
-            var serializer = CreateSerializer(SerializerType.Protobuf);
-            var message = new TestProviderMessage { Value = "binary payload" };
+            var registry = Substitute.For<IFormatSerializerRegistry>();
+            registry.GetSerializer(serializerType).Returns(new RecordingFormatSerializer(serializerType));
 
-            var bytes = serializer.SerializeToBytes(message);
-            var result = bytes.FromProtobuf<TestProviderMessage>();
+            _ = new FeederMessageSerializer<TestProviderMessage, TestProviderConfiguration>(
+                new TestProviderConfiguration { SerializerType = serializerType },
+                registry);
 
-            Assert.Equal(message.Value, result.Value);
+            registry.Received(1).GetSerializer(serializerType);
         }
 
         [Fact]
-        public void Serialize_ShouldRoundTripProtobufBase64()
+        public void Serialize_ShouldDelegateToResolvedFormatSerializer()
         {
-            var serializer = CreateSerializer(SerializerType.Protobuf);
-            var message = new TestProviderMessage { Value = "base64 payload" };
-
-            var value = serializer.Serialize(message);
-            var result = value.FromProtobufBase64<TestProviderMessage>();
-
-            Assert.Equal(message.Value, result.Value);
-        }
-
-        [Fact]
-        public void SerializeToBytes_ShouldRoundTripMessagePack()
-        {
-            var serializer = CreateSerializer(SerializerType.MessagePack);
-            var message = CreateDictionaryMessage("binary payload");
-
-            var bytes = serializer.SerializeToBytes(message);
-            var result = bytes.FromMessagePack<TestProviderMessage>();
-
-            Assert.Equal(message["Value"]?.ToString(), result["Value"]?.ToString());
-        }
-
-        [Fact]
-        public void Serialize_ShouldRoundTripMessagePackBase64()
-        {
-            var serializer = CreateSerializer(SerializerType.MessagePack);
-            var message = CreateDictionaryMessage("base64 payload");
-
-            var value = serializer.Serialize(message);
-            var result = value.FromMessagePackBase64<TestProviderMessage>();
-
-            Assert.Equal(message["Value"]?.ToString(), result["Value"]?.ToString());
-        }
-
-        private static FeederMessageSerializer<TestProviderMessage, TestProviderConfiguration> CreateSerializer(SerializerType serializerType)
-            => new(new TestProviderConfiguration { SerializerType = serializerType });
-
-        private static TestProviderMessage CreateDictionaryMessage(string value)
-        {
+            var formatSerializer = new RecordingFormatSerializer(SerializerType.Yaml);
+            var serializer = CreateSerializer(formatSerializer);
             var message = new TestProviderMessage();
-            message.SetPayloadValue(value);
-            return message;
+
+            var result = serializer.Serialize(message);
+
+            Assert.Equal(RecordingFormatSerializer.SerializedText, result);
+            Assert.Same(message, formatSerializer.LastInstance);
         }
 
-        [ProtoContract(IgnoreListHandling = true)]
-        internal sealed class TestProviderMessage : FeederMessage
+        [Fact]
+        public void SerializeToBytes_ShouldDelegateToResolvedFormatSerializer()
         {
-            [ProtoMember(1)]
-            public string Value { get; set; } = string.Empty;
+            var formatSerializer = new RecordingFormatSerializer(SerializerType.MessagePack);
+            var serializer = CreateSerializer(formatSerializer);
+            var message = new TestProviderMessage();
 
-            public void SetPayloadValue(string value) => SetValue(value, "Value");
+            var result = serializer.SerializeToBytes(message);
+
+            Assert.Equal(RecordingFormatSerializer.SerializedBytes, result);
+            Assert.Same(message, formatSerializer.LastInstance);
         }
+
+        [Fact]
+        public void Constructor_ShouldDescribeMissingSerializerRegistration()
+        {
+            var registry = Substitute.For<IFormatSerializerRegistry>();
+            registry.GetSerializer(SerializerType.Protobuf)
+                .Returns(_ => throw new InvalidOperationException("Serializer is missing."));
+
+            var exception = Assert.Throws<InvalidOperationException>(() =>
+                new FeederMessageSerializer<TestProviderMessage, TestProviderConfiguration>(
+                    new TestProviderConfiguration { SerializerType = SerializerType.Protobuf },
+                    registry));
+
+            Assert.Contains(nameof(SerializerType.Protobuf), exception.Message);
+            Assert.Contains(nameof(TestProviderConfiguration), exception.Message);
+            Assert.IsType<InvalidOperationException>(exception.InnerException);
+        }
+
+        [Fact]
+        public void AddChannelProvider_ShouldValidateSerializerWhenHostedServicesAreResolved()
+        {
+            var registry = Substitute.For<IFormatSerializerRegistry>();
+            registry.GetSerializer(SerializerType.Protobuf)
+                .Returns(_ => throw new InvalidOperationException("Serializer is missing."));
+            var services = new ServiceCollection();
+            services.AddSingleton<IFormatSerializerRegistry>(registry);
+            services.AddSingleton(new TestProviderConfiguration { SerializerType = SerializerType.Protobuf });
+            services.AddChannelProvider<TestProvider, TestProviderMessage, TestProviderConfiguration>();
+
+            using var serviceProvider = services.BuildServiceProvider();
+
+            var exception = Assert.Throws<InvalidOperationException>(() =>
+                serviceProvider.GetServices<IHostedService>().ToArray());
+            Assert.Contains(nameof(SerializerType.Protobuf), exception.Message);
+            Assert.Contains(nameof(TestProviderConfiguration), exception.Message);
+        }
+
+        private static FeederMessageSerializer<TestProviderMessage, TestProviderConfiguration> CreateSerializer(
+            RecordingFormatSerializer formatSerializer)
+        {
+            var registry = Substitute.For<IFormatSerializerRegistry>();
+            registry.GetSerializer(formatSerializer.SerializerType).Returns(formatSerializer);
+            return new FeederMessageSerializer<TestProviderMessage, TestProviderConfiguration>(
+                new TestProviderConfiguration { SerializerType = formatSerializer.SerializerType },
+                registry);
+        }
+
+        private sealed class RecordingFormatSerializer(SerializerType serializerType) : IFormatSerializer
+        {
+            public const string SerializedText = "serialized";
+            public static readonly byte[] SerializedBytes = [1, 2, 3];
+
+            public SerializerType SerializerType { get; } = serializerType;
+            public string MediaType => "application/test";
+            public object? LastInstance { get; private set; }
+
+            public string Serialize<T>(T instance)
+            {
+                LastInstance = instance;
+                return SerializedText;
+            }
+
+            public byte[] SerializeToBytes<T>(T instance)
+            {
+                LastInstance = instance;
+                return SerializedBytes;
+            }
+        }
+
+        internal sealed class TestProviderMessage : FeederMessage;
 
         private sealed class TestProviderConfiguration : AbstractProviderConfiguration;
+
+        private sealed class TestProvider(IServiceProvider serviceProvider)
+            : AbstractProvider<TestProviderMessage, TestProviderConfiguration>(serviceProvider)
+        {
+            protected override Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)
+                => Task.CompletedTask;
+        }
     }
 }
