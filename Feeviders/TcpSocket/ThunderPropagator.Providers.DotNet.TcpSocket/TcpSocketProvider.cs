@@ -57,7 +57,7 @@ namespace ThunderPropagator.Providers.DotNet.TcpSocket
 
         protected override async Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)
         {
-            await _semaphoreSlim.WaitAsync(cancellationToken);
+            using var sendLock = await TcpSocketSendLock.AcquireAsync(_semaphoreSlim, cancellationToken).ConfigureAwait(false);
 
             if (!IsSocketConnected())
             {
@@ -109,11 +109,6 @@ namespace ThunderPropagator.Providers.DotNet.TcpSocket
                     _tcpSocketProviderConfiguration.Endpoint, _tcpSocketProviderConfiguration.Port);
                 throw;
             }
-            finally
-            {
-                _semaphoreSlim.Release();
-            }
-
             return;
 
             bool IsSocketConnected()
