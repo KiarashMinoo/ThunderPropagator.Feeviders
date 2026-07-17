@@ -94,7 +94,9 @@ namespace ThunderPropagator.Feeders.NATS
                     {
                         if (message.Data is null)
                         {
-                            await message.AckAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+                            await NatsJetStreamMessageSettlement
+                                .AckOrNakAsync(message, Logger, cancellationToken)
+                                .ConfigureAwait(false);
                             continue;
                         }
 

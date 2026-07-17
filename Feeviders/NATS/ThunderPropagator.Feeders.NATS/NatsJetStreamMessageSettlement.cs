@@ -6,6 +6,34 @@ namespace ThunderPropagator.Feeders.NATS
 {
     internal static class NatsJetStreamMessageSettlement
     {
+        public static async ValueTask AckOrNakAsync<TMessage>(
+            INatsJSMsg<TMessage> message,
+            ILogger logger,
+            CancellationToken cancellationToken)
+        {
+            var acknowledged = false;
+
+            try
+            {
+                await message.AckAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+                acknowledged = true;
+            }
+            finally
+            {
+                if (!acknowledged)
+                {
+                    try
+                    {
+                        await message.NakAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception exception)
+                    {
+                        logger.LogError(exception, "Failed to negatively acknowledge a NATS JetStream message.");
+                    }
+                }
+            }
+        }
+
         public static async IAsyncEnumerable<TReceivedMessage> YieldAndSettleAsync<TMessage, TReceivedMessage>(
             INatsJSMsg<TMessage> message,
             TReceivedMessage receivedMessage,
@@ -27,7 +55,7 @@ namespace ThunderPropagator.Feeders.NATS
                 {
                     try
                     {
-                        await message.NakAsync(cancellationToken: CancellationToken.None).ConfigureAwait(false);
+                        await message.NakAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
                     }
                     catch (Exception exception)
                     {
