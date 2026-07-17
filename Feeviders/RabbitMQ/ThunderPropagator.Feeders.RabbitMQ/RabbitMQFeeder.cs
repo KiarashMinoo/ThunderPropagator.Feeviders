@@ -94,8 +94,18 @@ namespace ThunderPropagator.Feeders.RabbitMQ
 
         private async Task HandleReceivedAsync(object sender, BasicDeliverEventArgs eventArgs)
         {
+            var deliveryChannel = ((AsyncEventingBasicConsumer)sender).Channel;
+
             if (!_inFlightMessages.TryBegin())
+            {
+                await RabbitMQDeliveryAcknowledger.NegativeAcknowledgeAsync(
+                    deliveryChannel,
+                    eventArgs.DeliveryTag,
+                    FeederConfiguration.AutoAck,
+                    true,
+                    CancellationToken.None).ConfigureAwait(false);
                 return;
+            }
 
             try
             {
@@ -116,10 +126,33 @@ namespace ThunderPropagator.Feeders.RabbitMQ
                     },
                     _receiveCancellation.Token).ConfigureAwait(false);
 
+                await RabbitMQDeliveryAcknowledger.AcknowledgeAsync(
+                    deliveryChannel,
+                    eventArgs.DeliveryTag,
+                    FeederConfiguration.AutoAck,
+                    _receiveCancellation.Token).ConfigureAwait(false);
+
                 ReportHealth(HealthStatus.Healthy);
             }
             catch (Exception exception)
             {
+                try
+                {
+                    await RabbitMQDeliveryAcknowledger.NegativeAcknowledgeAsync(
+                        deliveryChannel,
+                        eventArgs.DeliveryTag,
+                        FeederConfiguration.AutoAck,
+                        exception is OperationCanceledException || FeederConfiguration.RequeueOnFailure,
+                        CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (Exception negativeAcknowledgeException)
+                {
+                    Logger.LogError(negativeAcknowledgeException,
+                        "Failed to negatively acknowledge Delivery {DeliveryTag} on Queue {Queue}.",
+                        eventArgs.DeliveryTag,
+                        FeederConfiguration.Queue);
+                }
+
                 ReportHealth(HealthStatus.Unhealthy, exception);
 
                 Logger.LogError(exception, "error has occured while consuming messages on Queue {Queue}.", FeederConfiguration.Queue);
