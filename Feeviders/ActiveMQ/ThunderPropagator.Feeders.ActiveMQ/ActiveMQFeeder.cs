@@ -24,6 +24,7 @@ namespace ThunderPropagator.Feeders.ActiveMQ
         private readonly IConnection _connection;
         private readonly IMessageConsumer _consumer;
         private readonly ISession _session;
+        private readonly ActiveMQMessageProcessor<IMessage> _messageProcessor;
 
         public ActiveMQFeeder(TChannel channel,
             TActiveMQFeederConfiguration activeMQFeederConfiguration,
@@ -44,36 +45,8 @@ namespace ThunderPropagator.Feeders.ActiveMQ
             // Create a MessageProducer from the Session to the Topic or Queue
             _consumer = _session.CreateConsumer(destination);
 
-            _consumer.Listener += async message =>
-            {
-                try
-                {
-                    ActivityContext? activityContext = null;
-                    if (message.Properties.Contains(nameof(ActivityContext)))
-                        activityContext = message.Properties.GetBytes(nameof(ActivityContext)).FromNJsonBytes<ActivityContext>();
-
-                    Baggage? baggage = null;
-                    if (message.Properties.Contains(nameof(Baggage)))
-                        baggage = message.Properties.GetBytes(nameof(Baggage)).FromNJsonBytes<Baggage>();
-
-                    switch (message)
-                    {
-                        case IObjectMessage { Body: TActiveMQFeederMessage activeMQFeederMessage }:
-                            await ReceiveAsync(activeMQFeederMessage, activityContext, baggage).ConfigureAwait(false);
-                            break;
-                        case ITextMessage textMessage:
-                            await ReceiveAsync(textMessage.Text, activityContext, baggage).ConfigureAwait(false);
-                            break;
-                        case IBytesMessage bytesMessage:
-                            await ReceiveAsync(bytesMessage.Content, activityContext, baggage).ConfigureAwait(false);
-                            break;
-                    }
-                }
-                catch (Exception exception)
-                {
-                    ReportHealth(HealthStatus.Unhealthy, exception);
-                }
-            };
+            _messageProcessor = new ActiveMQMessageProcessor<IMessage>(ProcessMessageAsync, HandleProcessingError);
+            _consumer.Listener += HandleMessage;
 
             Logger.LogInformation("{Name}/{ChannelName} on Queue {Queue} has configured.", GetType().GetTypeInfo().Name, channel.Metadata.ChannelName,
                 activeMQFeederConfiguration.Queue);
@@ -82,8 +55,43 @@ namespace ThunderPropagator.Feeders.ActiveMQ
             HealthTags = [.. HealthTags, nameof(ActiveMQ), activeMQFeederConfiguration.Queue];
         }
 
+        private void HandleMessage(IMessage message) => _messageProcessor.Enqueue(message);
+
+        private async Task ProcessMessageAsync(IMessage message)
+        {
+            ActivityContext? activityContext = null;
+            if (message.Properties.Contains(nameof(ActivityContext)))
+                activityContext = message.Properties.GetBytes(nameof(ActivityContext)).FromNJsonBytes<ActivityContext>();
+
+            Baggage? baggage = null;
+            if (message.Properties.Contains(nameof(Baggage)))
+                baggage = message.Properties.GetBytes(nameof(Baggage)).FromNJsonBytes<Baggage>();
+
+            switch (message)
+            {
+                case IObjectMessage { Body: TActiveMQFeederMessage activeMQFeederMessage }:
+                    await ReceiveAsync(activeMQFeederMessage, activityContext, baggage).ConfigureAwait(false);
+                    break;
+                case ITextMessage textMessage:
+                    await ReceiveAsync(textMessage.Text, activityContext, baggage).ConfigureAwait(false);
+                    break;
+                case IBytesMessage bytesMessage:
+                    await ReceiveAsync(bytesMessage.Content, activityContext, baggage).ConfigureAwait(false);
+                    break;
+            }
+        }
+
+        private void HandleProcessingError(Exception exception)
+        {
+            ReportHealth(HealthStatus.Unhealthy, exception);
+            Logger.LogError(exception, "Exception while processing an ActiveMQ message.");
+        }
+
         protected override async Task StopAsync(CancellationToken cancellationToken = default)
         {
+            _consumer.Listener -= HandleMessage;
+            await _messageProcessor.CompleteAsync().ConfigureAwait(false);
+
             try
             {
                 await _consumer.CloseAsync().ConfigureAwait(false);
@@ -98,6 +106,9 @@ namespace ThunderPropagator.Feeders.ActiveMQ
 
         protected override void DisposeManagedResources()
         {
+            _consumer.Listener -= HandleMessage;
+            _messageProcessor.Complete();
+
             try
             {
                 _consumer?.Dispose();
