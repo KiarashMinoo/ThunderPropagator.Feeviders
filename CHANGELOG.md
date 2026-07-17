@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.18] — 2026-07-17
+
+### 🏠 Chores
+
+- Observe ActiveMQ listener failures `(ca00968)` — Kiarash Minoo
+- Queue ActiveMQ listener processing `(49f3c8a)` — Kiarash Minoo
+
 ## [1.0.1-beta.17] — 2026-07-17
 
 ### 🏠 Chores

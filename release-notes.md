@@ -1,5 +1,6 @@
-## [1.0.1-beta.17] — 2026-07-17
+## [1.0.1-beta.18] — 2026-07-17
 
 ### 🏠 Chores
 
-- Observe Redis subscriber processing failures `(d4d23c5)` — Kiarash Minoo
+- Observe ActiveMQ listener failures `(ca00968)` — Kiarash Minoo
+- Queue ActiveMQ listener processing `(49f3c8a)` — Kiarash Minoo
