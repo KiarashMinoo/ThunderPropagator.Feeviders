@@ -24,6 +24,7 @@ namespace ThunderPropagator.Feeders.ActiveMQ
         private readonly IConnection _connection;
         private readonly IMessageConsumer _consumer;
         private readonly ISession _session;
+        private readonly ActiveMQMessageProcessor<IMessage> _messageProcessor;
 
         public ActiveMQFeeder(TChannel channel,
             TActiveMQFeederConfiguration activeMQFeederConfiguration,
@@ -44,10 +45,8 @@ namespace ThunderPropagator.Feeders.ActiveMQ
             // Create a MessageProducer from the Session to the Topic or Queue
             _consumer = _session.CreateConsumer(destination);
 
-            _consumer.Listener += message => ActiveMQMessageHandler.Process(
-                message,
-                ProcessMessageAsync,
-                HandleProcessingError);
+            _messageProcessor = new ActiveMQMessageProcessor<IMessage>(ProcessMessageAsync, HandleProcessingError);
+            _consumer.Listener += HandleMessage;
 
             Logger.LogInformation("{Name}/{ChannelName} on Queue {Queue} has configured.", GetType().GetTypeInfo().Name, channel.Metadata.ChannelName,
                 activeMQFeederConfiguration.Queue);
@@ -55,6 +54,8 @@ namespace ThunderPropagator.Feeders.ActiveMQ
             HealthName = $"feeder_{nameof(ActiveMQ)}_{activeMQFeederConfiguration.Queue}";
             HealthTags = [.. HealthTags, nameof(ActiveMQ), activeMQFeederConfiguration.Queue];
         }
+
+        private void HandleMessage(IMessage message) => _messageProcessor.Enqueue(message);
 
         private async Task ProcessMessageAsync(IMessage message)
         {
@@ -88,6 +89,9 @@ namespace ThunderPropagator.Feeders.ActiveMQ
 
         protected override async Task StopAsync(CancellationToken cancellationToken = default)
         {
+            _consumer.Listener -= HandleMessage;
+            await _messageProcessor.CompleteAsync().ConfigureAwait(false);
+
             try
             {
                 await _consumer.CloseAsync().ConfigureAwait(false);
@@ -102,6 +106,9 @@ namespace ThunderPropagator.Feeders.ActiveMQ
 
         protected override void DisposeManagedResources()
         {
+            _consumer.Listener -= HandleMessage;
+            _messageProcessor.Complete();
+
             try
             {
                 _consumer?.Dispose();
