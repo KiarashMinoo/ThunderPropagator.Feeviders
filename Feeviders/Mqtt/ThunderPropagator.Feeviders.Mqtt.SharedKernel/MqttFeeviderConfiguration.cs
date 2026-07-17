@@ -319,9 +319,6 @@ namespace ThunderPropagator.Feeviders.Mqtt.SharedKernel
             if (NoKeepAlive)
                 mqttClientOptionsBuilder.WithNoKeepAlive();
 
-            if (MaximumPacketSize is not null)
-                mqttClientOptionsBuilder.WithMaximumPacketSize(MaximumPacketSize.Value);
-
             if (WithoutPacketFragmentation)
                 mqttClientOptionsBuilder.WithoutPacketFragmentation();
 
