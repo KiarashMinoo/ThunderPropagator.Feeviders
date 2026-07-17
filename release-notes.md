@@ -1,6 +1,5 @@
-## [1.0.1-beta.14] — 2026-07-17
+## [1.0.1-beta.15] — 2026-07-17
 
 ### 🏠 Chores
 
-- Settle JetStream messages after processing `(656c4e8)` — Kiarash Minoo
-- Implement acknowledgment and negative acknowledgment handling in NATS message processing `(1097e10)` — Kiarash Minoo
+- Settle Pulsar consumer messages after processing `(a077ba0)` — Kiarash Minoo

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.15] — 2026-07-17
+
+### 🏠 Chores
+
+- Settle Pulsar consumer messages after processing `(a077ba0)` — Kiarash Minoo
+
 ## [1.0.1-beta.14] — 2026-07-17
 
 ### 🏠 Chores
