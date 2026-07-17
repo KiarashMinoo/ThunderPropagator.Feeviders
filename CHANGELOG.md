@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.17] — 2026-07-17
+
+### 🏠 Chores
+
+- Observe Redis subscriber processing failures `(d4d23c5)` — Kiarash Minoo
+
 ## [1.0.1-beta.16] — 2026-07-17
 
 ### 🏠 Chores
