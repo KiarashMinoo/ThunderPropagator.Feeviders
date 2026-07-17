@@ -1,5 +1,5 @@
-## [1.0.1-beta.12] — 2026-07-16
+## [1.0.1-beta.13] — 2026-07-17
 
 ### 🏠 Chores
 
-- Fail when RabbitMQ channel is unavailable `(214b4a5)` — Kiarash Minoo
+- Settle RabbitMQ manual-ack deliveries `(ce6478a)` — Kiarash Minoo
