@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.16] — 2026-07-17
+
+### 🏠 Chores
+
+- Release TCP send lock on every failure `(ab7bbc9)` — Kiarash Minoo
+
 ## [1.0.1-beta.15] — 2026-07-17
 
 ### 🏠 Chores

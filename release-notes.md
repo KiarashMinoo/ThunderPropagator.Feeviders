@@ -1,5 +1,5 @@
-## [1.0.1-beta.15] — 2026-07-17
+## [1.0.1-beta.16] — 2026-07-17
 
 ### 🏠 Chores
 
-- Settle Pulsar consumer messages after processing `(a077ba0)` — Kiarash Minoo
+- Release TCP send lock on every failure `(ab7bbc9)` — Kiarash Minoo
