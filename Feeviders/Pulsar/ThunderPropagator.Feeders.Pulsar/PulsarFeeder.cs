@@ -64,7 +64,16 @@ namespace ThunderPropagator.Feeders.Pulsar
 
                 var activityContext = value[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
                 var baggage = value[nameof(Baggage)] is Baggage b ? b : default;
-                yield return new FeederReceivedMessage<TPulsarFeederMessage>(value, activityContext, baggage);
+
+                await foreach (var receivedMessage in PulsarMessageSettlement.YieldAndSettleAsync(
+                                   _consumer,
+                                   message,
+                                   new FeederReceivedMessage<TPulsarFeederMessage>(value, activityContext, baggage),
+                                   Logger,
+                                   cancellationToken))
+                {
+                    yield return receivedMessage;
+                }
             }
         }
 
