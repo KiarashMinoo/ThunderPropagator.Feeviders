@@ -92,10 +92,22 @@ namespace ThunderPropagator.Feeders.NATS
 
                     await foreach (var message in _natsJsConsumer.ConsumeAsync<TNatsFeederMessage>(cancellationToken: cancellationToken))
                     {
-                        if (message.Data is not null)
-                            yield return MessageConsumed(message.Data, message.Headers);
+                        if (message.Data is null)
+                        {
+                            await NatsJetStreamMessageSettlement
+                                .AckOrNakAsync(message, Logger, cancellationToken)
+                                .ConfigureAwait(false);
+                            continue;
+                        }
 
-                        await message.AckAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+                        await foreach (var receivedMessage in NatsJetStreamMessageSettlement.YieldAndSettleAsync(
+                                           message,
+                                           MessageConsumed(message.Data, message.Headers),
+                                           Logger,
+                                           cancellationToken))
+                        {
+                            yield return receivedMessage;
+                        }
                     }
 
                     break;
