@@ -50,25 +50,26 @@ namespace ThunderPropagator.Feeders.Kafka
 
             var consumerConfig = _kafkaFeederConfiguration.ToConsumerConfig();
 
-            _consumer = new ConsumerBuilder<string, TKafkaFeederMessage>(consumerConfig)
-                .SetKeyDeserializer(Deserializers.Utf8)
-                .SetValueDeserializer(_kafkaFeederConfiguration.SerializerType switch
-                {
-                    KafkaSerializerType.Json => new KafkaJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
-                    KafkaSerializerType.NJson => new KafkaNJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
-                    KafkaSerializerType.NetJson => new KafkaNetJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
-                    KafkaSerializerType.SchemaJson => new JsonDeserializer<TKafkaFeederMessage>(SchemaRegistryClient).AsSyncOverAsync(),
-                    KafkaSerializerType.Avro => new AvroDeserializer<TKafkaFeederMessage>(SchemaRegistryClient).AsSyncOverAsync(),
-                    _ => throw new ArgumentOutOfRangeException()
-                })
-                .SetErrorHandler((_, e) =>
-                {
-                    ReportHealth(HealthStatus.Unhealthy, new KafkaException(e));
-                    Logger.LogError("Error: {Reason}", e.Reason);
-                })
-                .Build();
-
-            _consumer.Subscribe(_kafkaFeederConfiguration.TopicNames);
+            _consumer = KafkaFeederInitializer.Initialize(
+                () => new ConsumerBuilder<string, TKafkaFeederMessage>(consumerConfig)
+                    .SetKeyDeserializer(Deserializers.Utf8)
+                    .SetValueDeserializer(_kafkaFeederConfiguration.SerializerType switch
+                    {
+                        KafkaSerializerType.Json => new KafkaJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
+                        KafkaSerializerType.NJson => new KafkaNJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
+                        KafkaSerializerType.NetJson => new KafkaNetJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
+                        KafkaSerializerType.SchemaJson => new JsonDeserializer<TKafkaFeederMessage>(SchemaRegistryClient).AsSyncOverAsync(),
+                        KafkaSerializerType.Avro => new AvroDeserializer<TKafkaFeederMessage>(SchemaRegistryClient).AsSyncOverAsync(),
+                        _ => throw new ArgumentOutOfRangeException()
+                    })
+                    .SetErrorHandler((_, e) =>
+                    {
+                        ReportHealth(HealthStatus.Unhealthy, new KafkaException(e));
+                        Logger.LogError("Error: {Reason}", e.Reason);
+                    })
+                    .Build(),
+                consumer => consumer.Subscribe(_kafkaFeederConfiguration.TopicNames),
+                () => _schemaRegistry?.Dispose());
 
             Logger.LogInformation(
                 "{FeederName}/{ChannelName} on topic(s) {TopicNames} has subscribed.",
