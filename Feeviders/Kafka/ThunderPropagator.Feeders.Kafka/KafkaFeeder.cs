@@ -88,7 +88,7 @@ namespace ThunderPropagator.Feeders.Kafka
             {
                 if (consumeResult.IsPartitionEOF)
                 {
-                    Logger.LogInformation("Reached end of topic {Topic}, partition {Partition}, offset {consumeResult.Offset}.", consumeResult.Topic, consumeResult.Partition, consumeResult.Offset);
+                    Logger.LogInformation("Reached end of topic {Topic}, partition {Partition}, offset {Offset}.", consumeResult.Topic, consumeResult.Partition, consumeResult.Offset);
 
                     await Task.Yield();
                 }
