@@ -19,9 +19,9 @@ namespace ThunderPropagator.Feeders.RedisPubSub
         where TRedisPubSubFeederConfiguration : RedisPubSubFeederConfiguration
     {
         private readonly TRedisPubSubFeederConfiguration _redisPubSubFeederConfiguration;
-        private readonly IConnectionMultiplexer _connectionMultiplexer;
+        private IConnectionMultiplexer? _connectionMultiplexer;
         private readonly RedisChannel _redisChannel;
-        private readonly ChannelMessageQueue _messageQueue;
+        private ChannelMessageQueue? _messageQueue;
 
         public RedisPubSubFeeder(TChannel channel,
             TRedisPubSubFeederConfiguration redisPubSubFeederConfiguration,
@@ -30,20 +30,44 @@ namespace ThunderPropagator.Feeders.RedisPubSub
             : base(channel, redisPubSubFeederConfiguration, feederHandler, serviceProvider)
         {
             _redisPubSubFeederConfiguration = redisPubSubFeederConfiguration;
-            _connectionMultiplexer = ConnectionMultiplexer.Connect(_redisPubSubFeederConfiguration.ConnectionString);
             _redisChannel = new RedisChannel(_redisPubSubFeederConfiguration.Channel, _redisPubSubFeederConfiguration.PatternMode);
-
-            _messageQueue = _connectionMultiplexer.GetSubscriber().Subscribe(_redisChannel);
-            _messageQueue.OnMessage(message => RedisPubSubMessageHandler.ProcessAsync(
-                message,
-                ProcessMessageAsync,
-                HandleProcessingError));
-
-            Logger.LogInformation("{Name}/{ChannelName} on Channel {Channel} has configured.", GetType().GetTypeInfo().Name, channel.Metadata.ChannelName,
-                _redisPubSubFeederConfiguration.Channel);
 
             HealthName = $"feeder_{nameof(RedisPubSub)}_{_redisPubSubFeederConfiguration.Channel}";
             HealthTags = [.. HealthTags, nameof(RedisPubSub), _redisPubSubFeederConfiguration.Channel];
+        }
+
+        protected override async Task StartAsync(CancellationToken cancellationToken = default)
+        {
+            var connectionMultiplexer = await ConnectionMultiplexer
+                .ConnectAsync(_redisPubSubFeederConfiguration.ConnectionString)
+                .ConfigureAwait(false);
+
+            try
+            {
+                var messageQueue = await connectionMultiplexer
+                    .GetSubscriber()
+                    .SubscribeAsync(_redisChannel)
+                    .ConfigureAwait(false);
+
+                messageQueue.OnMessage(message => RedisPubSubMessageHandler.ProcessAsync(
+                    message,
+                    ProcessMessageAsync,
+                    HandleProcessingError));
+
+                _connectionMultiplexer = connectionMultiplexer;
+                _messageQueue = messageQueue;
+            }
+            catch
+            {
+                await connectionMultiplexer.DisposeAsync().ConfigureAwait(false);
+                throw;
+            }
+
+            Logger.LogInformation(
+                "{Name}/{ChannelName} on Channel {Channel} has configured.",
+                GetType().GetTypeInfo().Name,
+                Channel.Metadata.ChannelName,
+                _redisPubSubFeederConfiguration.Channel);
         }
 
         private async Task ProcessMessageAsync(ChannelMessage channelMessage)
@@ -92,13 +116,18 @@ namespace ThunderPropagator.Feeders.RedisPubSub
 
         protected override async Task StopAsync(CancellationToken cancellationToken = default)
         {
-            await _messageQueue.UnsubscribeAsync();
-            await _connectionMultiplexer.CloseAsync();
+            var messageQueue = Interlocked.Exchange(ref _messageQueue, null);
+            if (messageQueue is not null)
+                await messageQueue.UnsubscribeAsync().ConfigureAwait(false);
+
+            if (_connectionMultiplexer is not null)
+                await _connectionMultiplexer.CloseAsync().ConfigureAwait(false);
         }
 
         protected override ValueTask DisposeManagedResourcesAsync()
         {
-            return _connectionMultiplexer.DisposeAsync();
+            var connectionMultiplexer = Interlocked.Exchange(ref _connectionMultiplexer, null);
+            return connectionMultiplexer?.DisposeAsync() ?? ValueTask.CompletedTask;
         }
     }
 }
