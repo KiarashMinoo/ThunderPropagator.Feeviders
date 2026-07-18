@@ -298,13 +298,9 @@ namespace ThunderPropagator.Feeders.RabbitMQ
 
         private async Task ReleaseCurrentBrokerResourcesAsync(bool close, CancellationToken cancellationToken)
         {
-            var connection = _connection;
-            var channel = _channel;
-            var consumer = _consumer;
-
-            _connection = null;
-            _channel = null;
-            _consumer = null;
+            var connection = Interlocked.Exchange(ref _connection, null);
+            var channel = Interlocked.Exchange(ref _channel, null);
+            var consumer = Interlocked.Exchange(ref _consumer, null);
 
             if (consumer is not null)
                 consumer.ReceivedAsync -= HandleReceivedAsync;
