@@ -28,6 +28,7 @@
         <ProjectReference Include="..\..\..\Feeviders\TcpSocket\ThunderPropagator.Providers.DotNet.TcpSocket\ThunderPropagator.Providers.DotNet.TcpSocket.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\UdpClient\ThunderPropagator.Feeders.UdpClient\ThunderPropagator.Feeders.UdpClient.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\UdpClient\ThunderPropagator.Providers.DotNet.UdpClient\ThunderPropagator.Providers.DotNet.UdpClient.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\UdpClient\ThunderPropagator.Feeviders.UdpClient.SharedKernel\ThunderPropagator.Feeviders.UdpClient.SharedKernel.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\Mqtt\ThunderPropagator.Feeders.Mqtt\ThunderPropagator.Feeders.Mqtt.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\Mqtt\ThunderPropagator.Providers.DotNet.Mqtt\ThunderPropagator.Providers.DotNet.Mqtt.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\NATS\ThunderPropagator.Feeders.NATS\ThunderPropagator.Feeders.NATS.csproj" />

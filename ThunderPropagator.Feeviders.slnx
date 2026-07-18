@@ -150,6 +150,11 @@
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />
     </Project>
+    <Project Path="Feeviders/UdpClient/ThunderPropagator.Feeviders.UdpClient.SharedKernel/ThunderPropagator.Feeviders.UdpClient.SharedKernel.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
     <Project Path="Feeviders/UdpClient/ThunderPropagator.Providers.DotNet.UdpClient/ThunderPropagator.Providers.DotNet.UdpClient.csproj">
       <Platform Solution="*|ARM64" Project="ARM64" />
       <Platform Solution="*|x64" Project="x64" />

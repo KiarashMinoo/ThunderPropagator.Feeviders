@@ -11,9 +11,8 @@ using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application;
 using System.Buffers;
 using System.Collections.Generic;
-using System.Security.Cryptography;
-using System.Text;
 using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Feeviders.UdpClient.SharedKernel;
 
 namespace ThunderPropagator.Feeders.UdpClient
 {
@@ -34,9 +33,7 @@ namespace ThunderPropagator.Feeders.UdpClient
         private readonly CancellationTokenSource _receiveCancellation = new();
         private Task _backgroundTask = Task.CompletedTask;
 
-        // Encryption support
-        private readonly Aes? _aes;
-        private readonly HMACSHA256? _hmac;
+        private readonly UdpMessageProtector? _messageProtector;
 
         public UdpClientFeeder(TChannel channel,
             TUdpClientFeederConfiguration udpClientFeederConfiguration,
@@ -53,16 +50,8 @@ namespace ThunderPropagator.Feeders.UdpClient
                 ? new HashSet<string>(_udpClientFeederConfiguration.AllowedAddresses)
                 : null;
 
-            // Initialize encryption if enabled
             if (_udpClientFeederConfiguration.EnableEncryption && !string.IsNullOrEmpty(_udpClientFeederConfiguration.EncryptionKey))
-            {
-                _aes = Aes.Create();
-                _aes.Key = Encoding.UTF8.GetBytes(_udpClientFeederConfiguration.EncryptionKey.PadRight(32).Substring(0, 32)); // Ensure 256-bit key
-                _aes.Mode = CipherMode.CBC;
-                _aes.Padding = PaddingMode.PKCS7;
-
-                _hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_udpClientFeederConfiguration.EncryptionKey));
-            }
+                _messageProtector = new UdpMessageProtector(_udpClientFeederConfiguration.EncryptionKey);
 
             HealthName = $"feeder_{nameof(UdpClient)}_{udpClientFeederConfiguration.Port.ToString()}";
             HealthTags = [.. HealthTags, nameof(UdpClient), udpClientFeederConfiguration.Port.ToString()];
@@ -105,7 +94,7 @@ namespace ThunderPropagator.Feeders.UdpClient
 
                         // Use span to avoid allocating new array for received bytes
                         var receivedSpan = buffer.AsSpan(0, result.ReceivedBytes);
-                        byte[] messageBytes = ( _aes is not null && _hmac is not null ) ? DecryptMessage(receivedSpan.ToArray()) : receivedSpan.ToArray();
+                        byte[] messageBytes = _messageProtector is not null ? _messageProtector.Unprotect(receivedSpan.ToArray()) : receivedSpan.ToArray();
 
                         if (!_inFlightMessages.TryBegin())
                             continue;
@@ -168,34 +157,6 @@ namespace ThunderPropagator.Feeders.UdpClient
         private bool CheckAllowance(EndPoint? endPoint)
             => _allowedAddressesSet is null || endPoint is IPEndPoint ipEndPoint && _allowedAddressesSet.Contains(ipEndPoint.Address.ToString());
 
-        private byte[] DecryptMessage(byte[] encryptedData)
-        {
-            if (_aes is null || _hmac is null)
-                throw new InvalidOperationException("Encryption not properly initialized");
-
-            try
-            {
-                // Extract IV (first 16 bytes), HMAC (next 32 bytes), and encrypted data
-                var iv = encryptedData.AsSpan(0, 16).ToArray();
-                var receivedHmac = encryptedData.AsSpan(16, 32).ToArray();
-                var encryptedPayload = encryptedData.AsSpan(48).ToArray();
-
-                // Verify HMAC
-                var computedHmac = _hmac.ComputeHash(encryptedPayload);
-                if (!CryptographicOperations.FixedTimeEquals(computedHmac, receivedHmac))
-                    throw new CryptographicException("Message integrity check failed");
-
-                // Decrypt
-                using var decryptor = _aes.CreateDecryptor(_aes.Key, iv);
-                return decryptor.TransformFinalBlock(encryptedPayload, 0, encryptedPayload.Length);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogWarning(ex, "Failed to decrypt UDP message");
-                throw;
-            }
-        }
-
         protected override void DisposeManagedResources()
         {
             try
@@ -217,6 +178,7 @@ namespace ThunderPropagator.Feeders.UdpClient
             }
 
             _receiveCancellation.Dispose();
+            _messageProtector?.Dispose();
             base.DisposeManagedResources();
         }
     }
