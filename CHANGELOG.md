@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.21] — 2026-07-18
+
+### 🏠 Chores
+
+- Secure UDP encryption key derivation `(4326cb0)` — Kiarash Minoo
+
 ## [1.0.1-beta.20] — 2026-07-18
 
 ### 🏠 Chores

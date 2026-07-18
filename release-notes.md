@@ -1,5 +1,5 @@
-## [1.0.1-beta.20] — 2026-07-18
+## [1.0.1-beta.21] — 2026-07-18
 
 ### 🏠 Chores
 
-- Recreate terminal WebSocket clients `(9a9a74f)` — Kiarash Minoo
+- Secure UDP encryption key derivation `(4326cb0)` — Kiarash Minoo
