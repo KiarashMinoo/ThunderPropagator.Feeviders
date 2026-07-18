@@ -1,5 +1,5 @@
-## [1.0.1-beta.21] — 2026-07-18
+## [1.0.1-beta.22] — 2026-07-18
 
 ### 🏠 Chores
 
-- Secure UDP encryption key derivation `(4326cb0)` — Kiarash Minoo
+- Clean up failed Kafka initialization `(0d29ef7)` — Kiarash Minoo

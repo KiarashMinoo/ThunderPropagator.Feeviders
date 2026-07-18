@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.22] — 2026-07-18
+
+### 🏠 Chores
+
+- Clean up failed Kafka initialization `(0d29ef7)` — Kiarash Minoo
+
 ## [1.0.1-beta.21] — 2026-07-18
 
 ### 🏠 Chores
