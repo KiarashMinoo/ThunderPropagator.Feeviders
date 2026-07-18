@@ -1,5 +1,5 @@
-## [1.0.1-beta.19] — 2026-07-18
+## [1.0.1-beta.20] — 2026-07-18
 
 ### 🏠 Chores
 
-- Verify MQTT maximum packet size `(7e22bab)` — Kiarash Minoo
+- Recreate terminal WebSocket clients `(9a9a74f)` — Kiarash Minoo
