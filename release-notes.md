@@ -1,5 +1,5 @@
-## [1.0.1-beta.22] — 2026-07-18
+## [1.0.1-beta.23] — 2026-07-18
 
 ### 🏠 Chores
 
-- Clean up failed Kafka initialization `(0d29ef7)` — Kiarash Minoo
+- Make RabbitMQ cleanup ownership atomic `(266b707)` — Kiarash Minoo
