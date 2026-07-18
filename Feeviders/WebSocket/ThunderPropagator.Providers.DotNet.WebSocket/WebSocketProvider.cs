@@ -16,8 +16,8 @@ namespace ThunderPropagator.Providers.DotNet.WebSocket
         where TWebSocketProviderConfiguration : WebSocketProviderConfiguration
     {
         private readonly TWebSocketProviderConfiguration _webSocketProviderConfiguration;
-        private readonly ClientWebSocket _clientWebSocket;
         private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
+        private ClientWebSocket _clientWebSocket;
 
         public WebSocketProvider(TWebSocketProviderConfiguration webSocketProviderConfiguration, IServiceProvider serviceProvider) : base(serviceProvider)
         {
@@ -42,7 +42,10 @@ namespace ThunderPropagator.Providers.DotNet.WebSocket
             try
             {
                 if (_clientWebSocket.State != WebSocketState.Open)
+                {
+                    _clientWebSocket = ClientWebSocketFactory.GetConnectable(_clientWebSocket);
                     await _clientWebSocket.ConnectAsync(new Uri(_webSocketProviderConfiguration.Endpoint), cancellationToken).ConfigureAwait(false);
+                }
 
                 await _clientWebSocket.SendAsync(bytes, WebSocketMessageType.Text, true, cancellationToken).ConfigureAwait(false);
             }
