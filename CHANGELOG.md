@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.24] — 2026-07-18
+
+### 🏠 Chores
+
+- Initialize Redis feeder asynchronously `(595c1c6)` — Kiarash Minoo
+
 ## [1.0.1-beta.23] — 2026-07-18
 
 ### 🏠 Chores

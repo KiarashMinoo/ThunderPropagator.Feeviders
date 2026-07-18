@@ -1,5 +1,5 @@
-## [1.0.1-beta.23] — 2026-07-18
+## [1.0.1-beta.24] — 2026-07-18
 
 ### 🏠 Chores
 
-- Make RabbitMQ cleanup ownership atomic `(266b707)` — Kiarash Minoo
+- Initialize Redis feeder asynchronously `(595c1c6)` — Kiarash Minoo
