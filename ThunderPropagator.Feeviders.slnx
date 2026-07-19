@@ -57,6 +57,23 @@
       <Platform Solution="*|x86" Project="x86" />
     </Project>
   </Folder>
+  <Folder Name="/Feeviders/GcpPubSub/">
+    <Project Path="Feeviders/GcpPubSub/ThunderPropagator.Feeders.GcpPubSub/ThunderPropagator.Feeders.GcpPubSub.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/GcpPubSub/ThunderPropagator.Feeviders.GcpPubSub.SharedKernel/ThunderPropagator.Feeviders.GcpPubSub.SharedKernel.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/GcpPubSub/ThunderPropagator.Providers.DotNet.GcpPubSub/ThunderPropagator.Providers.DotNet.GcpPubSub.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
   <Folder Name="/Feeviders/Kafka/">
     <Project Path="Feeviders/Kafka/ThunderPropagator.Feeders.Kafka/ThunderPropagator.Feeders.Kafka.csproj">
       <Platform Solution="*|ARM64" Project="ARM64" />
@@ -237,6 +254,13 @@
       <Build Solution="*|x64" Project="false" />
       <Build Solution="*|x86" Project="false" />
       <Build Solution="Release|Any CPU" Project="false" />
+    </Project>
+  </Folder>
+  <Folder Name="/Tests/IntegrationTests/">
+    <Project Path="Tests/IntegrationTests/ThunderPropagator.IntegrationTests/ThunderPropagator.IntegrationTests.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
     </Project>
   </Folder>
   <Folder Name="/Tests/UnitTests/">
