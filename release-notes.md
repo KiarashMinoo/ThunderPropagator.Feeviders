@@ -1,5 +1,5 @@
-## [1.0.1-beta.25] — 2026-07-19
+## [1.0.1-beta.26] — 2026-07-19
 
-### 🐛 Bug Fixes
+### 🏠 Chores
 
-- Fix malformed structured log placeholder in KafkaFeeder `(a07bed5)` — Kiarash Minoo
+- Log Redis binary cast fallback `(97b134c)` — Kiarash Minoo

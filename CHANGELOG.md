@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.26] — 2026-07-19
+
+### 🏠 Chores
+
+- Log Redis binary cast fallback `(97b134c)` — Kiarash Minoo
+
 ## [1.0.1-beta.25] — 2026-07-19
 
 ### 🐛 Bug Fixes
