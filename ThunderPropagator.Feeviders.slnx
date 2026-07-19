@@ -40,6 +40,23 @@
       <Platform Solution="*|x86" Project="x86" />
     </Project>
   </Folder>
+  <Folder Name="/Feeviders/AzureServiceBus/">
+    <Project Path="Feeviders/AzureServiceBus/ThunderPropagator.Feeders.AzureServiceBus/ThunderPropagator.Feeders.AzureServiceBus.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/AzureServiceBus/ThunderPropagator.Feeviders.AzureServiceBus.SharedKernel/ThunderPropagator.Feeviders.AzureServiceBus.SharedKernel.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/AzureServiceBus/ThunderPropagator.Providers.DotNet.AzureServiceBus/ThunderPropagator.Providers.DotNet.AzureServiceBus.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
   <Folder Name="/Feeviders/Kafka/">
     <Project Path="Feeviders/Kafka/ThunderPropagator.Feeders.Kafka/ThunderPropagator.Feeders.Kafka.csproj">
       <Platform Solution="*|ARM64" Project="ARM64" />

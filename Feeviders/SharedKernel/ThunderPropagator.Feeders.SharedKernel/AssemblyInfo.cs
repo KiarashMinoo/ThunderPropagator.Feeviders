@@ -15,4 +15,5 @@ using System.Runtime.Versioning;
 [assembly: InternalsVisibleTo("ThunderPropagator.Feeders.NATS")]
 [assembly: InternalsVisibleTo("ThunderPropagator.Feeders.Mqtt")]
 [assembly: InternalsVisibleTo("ThunderPropagator.Feeders.AwsSqs")]
+[assembly: InternalsVisibleTo("ThunderPropagator.Feeders.AzureServiceBus")]
 [assembly: InternalsVisibleTo("ThunderPropagator.UnitTests")]
