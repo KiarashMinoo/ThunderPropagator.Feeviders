@@ -31,4 +31,10 @@
 
 
 
+    <ItemGroup>
+        <ProjectReference Include="..\..\Feeviders\AzureServiceBus\ThunderPropagator.Feeders.AzureServiceBus\ThunderPropagator.Feeders.AzureServiceBus.csproj" />
+        <ProjectReference Include="..\..\Feeviders\AzureServiceBus\ThunderPropagator.Providers.DotNet.AzureServiceBus\ThunderPropagator.Providers.DotNet.AzureServiceBus.csproj" />
+        <ProjectReference Include="..\..\Feeviders\AzureServiceBus\ThunderPropagator.Feeviders.AzureServiceBus.SharedKernel\ThunderPropagator.Feeviders.AzureServiceBus.SharedKernel.csproj" />
+    </ItemGroup>
+
 </Project>
