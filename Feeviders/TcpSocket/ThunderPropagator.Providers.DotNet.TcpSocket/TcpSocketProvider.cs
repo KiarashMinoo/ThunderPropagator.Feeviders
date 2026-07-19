@@ -120,8 +120,9 @@ namespace ThunderPropagator.Providers.DotNet.TcpSocket
                     var socket = _tcpClient.Client;
                     return !(socket.Poll(1, SelectMode.SelectRead) && socket.Available == 0);
                 }
-                catch
+                catch (Exception exception)
                 {
+                    Logger.LogDebug(exception, "Socket connectivity check failed; reconnecting TCP client.");
                     return false;
                 }
             }
