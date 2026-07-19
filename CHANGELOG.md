@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.31] — 2026-07-19
+
+### 🏠 Chores
+
+- Add embedded-broker integration test for MQTT topic filtering `(0ca14ad)` — Kiarash Minoo
+
 ## [1.0.1-beta.30] — 2026-07-19
 
 ### 🚀 Features

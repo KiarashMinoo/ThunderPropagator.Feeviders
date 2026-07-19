@@ -1,5 +1,5 @@
-## [1.0.1-beta.30] — 2026-07-19
+## [1.0.1-beta.31] — 2026-07-19
 
-### 🚀 Features
+### 🏠 Chores
 
-- add feeder and provider support `(aa554c4)` — Kiarash Minoo
+- Add embedded-broker integration test for MQTT topic filtering `(0ca14ad)` — Kiarash Minoo
