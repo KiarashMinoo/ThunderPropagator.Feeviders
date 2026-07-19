@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.33] — 2026-07-19
+
+### 🏠 Chores
+
+- Require explicit Redis wildcard mode `(b022970)` — Kiarash Minoo
+- Make wildcard validation binding-order independent `(f90b492)` — Kiarash Minoo
+
 ## [1.0.1-beta.32] — 2026-07-19
 
 ### 🏠 Chores
