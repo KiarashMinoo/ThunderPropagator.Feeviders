@@ -88,8 +88,12 @@ namespace ThunderPropagator.Feeders.RedisPubSub
                     redisPubSubFeederMessage = Deserialize(bytes);
                 }
             }
-            catch
+            catch (InvalidCastException exception)
             {
+                Logger.LogDebug(exception,
+                    "Failed to cast message to bytes on Channel {Channel}, falling back to string parsing.",
+                    _redisPubSubFeederConfiguration.Channel);
+
                 // Fall back to string path
                 var strMessage = message.ToString();
                 if (string.IsNullOrWhiteSpace(strMessage))
