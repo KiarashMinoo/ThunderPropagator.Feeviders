@@ -10,6 +10,7 @@
         <PackageReference Include="Bogus"/>
         <PackageReference Include="JetBrains.Annotations"/>
         <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+        <PackageReference Include="MQTTnet.Server"/>
         <PackageReference Include="NJsonSchema"/>
         <PackageReference Include="NSubstitute"/>
         <PackageReference Include="xunit"/>
