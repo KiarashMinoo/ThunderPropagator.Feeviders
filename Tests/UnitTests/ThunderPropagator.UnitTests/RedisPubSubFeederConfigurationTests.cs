@@ -12,11 +12,15 @@ namespace ThunderPropagator.UnitTests
         [InlineData("tenant-[ab]")]
         public void Channel_ShouldRejectWildcards_WhenPatternModeIsAuto(string channel)
         {
-            var configuration = new TestRedisPubSubFeederConfiguration();
+            var configuration = new TestRedisPubSubFeederConfiguration
+            {
+                Channel = channel
+            };
 
-            var exception = Assert.Throws<ArgumentException>(() => configuration.Channel = channel);
+            var exception = Assert.Throws<ArgumentException>(() => _ = configuration.Channel);
 
             Assert.Contains("explicit PatternMode", exception.Message);
+            Assert.Equal(nameof(RedisPubSubFeederConfiguration.Channel), exception.ParamName);
         }
 
         [Fact]
@@ -58,6 +62,19 @@ namespace ThunderPropagator.UnitTests
                 () => configuration.PatternMode = RedisChannel.PatternMode.Auto);
 
             Assert.Contains("explicit PatternMode", exception.Message);
+            Assert.Equal(RedisChannel.PatternMode.Pattern, configuration.PatternMode);
+        }
+
+        [Fact]
+        public void Channel_ShouldAllowPatternModeToBeSetAfterWildcardChannel()
+        {
+            var configuration = new TestRedisPubSubFeederConfiguration
+            {
+                Channel = "tenant-*",
+                PatternMode = RedisChannel.PatternMode.Pattern
+            };
+
+            Assert.Equal("tenant-*", configuration.Channel);
             Assert.Equal(RedisChannel.PatternMode.Pattern, configuration.PatternMode);
         }
 

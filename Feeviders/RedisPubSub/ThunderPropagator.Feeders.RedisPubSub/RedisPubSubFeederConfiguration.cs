@@ -17,7 +17,7 @@ namespace ThunderPropagator.Feeders.RedisPubSub
             set
             {
                 if (value == RedisChannel.PatternMode.Auto && ContainsWildcard(Get<string>(nameof(Channel))))
-                    throw CreateWildcardException(nameof(value));
+                    throw CreateWildcardException(nameof(PatternMode));
 
                 Set(value);
             }
@@ -25,14 +25,15 @@ namespace ThunderPropagator.Feeders.RedisPubSub
 
         public string Channel
         {
-            get => Get<string>()!;
-            set
+            get
             {
-                if (PatternMode == RedisChannel.PatternMode.Auto && ContainsWildcard(value))
-                    throw CreateWildcardException(nameof(value));
+                var channel = Get<string>()!;
+                if (PatternMode == RedisChannel.PatternMode.Auto && ContainsWildcard(channel))
+                    throw CreateWildcardException(nameof(Channel));
 
-                Set(value);
+                return channel;
             }
+            set => Set(value);
         }
 
         private static bool ContainsWildcard(string? channel)
