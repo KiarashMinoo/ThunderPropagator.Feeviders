@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\SharedKernel\ThunderPropagator.Feeders.SharedKernel\ThunderPropagator.Feeders.SharedKernel.csproj" />
+    <ProjectReference Include="..\ThunderPropagator.Feeviders.GcpPubSub.SharedKernel\ThunderPropagator.Feeviders.GcpPubSub.SharedKernel.csproj" />
+  </ItemGroup>
+</Project>

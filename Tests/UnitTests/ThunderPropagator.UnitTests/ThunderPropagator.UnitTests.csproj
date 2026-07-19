@@ -51,6 +51,9 @@
         <ProjectReference Include="..\..\..\Feeviders\AzureServiceBus\ThunderPropagator.Feeders.AzureServiceBus\ThunderPropagator.Feeders.AzureServiceBus.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\AzureServiceBus\ThunderPropagator.Providers.DotNet.AzureServiceBus\ThunderPropagator.Providers.DotNet.AzureServiceBus.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\AzureServiceBus\ThunderPropagator.Feeviders.AzureServiceBus.SharedKernel\ThunderPropagator.Feeviders.AzureServiceBus.SharedKernel.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\GcpPubSub\ThunderPropagator.Feeders.GcpPubSub\ThunderPropagator.Feeders.GcpPubSub.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\GcpPubSub\ThunderPropagator.Providers.DotNet.GcpPubSub\ThunderPropagator.Providers.DotNet.GcpPubSub.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\GcpPubSub\ThunderPropagator.Feeviders.GcpPubSub.SharedKernel\ThunderPropagator.Feeviders.GcpPubSub.SharedKernel.csproj" />
     </ItemGroup>
 
 </Project>
