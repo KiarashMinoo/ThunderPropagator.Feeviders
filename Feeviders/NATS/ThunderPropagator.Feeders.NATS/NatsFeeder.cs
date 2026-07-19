@@ -81,7 +81,16 @@ namespace ThunderPropagator.Feeders.NATS
                                        cancellationToken: cancellationToken))
                     {
                         if (message.Data is not null)
+                        {
                             yield return MessageConsumed(message.Data, message.Headers);
+                        }
+                        else
+                        {
+                            Logger.LogError(message.Error,
+                                "Received a NATS message with no data on Subject {Subject}; message dropped.",
+                                FeederConfiguration.Subject);
+                            ReportHealth(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded, message.Error);
+                        }
                     }
 
                     break;
@@ -102,6 +111,11 @@ namespace ThunderPropagator.Feeders.NATS
                     {
                         if (message.Data is null)
                         {
+                            Logger.LogError(message.Error,
+                                "Received a NATS JetStream message with no data on Stream {StreamName}; acknowledging to prevent redelivery of a poison message.",
+                                FeederConfiguration.StreamName);
+                            ReportHealth(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded, message.Error);
+
                             await NatsJetStreamMessageSettlement
                                 .AckOrNakAsync(message, Logger, cancellationToken)
                                 .ConfigureAwait(false);

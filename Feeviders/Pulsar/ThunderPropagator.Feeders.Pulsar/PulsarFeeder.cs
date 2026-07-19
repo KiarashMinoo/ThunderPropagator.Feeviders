@@ -74,21 +74,58 @@ namespace ThunderPropagator.Feeders.Pulsar
                 yield break;
             }
 
-            await foreach (var message in _consumer.Messages(cancellationToken: cancellationToken))
+            var consumer = _consumer;
+
+            await foreach (var message in consumer.Messages(cancellationToken: cancellationToken))
             {
-                var value = message.Value();
+                TPulsarFeederMessage? value;
+                try
+                {
+                    value = message.Value();
+                }
+                catch (Exception exception)
+                {
+                    await HandleUnprocessableMessageAsync(message, exception).ConfigureAwait(false);
+                    continue;
+                }
+
+                if (value is null)
+                {
+                    await HandleUnprocessableMessageAsync(message, null).ConfigureAwait(false);
+                    continue;
+                }
 
                 var activityContext = value[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
                 var baggage = value[nameof(Baggage)] is Baggage b ? b : default;
 
                 await foreach (var receivedMessage in PulsarMessageSettlement.YieldAndSettleAsync(
-                                   _consumer,
+                                   consumer,
                                    message,
                                    new FeederReceivedMessage<TPulsarFeederMessage>(value, activityContext, baggage),
                                    Logger,
                                    cancellationToken))
                 {
                     yield return receivedMessage;
+                }
+            }
+
+            yield break;
+
+            async Task HandleUnprocessableMessageAsync(IMessage<TPulsarFeederMessage> message, Exception? exception)
+            {
+                Logger.LogError(exception,
+                    "Failed to obtain a usable payload from a Pulsar message (MessageId: {MessageId}) on Topic {Topic}; redelivering instead of processing.",
+                    message.MessageId,
+                    consumer.Topic);
+                ReportHealth(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded, exception);
+
+                try
+                {
+                    await consumer.RedeliverUnacknowledgedMessages([message.MessageId], cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception redeliverException)
+                {
+                    Logger.LogError(redeliverException, "Failed to redeliver an unacknowledged Pulsar message.");
                 }
             }
         }
