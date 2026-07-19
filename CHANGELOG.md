@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.25] — 2026-07-19
+
+### 🐛 Bug Fixes
+
+- Fix malformed structured log placeholder in KafkaFeeder `(a07bed5)` — Kiarash Minoo
+
 ## [1.0.1-beta.24] — 2026-07-18
 
 ### 🏠 Chores

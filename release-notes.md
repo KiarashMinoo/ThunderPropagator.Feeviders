@@ -1,5 +1,5 @@
-## [1.0.1-beta.24] — 2026-07-18
+## [1.0.1-beta.25] — 2026-07-19
 
-### 🏠 Chores
+### 🐛 Bug Fixes
 
-- Initialize Redis feeder asynchronously `(595c1c6)` — Kiarash Minoo
+- Fix malformed structured log placeholder in KafkaFeeder `(a07bed5)` — Kiarash Minoo
