@@ -52,6 +52,7 @@ namespace ThunderPropagator.Feeders.NATS
                     "{FeederName}/{ChannelName} is disabled (IsEnabled=false), skipping broker connection.",
                     GetType().Name,
                     Channel.Metadata.ChannelName);
+                return;
             }
             else if (FeederConfiguration.MessagingType == MessagingType.JetStream)
             {

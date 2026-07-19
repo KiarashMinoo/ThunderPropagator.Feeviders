@@ -45,9 +45,6 @@ namespace ThunderPropagator.Feeders.Kafka
         {
             _kafkaFeederConfiguration = kafkaFeederConfiguration;
 
-            HealthName = $"feeder_{nameof(Kafka)}_{_kafkaFeederConfiguration.GroupId}_{string.Join("_", _kafkaFeederConfiguration.TopicNames.Select(topicName => topicName))}";
-            HealthTags = [.. HealthTags, nameof(Kafka), .. _kafkaFeederConfiguration.TopicNames];
-
             if (!_kafkaFeederConfiguration.IsEnabled)
             {
                 Logger.LogWarning(
@@ -56,6 +53,9 @@ namespace ThunderPropagator.Feeders.Kafka
                     channel.Metadata.ChannelName);
                 return;
             }
+
+            HealthName = $"feeder_{nameof(Kafka)}_{_kafkaFeederConfiguration.GroupId}_{string.Join("_", _kafkaFeederConfiguration.TopicNames.Select(topicName => topicName))}";
+            HealthTags = [.. HealthTags, nameof(Kafka), .. _kafkaFeederConfiguration.TopicNames];
 
             var consumerConfig = _kafkaFeederConfiguration.ToConsumerConfig();
 
