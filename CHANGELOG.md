@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.27] — 2026-07-19
+
+### 🏠 Chores
+
+- Log TCP connectivity check failures `(2b46203)` — Kiarash Minoo
+
 ## [1.0.1-beta.26] — 2026-07-19
 
 ### 🏠 Chores

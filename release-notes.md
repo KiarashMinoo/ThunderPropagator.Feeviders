@@ -1,5 +1,5 @@
-## [1.0.1-beta.26] — 2026-07-19
+## [1.0.1-beta.27] — 2026-07-19
 
 ### 🏠 Chores
 
-- Log Redis binary cast fallback `(97b134c)` — Kiarash Minoo
+- Log TCP connectivity check failures `(2b46203)` — Kiarash Minoo
