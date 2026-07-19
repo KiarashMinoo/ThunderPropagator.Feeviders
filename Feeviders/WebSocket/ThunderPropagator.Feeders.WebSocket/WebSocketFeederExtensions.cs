@@ -63,6 +63,12 @@ namespace ThunderPropagator.Feeders.WebSocket
                     return;
                 }
 
+                if (!webSocketConfiguration.IsEnabled)
+                {
+                    context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                    return;
+                }
+
                 if (context.WebSockets.IsWebSocketRequest)
                 {
                     using var webSocket = await context.WebSockets.AcceptWebSocketAsync();

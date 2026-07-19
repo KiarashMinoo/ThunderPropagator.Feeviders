@@ -25,7 +25,7 @@ namespace ThunderPropagator.Feeders.Kafka
         where TKafkaFeederMessage : KafkaFeederMessage
         where TKafkaFeederConfiguration : KafkaFeederConfiguration
     {
-        private readonly IConsumer<string, TKafkaFeederMessage> _consumer;
+        private readonly IConsumer<string, TKafkaFeederMessage>? _consumer;
         private readonly TKafkaFeederConfiguration _kafkaFeederConfiguration;
         private CachedSchemaRegistryClient? _schemaRegistry;
 
@@ -47,6 +47,15 @@ namespace ThunderPropagator.Feeders.Kafka
 
             HealthName = $"feeder_{nameof(Kafka)}_{_kafkaFeederConfiguration.GroupId}_{string.Join("_", _kafkaFeederConfiguration.TopicNames.Select(topicName => topicName))}";
             HealthTags = [.. HealthTags, nameof(Kafka), .. _kafkaFeederConfiguration.TopicNames];
+
+            if (!_kafkaFeederConfiguration.IsEnabled)
+            {
+                Logger.LogWarning(
+                    "{FeederName}/{ChannelName} is disabled (IsEnabled=false), skipping broker connection.",
+                    GetType().Name,
+                    channel.Metadata.ChannelName);
+                return;
+            }
 
             var consumerConfig = _kafkaFeederConfiguration.ToConsumerConfig();
 
@@ -80,6 +89,12 @@ namespace ThunderPropagator.Feeders.Kafka
 
         protected override async IAsyncEnumerable<FeederReceivedMessage<TKafkaFeederMessage>> ReceiveAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            if (_consumer is null)
+            {
+                await Task.Yield();
+                yield break;
+            }
+
             var consumeResult = await BlockingOperationRunner.RunAsync(
                 () => _consumer.Consume(cancellationToken),
                 cancellationToken).ConfigureAwait(false);
@@ -156,7 +171,7 @@ namespace ThunderPropagator.Feeders.Kafka
         {
             try
             {
-                _consumer.Close();
+                _consumer?.Close();
             }
             catch (Exception ex)
             {

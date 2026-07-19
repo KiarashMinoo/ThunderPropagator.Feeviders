@@ -45,6 +45,15 @@ namespace ThunderPropagator.Feeders.RabbitMQ
 
         protected override async Task StartAsync(CancellationToken cancellationToken = default)
         {
+            if (!FeederConfiguration.IsEnabled)
+            {
+                Logger.LogWarning(
+                    "{Name}/{ChannelName} is disabled (IsEnabled=false), skipping broker connection.",
+                    GetType().GetTypeInfo().Name,
+                    Channel.Metadata.ChannelName);
+                return;
+            }
+
             _ = RabbitMQReconnectDelay.Calculate(
                 FeederConfiguration.ReconnectInitialDelay,
                 FeederConfiguration.ReconnectMaxDelay,

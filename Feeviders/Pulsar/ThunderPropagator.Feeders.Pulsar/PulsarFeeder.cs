@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using DotPulsar;
 using DotPulsar.Abstractions;
 using DotPulsar.Extensions;
+using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using ThunderPropagator.Application;
 using ThunderPropagator.Application.Channels;
@@ -20,8 +21,8 @@ namespace ThunderPropagator.Feeders.Pulsar
         where TPulsarFeederMessage : PulsarFeederMessage
         where TPulsarFeederConfiguration : PulsarFeederConfiguration
     {
-        private readonly IPulsarClient _client;
-        private readonly IConsumer<TPulsarFeederMessage> _consumer;
+        private readonly IPulsarClient? _client;
+        private readonly IConsumer<TPulsarFeederMessage>? _consumer;
 
         public PulsarFeeder(TChannel channel,
             TPulsarFeederConfiguration feederConfiguration,
@@ -29,6 +30,15 @@ namespace ThunderPropagator.Feeders.Pulsar
             IServiceProvider serviceProvider)
             : base(channel, feederConfiguration, feederHandler, serviceProvider)
         {
+            if (!feederConfiguration.IsEnabled)
+            {
+                Logger.LogWarning(
+                    "{FeederName}/{ChannelName} is disabled (IsEnabled=false), skipping broker connection.",
+                    GetType().Name,
+                    channel.Metadata.ChannelName);
+                return;
+            }
+
             _client = PulsarClientFactory.CreateClient(feederConfiguration);
 
             var schema = new JsonSchema<TPulsarFeederMessage>(feederConfiguration.SerializerType);
@@ -58,6 +68,12 @@ namespace ThunderPropagator.Feeders.Pulsar
 
         protected override async IAsyncEnumerable<FeederReceivedMessage<TPulsarFeederMessage>> ReceiveAsync([EnumeratorCancellation] CancellationToken cancellationToken = new())
         {
+            if (_consumer is null)
+            {
+                await Task.Yield();
+                yield break;
+            }
+
             await foreach (var message in _consumer.Messages(cancellationToken: cancellationToken))
             {
                 var value = message.Value();
@@ -79,8 +95,11 @@ namespace ThunderPropagator.Feeders.Pulsar
 
         protected override async ValueTask DisposeManagedResourcesAsync()
         {
-            await _consumer.DisposeAsync();
-            await _client.DisposeAsync();
+            if (_consumer is not null)
+                await _consumer.DisposeAsync();
+
+            if (_client is not null)
+                await _client.DisposeAsync();
         }
     }
 }

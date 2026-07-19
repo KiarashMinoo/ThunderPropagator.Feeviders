@@ -46,7 +46,14 @@ namespace ThunderPropagator.Feeders.NATS
 
         protected override async Task StartingAsync(CancellationToken cancellationToken = default)
         {
-            if (FeederConfiguration.MessagingType == MessagingType.JetStream)
+            if (!FeederConfiguration.IsEnabled)
+            {
+                Logger.LogWarning(
+                    "{FeederName}/{ChannelName} is disabled (IsEnabled=false), skipping broker connection.",
+                    GetType().Name,
+                    Channel.Metadata.ChannelName);
+            }
+            else if (FeederConfiguration.MessagingType == MessagingType.JetStream)
             {
                 try
                 {
