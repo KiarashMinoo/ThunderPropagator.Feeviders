@@ -23,6 +23,23 @@
       <Platform Solution="*|x86" Project="x86" />
     </Project>
   </Folder>
+  <Folder Name="/Feeviders/AwsSqsSns/">
+    <Project Path="Feeviders/AwsSqs/ThunderPropagator.Feeders.AwsSqs/ThunderPropagator.Feeders.AwsSqs.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/AwsSqs/ThunderPropagator.Feeviders.AwsSqs.SharedKernel/ThunderPropagator.Feeviders.AwsSqs.SharedKernel.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/AwsSqs/ThunderPropagator.Providers.DotNet.AwsSqs/ThunderPropagator.Providers.DotNet.AwsSqs.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
   <Folder Name="/Feeviders/Kafka/">
     <Project Path="Feeviders/Kafka/ThunderPropagator.Feeders.Kafka/ThunderPropagator.Feeders.Kafka.csproj">
       <Platform Solution="*|ARM64" Project="ARM64" />
@@ -207,7 +224,6 @@
   </Folder>
   <Folder Name="/Tests/UnitTests/">
     <Project Path="Tests/UnitTests/ThunderPropagator.UnitTests/ThunderPropagator.UnitTests.csproj">
-      <BuildType Solution="Release|Any CPU" Project="Debug" />
       <Platform Solution="*|ARM64" Project="ARM64" />
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />

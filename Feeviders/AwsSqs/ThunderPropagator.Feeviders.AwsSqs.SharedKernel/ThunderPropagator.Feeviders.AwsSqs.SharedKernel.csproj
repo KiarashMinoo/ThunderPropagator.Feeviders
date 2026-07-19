@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="$(BuildingBlocksPackageId)"/>
+        <PackageReference Include="JetBrains.Annotations" />
+        <PackageReference Include="AWSSDK.SQS"/>
+        <PackageReference Include="AWSSDK.SimpleNotificationService"/>
+    </ItemGroup>
+
+</Project>

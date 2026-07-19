@@ -46,6 +46,8 @@
     <PackageVersion Include="OpenTelemetry.Api" Version="1.17.0" />
     <PackageVersion Include="Apache.NMS" Version="2.2.0" />
     <PackageVersion Include="Apache.NMS.ActiveMQ" Version="2.2.0" />
+    <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.5" />
+    <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.100.5" />
     <PackageVersion Include="Confluent.Kafka" Version="2.15.0" />
     <PackageVersion Include="Confluent.SchemaRegistry" Version="2.15.0" />
     <PackageVersion Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.15.0" />
