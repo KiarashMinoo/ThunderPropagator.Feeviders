@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.34] — 2026-07-19
+
+### 🏠 Chores
+
+- Handle poison messages gracefully in NATS, Pulsar, and WebApi feeders `(538de44)` — Kiarash Minoo
+- Close remaining silent-drop and null-payload gaps in NATS/Pulsar `(87155e7)` — Kiarash Minoo
+
 ## [1.0.1-beta.33] — 2026-07-19
 
 ### 🏠 Chores
