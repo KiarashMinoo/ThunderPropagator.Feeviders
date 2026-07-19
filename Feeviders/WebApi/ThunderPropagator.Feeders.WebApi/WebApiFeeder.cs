@@ -1,6 +1,7 @@
 ﻿using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
 using System.Reflection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application;
 
@@ -28,6 +29,19 @@ namespace ThunderPropagator.Feeders.WebApi
             HealthTags = [.. HealthTags, nameof(WebApi), webApiFeederConfiguration.Path.Replace("/", "_")];
         }
 
-        internal async ValueTask EnqueueAsync(string rawMessage, CancellationToken cancellationToken = default) => await ReceiveAsync(rawMessage, cancellationToken: cancellationToken).ConfigureAwait(false);
+        internal async ValueTask EnqueueAsync(string rawMessage, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                await ReceiveAsync(rawMessage, cancellationToken: cancellationToken).ConfigureAwait(false);
+                ReportHealth(HealthStatus.Healthy);
+            }
+            catch (Exception exception)
+            {
+                ReportHealth(HealthStatus.Unhealthy, exception);
+                Logger.LogError(exception, "Error while processing a WebApi message on Endpoint {Endpoint}.", FeederConfiguration.Path);
+                throw;
+            }
+        }
     }
 }

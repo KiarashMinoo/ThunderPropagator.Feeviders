@@ -76,7 +76,30 @@ namespace ThunderPropagator.Feeders.Pulsar
 
             await foreach (var message in _consumer.Messages(cancellationToken: cancellationToken))
             {
-                var value = message.Value();
+                TPulsarFeederMessage value;
+                try
+                {
+                    value = message.Value();
+                }
+                catch (Exception exception)
+                {
+                    Logger.LogError(exception,
+                        "Failed to deserialize a Pulsar message (MessageId: {MessageId}) on Topic {Topic}; redelivering instead of processing.",
+                        message.MessageId,
+                        _consumer.Topic);
+                    ReportHealth(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded, exception);
+
+                    try
+                    {
+                        await _consumer.RedeliverUnacknowledgedMessages([message.MessageId], cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception redeliverException)
+                    {
+                        Logger.LogError(redeliverException, "Failed to redeliver an unacknowledged Pulsar message.");
+                    }
+
+                    continue;
+                }
 
                 var activityContext = value[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
                 var baggage = value[nameof(Baggage)] is Baggage b ? b : default;
