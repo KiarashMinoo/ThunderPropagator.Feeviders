@@ -6,7 +6,7 @@
   <PropertyGroup Label="ThunderPropagatorPackages">
     <BuildingBlocksVersion>1.0.1-beta.106</BuildingBlocksVersion>
     <BuildingBlocksPackageId>ThunderPropagator.BuildingBlocks$(PackageIdConfigurationSuffix)$(PackageIdPlatformSuffix)</BuildingBlocksPackageId>
-    <ThunderPropagatorVersion>1.0.1-beta.169</ThunderPropagatorVersion>
+    <ThunderPropagatorVersion>1.0.1-beta.176</ThunderPropagatorVersion>
     <ThunderPropagatorPackageId>ThunderPropagator$(PackageIdConfigurationSuffix)$(PackageIdPlatformSuffix)</ThunderPropagatorPackageId>
   </PropertyGroup>
   <ItemGroup>

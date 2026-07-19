@@ -47,6 +47,15 @@ namespace ThunderPropagator.Feeders.Mqtt
 
         protected override async Task StartAsync(CancellationToken cancellationToken = default)
         {
+            if (!_mqttFeederConfiguration.IsEnabled)
+            {
+                Logger.LogWarning(
+                    "{FeederName}/{ChannelName} is disabled (IsEnabled=false), skipping broker connection.",
+                    GetType().Name,
+                    Channel.Metadata.ChannelName);
+                return;
+            }
+
             var mqttFactory = new MqttClientFactory();
             _mqttClient = mqttFactory.CreateMqttClient();
 
