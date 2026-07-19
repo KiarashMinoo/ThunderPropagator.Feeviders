@@ -1,5 +1,6 @@
-## [1.0.1-beta.27] — 2026-07-19
+## [1.0.1-beta.28] — 2026-07-19
 
 ### 🏠 Chores
 
-- Log TCP connectivity check failures `(2b46203)` — Kiarash Minoo
+- Add AWS SQS/SNS Feevider + Provider core scaffold `(a6c1773)` — Kiarash Minoo
+- Register AWS SQS projects in solution `(bfb141c)` — Kiarash Minoo
