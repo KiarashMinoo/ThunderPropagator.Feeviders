@@ -45,6 +45,9 @@
         <ProjectReference Include="..\..\..\Feeviders\RedisPubSub\ThunderPropagator.Providers.DotNet.RedisPubSub\ThunderPropagator.Providers.DotNet.RedisPubSub.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\WebSocket\ThunderPropagator.Feeders.WebSocket\ThunderPropagator.Feeders.WebSocket.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\WebSocket\ThunderPropagator.Providers.DotNet.WebSocket\ThunderPropagator.Providers.DotNet.WebSocket.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\AwsSqs\ThunderPropagator.Feeders.AwsSqs\ThunderPropagator.Feeders.AwsSqs.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\AwsSqs\ThunderPropagator.Providers.DotNet.AwsSqs\ThunderPropagator.Providers.DotNet.AwsSqs.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\AwsSqs\ThunderPropagator.Feeviders.AwsSqs.SharedKernel\ThunderPropagator.Feeviders.AwsSqs.SharedKernel.csproj" />
     </ItemGroup>
 
 </Project>
