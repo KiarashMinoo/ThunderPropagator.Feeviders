@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.36] — 2026-07-20
+
+### 🏠 Chores
+
+- Migrate all Feeder/Provider ILogger calls to LoggerMessageAttribute `(a47db6f)` — Kiarash Minoo
+
 ## [1.0.1-beta.35] — 2026-07-20
 
 ### 📝 Documentation

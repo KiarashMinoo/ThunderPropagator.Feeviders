@@ -1,5 +1,5 @@
-## [1.0.1-beta.35] — 2026-07-20
+## [1.0.1-beta.36] — 2026-07-20
 
-### 📝 Documentation
+### 🏠 Chores
 
-- audit messaging and cache controls `(b76a68a)` — Kiarash Minoo
+- Migrate all Feeder/Provider ILogger calls to LoggerMessageAttribute `(a47db6f)` — Kiarash Minoo
