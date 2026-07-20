@@ -13,10 +13,16 @@ namespace ThunderPropagator.Providers.DotNet.UdpClient
 #if !DEBUG
         sealed
 #endif
-        class UdpClientProvider<TUdpClientProviderMessage, TUdpClientProviderConfiguration> : AbstractProvider<TUdpClientProviderMessage, TUdpClientProviderConfiguration>
+        partial class UdpClientProvider<TUdpClientProviderMessage, TUdpClientProviderConfiguration> : AbstractProvider<TUdpClientProviderMessage, TUdpClientProviderConfiguration>
         where TUdpClientProviderMessage : UdpClientProviderMessage
         where TUdpClientProviderConfiguration : UdpClientProviderConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 5005, Level = LogLevel.Error, Message = "error has occured while posting message to path {Endpoint}, port {Port}.")]
+            public static partial void ProduceError(ILogger logger, Exception exception, string endpoint, short port);
+        }
+
         private readonly TUdpClientProviderConfiguration _udpClientProviderConfiguration;
         private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
         private readonly IPEndPoint _remoteEndpoint;
@@ -59,8 +65,7 @@ namespace ThunderPropagator.Providers.DotNet.UdpClient
             }
             catch (Exception exception)
             {
-                Logger.LogError(exception,
-                    "error has occured while posting message to path {Endpoint}, port {Port}.",
+                Log.ProduceError(Logger, exception,
                     _udpClientProviderConfiguration.Endpoint, _udpClientProviderConfiguration.Port);
                 throw;
             }

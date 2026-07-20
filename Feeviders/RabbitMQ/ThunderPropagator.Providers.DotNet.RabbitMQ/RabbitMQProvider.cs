@@ -14,10 +14,22 @@ namespace ThunderPropagator.Providers.DotNet.RabbitMQ
 #if !DEBUG
         sealed
 #endif
-        class RabbitMQProvider<TRabbitMQProviderMessage, TRabbitMQProviderConfiguration> : AbstractProvider<TRabbitMQProviderMessage, TRabbitMQProviderConfiguration>
+        partial class RabbitMQProvider<TRabbitMQProviderMessage, TRabbitMQProviderConfiguration> : AbstractProvider<TRabbitMQProviderMessage, TRabbitMQProviderConfiguration>
         where TRabbitMQProviderMessage : RabbitMQProviderMessage
         where TRabbitMQProviderConfiguration : RabbitMQProviderConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4113, Level = LogLevel.Error, Message = "Failed to initialize RabbitMQ channel in background.")]
+            public static partial void ChannelInitializationFailed(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4114, Level = LogLevel.Error, Message = "Failed to inject trace context.")]
+            public static partial void TraceContextInjectionFailed(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4115, Level = LogLevel.Error, Message = "error has occured while producing message to queue {Queue}.")]
+            public static partial void ProduceException(ILogger logger, Exception exception, string queue);
+        }
+
         private readonly TRabbitMQProviderConfiguration _rabbitMQProviderConfiguration;
         private IConnection? _connection;
         private IChannel? _channel;
@@ -40,7 +52,8 @@ namespace ThunderPropagator.Providers.DotNet.RabbitMQ
                 {
                     // Logging isn't available in constructor context, use provider logger
                     var logger = serviceProvider.GetService<ILogger<RabbitMQProvider<TRabbitMQProviderMessage, TRabbitMQProviderConfiguration>>>();
-                    logger?.LogError(ex, "Failed to initialize RabbitMQ channel in background.");
+                    if (logger is not null)
+                        Log.ChannelInitializationFailed(logger, ex);
                 }
             }, applicationLifetime.ApplicationStopping);
         }
@@ -70,7 +83,7 @@ namespace ThunderPropagator.Providers.DotNet.RabbitMQ
                                 }
                                 catch (Exception ex)
                                 {
-                                    Logger.LogError(ex, "Failed to inject trace context.");
+                                    Log.TraceContextInjectionFailed(Logger, ex);
                                 }
                             });
                 }
@@ -84,9 +97,7 @@ namespace ThunderPropagator.Providers.DotNet.RabbitMQ
             }
             catch (Exception exception)
             {
-                Logger.LogError(exception,
-                    "error has occured while producing message to queue {Queue}.",
-                    _rabbitMQProviderConfiguration.Queue);
+                Log.ProduceException(Logger, exception, _rabbitMQProviderConfiguration.Queue);
                 throw;
             }
         }

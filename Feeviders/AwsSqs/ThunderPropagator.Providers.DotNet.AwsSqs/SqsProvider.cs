@@ -13,10 +13,16 @@ namespace ThunderPropagator.Providers.DotNet.AwsSqs
 #if !DEBUG
         sealed
 #endif
-        class SqsProvider<TSqsProviderMessage, TSqsProviderConfiguration> : AbstractProvider<TSqsProviderMessage, TSqsProviderConfiguration>
+        partial class SqsProvider<TSqsProviderMessage, TSqsProviderConfiguration> : AbstractProvider<TSqsProviderMessage, TSqsProviderConfiguration>
         where TSqsProviderMessage : SqsProviderMessage
         where TSqsProviderConfiguration : SqsProviderConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 5301, Level = LogLevel.Error, Message = "error has occured while producing message to queue {QueueUrl}.")]
+            public static partial void ProduceException(ILogger logger, Exception exception, string queueUrl);
+        }
+
         private readonly TSqsProviderConfiguration _sqsProviderConfiguration;
         private readonly IAmazonSQS _client;
 
@@ -42,7 +48,7 @@ namespace ThunderPropagator.Providers.DotNet.AwsSqs
             }
             catch (Exception exception)
             {
-                Logger.LogError(exception, "error has occured while producing message to queue {QueueUrl}.", _sqsProviderConfiguration.QueueUrl);
+                Log.ProduceException(Logger, exception, _sqsProviderConfiguration.QueueUrl);
                 throw;
             }
         }

@@ -20,11 +20,41 @@ namespace ThunderPropagator.Feeders.Kafka
 #if !DEBUG
         sealed
 #endif
-        class KafkaFeeder<TChannel, TKafkaFeederMessage, TKafkaFeederConfiguration> : IterativeFeeder<TChannel, TKafkaFeederMessage, TKafkaFeederConfiguration>
+        partial class KafkaFeeder<TChannel, TKafkaFeederMessage, TKafkaFeederConfiguration> : IterativeFeeder<TChannel, TKafkaFeederMessage, TKafkaFeederConfiguration>
         where TChannel : class, IChannel
         where TKafkaFeederMessage : KafkaFeederMessage
         where TKafkaFeederConfiguration : KafkaFeederConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4002, Level = LogLevel.Warning, Message = "{FeederName}/{ChannelName} is disabled (IsEnabled=false), skipping broker connection.")]
+            public static partial void FeederDisabled(ILogger logger, string feederName, string channelName);
+
+            [LoggerMessage(EventId = 4003, Level = LogLevel.Error, Message = "Error: {Reason}")]
+            public static partial void ConsumerErrorHandler(ILogger logger, string reason);
+
+            [LoggerMessage(EventId = 4004, Level = LogLevel.Information, Message = "{FeederName}/{ChannelName} on topic(s) {TopicNames} has subscribed.")]
+            public static partial void Subscribed(ILogger logger, string feederName, string channelName, string[] topicNames);
+
+            [LoggerMessage(EventId = 4005, Level = LogLevel.Information, Message = "Reached end of topic {Topic}, partition {Partition}, offset {Offset}.")]
+            public static partial void ReachedPartitionEof(ILogger logger, string topic, Partition partition, Offset offset);
+
+            [LoggerMessage(EventId = 4006, Level = LogLevel.Error, Message = "error has occured while consuming messages on topics {Topics}, Error = {Error}.")]
+            public static partial void ConsumeKafkaException(ILogger logger, Exception exception, string[] topics, Error error);
+
+            [LoggerMessage(EventId = 4007, Level = LogLevel.Error, Message = "error has occured while consuming messages on topics {Topics}.")]
+            public static partial void ConsumeException(ILogger logger, Exception exception, string[] topics);
+
+            [LoggerMessage(EventId = 4008, Level = LogLevel.Warning, Message = "Exception while closing Kafka consumer.")]
+            public static partial void CloseConsumerException(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4009, Level = LogLevel.Warning, Message = "Exception while disposing Kafka consumer.")]
+            public static partial void DisposeConsumerException(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4010, Level = LogLevel.Warning, Message = "Exception while disposing schema registry.")]
+            public static partial void DisposeSchemaRegistryException(ILogger logger, Exception exception);
+        }
+
         private readonly IConsumer<string, TKafkaFeederMessage>? _consumer;
         private readonly TKafkaFeederConfiguration _kafkaFeederConfiguration;
         private CachedSchemaRegistryClient? _schemaRegistry;
@@ -47,10 +77,7 @@ namespace ThunderPropagator.Feeders.Kafka
 
             if (!_kafkaFeederConfiguration.IsEnabled)
             {
-                Logger.LogWarning(
-                    "{FeederName}/{ChannelName} is disabled (IsEnabled=false), skipping broker connection.",
-                    GetType().Name,
-                    channel.Metadata.ChannelName);
+                Log.FeederDisabled(Logger, GetType().Name, channel.Metadata.ChannelName);
                 return;
             }
 
@@ -74,17 +101,13 @@ namespace ThunderPropagator.Feeders.Kafka
                     .SetErrorHandler((_, e) =>
                     {
                         ReportHealth(HealthStatus.Unhealthy, new KafkaException(e));
-                        Logger.LogError("Error: {Reason}", e.Reason);
+                        Log.ConsumerErrorHandler(Logger, e.Reason);
                     })
                     .Build(),
                 consumer => consumer.Subscribe(_kafkaFeederConfiguration.TopicNames),
                 () => _schemaRegistry?.Dispose());
 
-            Logger.LogInformation(
-                "{FeederName}/{ChannelName} on topic(s) {TopicNames} has subscribed.",
-                GetType().Name,
-                channel.Metadata.ChannelName,
-                _kafkaFeederConfiguration.TopicNames);
+            Log.Subscribed(Logger, GetType().Name, channel.Metadata.ChannelName, _kafkaFeederConfiguration.TopicNames);
         }
 
         protected override async IAsyncEnumerable<FeederReceivedMessage<TKafkaFeederMessage>> ReceiveAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -103,7 +126,7 @@ namespace ThunderPropagator.Feeders.Kafka
             {
                 if (consumeResult.IsPartitionEOF)
                 {
-                    Logger.LogInformation("Reached end of topic {Topic}, partition {Partition}, offset {Offset}.", consumeResult.Topic, consumeResult.Partition, consumeResult.Offset);
+                    Log.ReachedPartitionEof(Logger, consumeResult.Topic, consumeResult.Partition, consumeResult.Offset);
 
                     await Task.Yield();
                 }
@@ -152,14 +175,13 @@ namespace ThunderPropagator.Feeders.Kafka
                 {
                     ReportHealth(kafkaException.Error.IsFatal ? HealthStatus.Unhealthy : HealthStatus.Degraded, kafkaException);
 
-                    object topicNames = _kafkaFeederConfiguration.TopicNames;
-                    Logger.LogError(kafkaException, "error has occured while consuming messages on topics {Topics}, Error = {Error}.", topicNames, kafkaException.Error);
+                    Log.ConsumeKafkaException(Logger, kafkaException, _kafkaFeederConfiguration.TopicNames, kafkaException.Error);
                     break;
                 }
                 default:
                     ReportHealth(HealthStatus.Unhealthy, exception);
 
-                    Logger.LogError(exception, "error has occured while consuming messages on topics {Topics}.", (object)_kafkaFeederConfiguration.TopicNames);
+                    Log.ConsumeException(Logger, exception, _kafkaFeederConfiguration.TopicNames);
                     break;
             }
 
@@ -175,7 +197,7 @@ namespace ThunderPropagator.Feeders.Kafka
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while closing Kafka consumer.");
+                Log.CloseConsumerException(Logger, ex);
             }
 
             return base.StoppingAsync(cancellationToken);
@@ -189,7 +211,7 @@ namespace ThunderPropagator.Feeders.Kafka
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while disposing Kafka consumer.");
+                Log.DisposeConsumerException(Logger, ex);
             }
 
             try
@@ -198,7 +220,7 @@ namespace ThunderPropagator.Feeders.Kafka
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while disposing schema registry.");
+                Log.DisposeSchemaRegistryException(Logger, ex);
             }
         }
     }

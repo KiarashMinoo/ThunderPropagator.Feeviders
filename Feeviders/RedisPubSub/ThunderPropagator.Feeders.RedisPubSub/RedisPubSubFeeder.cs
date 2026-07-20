@@ -13,11 +13,23 @@ namespace ThunderPropagator.Feeders.RedisPubSub
 #if !DEBUG
         sealed
 #endif
-        class RedisPubSubFeeder<TChannel, TRedisPubSubFeederMessage, TRedisPubSubFeederConfiguration> : DelegativeFeeder<TChannel, TRedisPubSubFeederMessage, TRedisPubSubFeederConfiguration>
+        partial class RedisPubSubFeeder<TChannel, TRedisPubSubFeederMessage, TRedisPubSubFeederConfiguration> : DelegativeFeeder<TChannel, TRedisPubSubFeederMessage, TRedisPubSubFeederConfiguration>
         where TChannel : class, IChannel
         where TRedisPubSubFeederMessage : RedisPubSubFeederMessage
         where TRedisPubSubFeederConfiguration : RedisPubSubFeederConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4600, Level = LogLevel.Information, Message = "{Name}/{ChannelName} on Channel {Channel} has configured.")]
+            public static partial void FeederConfigured(ILogger logger, string name, string channelName, string channel);
+
+            [LoggerMessage(EventId = 4601, Level = LogLevel.Debug, Message = "Failed to cast message to bytes on Channel {Channel}, falling back to string parsing.")]
+            public static partial void MessageCastFailed(ILogger logger, InvalidCastException exception, string channel);
+
+            [LoggerMessage(EventId = 4602, Level = LogLevel.Error, Message = "error has occured while consuming messages on Channel {Channel}.")]
+            public static partial void ConsumeError(ILogger logger, Exception exception, string channel);
+        }
+
         private readonly TRedisPubSubFeederConfiguration _redisPubSubFeederConfiguration;
         private IConnectionMultiplexer? _connectionMultiplexer;
         private readonly RedisChannel _redisChannel;
@@ -63,8 +75,8 @@ namespace ThunderPropagator.Feeders.RedisPubSub
                 throw;
             }
 
-            Logger.LogInformation(
-                "{Name}/{ChannelName} on Channel {Channel} has configured.",
+            Log.FeederConfigured(
+                Logger,
                 GetType().GetTypeInfo().Name,
                 Channel.Metadata.ChannelName,
                 _redisPubSubFeederConfiguration.Channel);
@@ -90,8 +102,9 @@ namespace ThunderPropagator.Feeders.RedisPubSub
             }
             catch (InvalidCastException exception)
             {
-                Logger.LogDebug(exception,
-                    "Failed to cast message to bytes on Channel {Channel}, falling back to string parsing.",
+                Log.MessageCastFailed(
+                    Logger,
+                    exception,
                     _redisPubSubFeederConfiguration.Channel);
 
                 // Fall back to string path
@@ -115,7 +128,7 @@ namespace ThunderPropagator.Feeders.RedisPubSub
         private void HandleProcessingError(Exception exception)
         {
             ReportHealth(HealthStatus.Unhealthy, exception);
-            Logger.LogError(exception, "error has occured while consuming messages on Channel {Channel}.", _redisPubSubFeederConfiguration.Channel);
+            Log.ConsumeError(Logger, exception, _redisPubSubFeederConfiguration.Channel);
         }
 
         protected override async Task StopAsync(CancellationToken cancellationToken = default)

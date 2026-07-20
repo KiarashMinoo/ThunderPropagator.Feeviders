@@ -20,11 +20,29 @@ namespace ThunderPropagator.Feeders.UdpClient
 #if !DEBUG
         sealed
 #endif
-        class UdpClientFeeder<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration> : DelegativeFeeder<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration>, IFeature
+        partial class UdpClientFeeder<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration> : DelegativeFeeder<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration>, IFeature
         where TChannel : class, IChannel
         where TUdpClientFeederMessage : UdpClientFeederMessage
         where TUdpClientFeederConfiguration : UdpClientFeederConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 5000, Level = LogLevel.Information, Message = "Received from {RemoteEndPoint}")]
+            public static partial void ReceivedFrom(ILogger logger, EndPoint remoteEndPoint);
+
+            [LoggerMessage(EventId = 5001, Level = LogLevel.Error, Message = "error has occured while consuming messages on port {Port}.")]
+            public static partial void ConsumeError(ILogger logger, Exception exception, string port);
+
+            [LoggerMessage(EventId = 5002, Level = LogLevel.Error, Message = "Unhandled exception in UDP feeder background loop.")]
+            public static partial void UnhandledBackgroundLoopException(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 5003, Level = LogLevel.Warning, Message = "Exception while closing UDP socket.")]
+            public static partial void SocketCloseException(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 5004, Level = LogLevel.Warning, Message = "Exception while disposing UDP socket.")]
+            public static partial void SocketDisposeException(ILogger logger, Exception exception);
+        }
+
         private readonly TUdpClientFeederConfiguration _udpClientFeederConfiguration;
         private readonly Socket _socket;
         private readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Shared;
@@ -87,7 +105,7 @@ namespace ThunderPropagator.Feeders.UdpClient
                             remoteEndpoint,
                             _receiveCancellation.Token).ConfigureAwait(false);
 
-                        Logger.LogInformation($"Received from {result.RemoteEndPoint}");
+                        Log.ReceivedFrom(Logger, result.RemoteEndPoint);
 
                         if (!CheckAllowance(result.RemoteEndPoint))
                             continue;
@@ -122,7 +140,7 @@ namespace ThunderPropagator.Feeders.UdpClient
                     {
                         ReportHealth(HealthStatus.Unhealthy, exception);
 
-                        Logger.LogError(exception, "error has occured while consuming messages on port {Port}.", string.Join(',', _udpClientFeederConfiguration.Port));
+                        Log.ConsumeError(Logger, exception, string.Join(',', _udpClientFeederConfiguration.Port));
                     }
                 }
             }
@@ -140,7 +158,7 @@ namespace ThunderPropagator.Feeders.UdpClient
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Unhandled exception in UDP feeder background loop.");
+                Log.UnhandledBackgroundLoopException(Logger, ex);
                 ReportHealth(HealthStatus.Unhealthy, ex);
             }
         }
@@ -165,7 +183,7 @@ namespace ThunderPropagator.Feeders.UdpClient
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while closing UDP socket.");
+                Log.SocketCloseException(Logger, ex);
             }
 
             try
@@ -174,7 +192,7 @@ namespace ThunderPropagator.Feeders.UdpClient
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while disposing UDP socket.");
+                Log.SocketDisposeException(Logger, ex);
             }
 
             _receiveCancellation.Dispose();

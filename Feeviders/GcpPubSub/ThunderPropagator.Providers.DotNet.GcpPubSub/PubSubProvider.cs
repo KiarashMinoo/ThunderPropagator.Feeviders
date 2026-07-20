@@ -12,10 +12,16 @@ internal
 #if !DEBUG
     sealed
 #endif
-    class PubSubProvider<TMessage, TConfiguration> : AbstractProvider<TMessage, TConfiguration>
+    partial class PubSubProvider<TMessage, TConfiguration> : AbstractProvider<TMessage, TConfiguration>
     where TMessage : PubSubProviderMessage
     where TConfiguration : PubSubProviderConfiguration
 {
+    private static partial class Log
+    {
+        [LoggerMessage(EventId = 5102, Level = LogLevel.Error, Message = "Error occurred while publishing a GCP Pub/Sub message to {TopicId}.")]
+        public static partial void PublishError(ILogger logger, Exception exception, string topicId);
+    }
+
     private readonly TConfiguration _configuration;
     private readonly PublisherClient _publisher;
 
@@ -47,7 +53,7 @@ internal
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Error occurred while publishing a GCP Pub/Sub message to {TopicId}.", _configuration.TopicId);
+            Log.PublishError(Logger, exception, _configuration.TopicId);
             throw;
         }
     }

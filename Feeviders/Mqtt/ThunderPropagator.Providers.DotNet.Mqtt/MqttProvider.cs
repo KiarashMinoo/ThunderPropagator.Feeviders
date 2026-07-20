@@ -12,10 +12,22 @@ namespace ThunderPropagator.Providers.DotNet.Mqtt
 #if !DEBUG
         sealed
 #endif
-        class MqttProvider<TMqttProviderMessage, TMqttProviderConfiguration> : AbstractProvider<TMqttProviderMessage, TMqttProviderConfiguration>
+        partial class MqttProvider<TMqttProviderMessage, TMqttProviderConfiguration> : AbstractProvider<TMqttProviderMessage, TMqttProviderConfiguration>
         where TMqttProviderMessage : MqttProviderMessage
         where TMqttProviderConfiguration : MqttProviderConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4205, Level = LogLevel.Error, Message = "error has occured while publishing message to topic {Topic}.")]
+            public static partial void PublishException(ILogger logger, Exception exception, string topic);
+
+            [LoggerMessage(EventId = 4206, Level = LogLevel.Warning, Message = "Exception while disconnecting MQTT client.")]
+            public static partial void DisconnectException(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4207, Level = LogLevel.Warning, Message = "Exception while disposing MQTT client.")]
+            public static partial void DisposeException(ILogger logger, Exception exception);
+        }
+
         private readonly TMqttProviderConfiguration _mqttProviderConfiguration;
         private readonly IMqttClient _mqttClient;
 
@@ -55,7 +67,7 @@ namespace ThunderPropagator.Providers.DotNet.Mqtt
             }
             catch (Exception exception)
             {
-                Logger.LogError(exception, "error has occured while publishing message to topic {Topic}.", _mqttProviderConfiguration.Topic);
+                Log.PublishException(Logger, exception, _mqttProviderConfiguration.Topic);
                 throw;
             }
         }
@@ -70,7 +82,7 @@ namespace ThunderPropagator.Providers.DotNet.Mqtt
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while disconnecting MQTT client.");
+                Log.DisconnectException(Logger, ex);
             }
 
             try
@@ -79,7 +91,7 @@ namespace ThunderPropagator.Providers.DotNet.Mqtt
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while disposing MQTT client.");
+                Log.DisposeException(Logger, ex);
             }
         }
     }

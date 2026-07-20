@@ -19,11 +19,26 @@ namespace ThunderPropagator.Feeders.NATS
 #if !DEBUG
         sealed
 #endif
-        class NatsFeeder<TChannel, TNatsFeederMessage, TNatsFeederConfiguration> : IterativeFeeder<TChannel, TNatsFeederMessage, TNatsFeederConfiguration>, IFeature
+        partial class NatsFeeder<TChannel, TNatsFeederMessage, TNatsFeederConfiguration> : IterativeFeeder<TChannel, TNatsFeederMessage, TNatsFeederConfiguration>, IFeature
         where TChannel : class, IChannel
         where TNatsFeederMessage : NatsFeederMessage
         where TNatsFeederConfiguration : NatsFeederConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4300, Level = LogLevel.Warning, Message = "{FeederName}/{ChannelName} is disabled (IsEnabled=false), skipping broker connection.")]
+            public static partial void FeederDisabled(ILogger logger, string feederName, string channelName);
+
+            [LoggerMessage(EventId = 4301, Level = LogLevel.Error, Message = "Received a NATS message with no data on Subject {Subject}; message dropped.")]
+            public static partial void MessageWithNoData(ILogger logger, Exception? exception, string subject);
+
+            [LoggerMessage(EventId = 4302, Level = LogLevel.Error, Message = "Received a NATS JetStream message with no data on Stream {StreamName}; acknowledging to prevent redelivery of a poison message.")]
+            public static partial void JetStreamMessageWithNoData(ILogger logger, Exception? exception, string? streamName);
+
+            [LoggerMessage(EventId = 4303, Level = LogLevel.Error, Message = "Failed to initialize JetStream consumer.")]
+            public static partial void JetStreamConsumerInitializationFailed(ILogger logger, Exception exception);
+        }
+
         private readonly INatsClient _client;
         private INatsJSConsumer? _natsJsConsumer;
         private Exception? _jetStreamInitializationException;
@@ -48,10 +63,7 @@ namespace ThunderPropagator.Feeders.NATS
         {
             if (!FeederConfiguration.IsEnabled)
             {
-                Logger.LogWarning(
-                    "{FeederName}/{ChannelName} is disabled (IsEnabled=false), skipping broker connection.",
-                    GetType().Name,
-                    Channel.Metadata.ChannelName);
+                Log.FeederDisabled(Logger, GetType().Name, Channel.Metadata.ChannelName);
                 return;
             }
             else if (FeederConfiguration.MessagingType == MessagingType.JetStream)
@@ -86,9 +98,7 @@ namespace ThunderPropagator.Feeders.NATS
                         }
                         else
                         {
-                            Logger.LogError(message.Error,
-                                "Received a NATS message with no data on Subject {Subject}; message dropped.",
-                                FeederConfiguration.Subject);
+                            Log.MessageWithNoData(Logger, message.Error, FeederConfiguration.Subject);
                             ReportHealth(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded, message.Error);
                         }
                     }
@@ -111,9 +121,7 @@ namespace ThunderPropagator.Feeders.NATS
                     {
                         if (message.Data is null)
                         {
-                            Logger.LogError(message.Error,
-                                "Received a NATS JetStream message with no data on Stream {StreamName}; acknowledging to prevent redelivery of a poison message.",
-                                FeederConfiguration.StreamName);
+                            Log.JetStreamMessageWithNoData(Logger, message.Error, FeederConfiguration.StreamName);
                             ReportHealth(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded, message.Error);
 
                             await NatsJetStreamMessageSettlement
@@ -164,7 +172,7 @@ namespace ThunderPropagator.Feeders.NATS
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Failed to initialize JetStream consumer.");
+                Log.JetStreamConsumerInitializationFailed(Logger, ex);
                 throw;
             }
         }

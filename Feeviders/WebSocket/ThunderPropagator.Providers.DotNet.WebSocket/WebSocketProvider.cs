@@ -11,10 +11,22 @@ namespace ThunderPropagator.Providers.DotNet.WebSocket
 #if !DEBUG
         sealed
 #endif
-        class WebSocketProvider<TWebSocketProviderMessage, TWebSocketProviderConfiguration> : AbstractProvider<TWebSocketProviderMessage, TWebSocketProviderConfiguration>
+        partial class WebSocketProvider<TWebSocketProviderMessage, TWebSocketProviderConfiguration> : AbstractProvider<TWebSocketProviderMessage, TWebSocketProviderConfiguration>
         where TWebSocketProviderMessage : WebSocketProviderMessage
         where TWebSocketProviderConfiguration : WebSocketProviderConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4701, Level = LogLevel.Error, Message = "error has occured while posting message to path {Endpoint}.")]
+            public static partial void PostException(ILogger logger, Exception exception, string endpoint);
+
+            [LoggerMessage(EventId = 4702, Level = LogLevel.Warning, Message = "Exception while closing ClientWebSocket during dispose.")]
+            public static partial void CloseWarning(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4703, Level = LogLevel.Warning, Message = "Exception while disposing ClientWebSocket.")]
+            public static partial void DisposeWarning(ILogger logger, Exception exception);
+        }
+
         private readonly TWebSocketProviderConfiguration _webSocketProviderConfiguration;
         private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
         private ClientWebSocket _clientWebSocket;
@@ -51,9 +63,7 @@ namespace ThunderPropagator.Providers.DotNet.WebSocket
             }
             catch (Exception exception)
             {
-                Logger.LogError(exception,
-                    "error has occured while posting message to path {Endpoint}.",
-                    _webSocketProviderConfiguration.Endpoint);
+                Log.PostException(Logger, exception, _webSocketProviderConfiguration.Endpoint);
                 throw;
             }
             finally
@@ -71,7 +81,7 @@ namespace ThunderPropagator.Providers.DotNet.WebSocket
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while closing ClientWebSocket during dispose.");
+                Log.CloseWarning(Logger, ex);
             }
         }
 
@@ -83,7 +93,7 @@ namespace ThunderPropagator.Providers.DotNet.WebSocket
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while disposing ClientWebSocket.");
+                Log.DisposeWarning(Logger, ex);
             }
         }
     }

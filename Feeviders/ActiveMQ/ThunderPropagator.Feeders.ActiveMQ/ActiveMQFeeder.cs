@@ -16,11 +16,32 @@ namespace ThunderPropagator.Feeders.ActiveMQ
 #if !DEBUG
         sealed
 #endif
-        class ActiveMQFeeder<TChannel, TActiveMQFeederMessage, TActiveMQFeederConfiguration> : DelegativeFeeder<TChannel, TActiveMQFeederMessage, TActiveMQFeederConfiguration>, IFeature
+        partial class ActiveMQFeeder<TChannel, TActiveMQFeederMessage, TActiveMQFeederConfiguration> : DelegativeFeeder<TChannel, TActiveMQFeederMessage, TActiveMQFeederConfiguration>, IFeature
         where TChannel : class, IChannel
         where TActiveMQFeederMessage : ActiveMQFeederMessage
         where TActiveMQFeederConfiguration : ActiveMQFeederConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4500, Level = LogLevel.Information, Message = "{Name}/{ChannelName} on Queue {Queue} has configured.")]
+            public static partial void FeederConfigured(ILogger logger, string name, string channelName, string queue);
+
+            [LoggerMessage(EventId = 4501, Level = LogLevel.Error, Message = "Exception while processing an ActiveMQ message.")]
+            public static partial void MessageProcessingError(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4502, Level = LogLevel.Warning, Message = "Exception while closing ActiveMQ resources.")]
+            public static partial void ResourceCloseError(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4503, Level = LogLevel.Warning, Message = "Exception while disposing ActiveMQ consumer.")]
+            public static partial void ConsumerDisposeError(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4504, Level = LogLevel.Warning, Message = "Exception while disposing ActiveMQ session.")]
+            public static partial void SessionDisposeError(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4505, Level = LogLevel.Warning, Message = "Exception while disposing ActiveMQ connection.")]
+            public static partial void ConnectionDisposeError(ILogger logger, Exception exception);
+        }
+
         private readonly IConnection _connection;
         private readonly IMessageConsumer _consumer;
         private readonly ISession _session;
@@ -48,7 +69,7 @@ namespace ThunderPropagator.Feeders.ActiveMQ
             _messageProcessor = new ActiveMQMessageProcessor<IMessage>(ProcessMessageAsync, HandleProcessingError);
             _consumer.Listener += HandleMessage;
 
-            Logger.LogInformation("{Name}/{ChannelName} on Queue {Queue} has configured.", GetType().GetTypeInfo().Name, channel.Metadata.ChannelName,
+            Log.FeederConfigured(Logger, GetType().GetTypeInfo().Name, channel.Metadata.ChannelName,
                 activeMQFeederConfiguration.Queue);
 
             HealthName = $"feeder_{nameof(ActiveMQ)}_{activeMQFeederConfiguration.Queue}";
@@ -84,7 +105,7 @@ namespace ThunderPropagator.Feeders.ActiveMQ
         private void HandleProcessingError(Exception exception)
         {
             ReportHealth(HealthStatus.Unhealthy, exception);
-            Logger.LogError(exception, "Exception while processing an ActiveMQ message.");
+            Log.MessageProcessingError(Logger, exception);
         }
 
         protected override async Task StopAsync(CancellationToken cancellationToken = default)
@@ -100,7 +121,7 @@ namespace ThunderPropagator.Feeders.ActiveMQ
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while closing ActiveMQ resources.");
+                Log.ResourceCloseError(Logger, ex);
             }
         }
 
@@ -115,7 +136,7 @@ namespace ThunderPropagator.Feeders.ActiveMQ
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while disposing ActiveMQ consumer.");
+                Log.ConsumerDisposeError(Logger, ex);
             }
 
             try
@@ -124,7 +145,7 @@ namespace ThunderPropagator.Feeders.ActiveMQ
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while disposing ActiveMQ session.");
+                Log.SessionDisposeError(Logger, ex);
             }
 
             try
@@ -133,7 +154,7 @@ namespace ThunderPropagator.Feeders.ActiveMQ
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while disposing ActiveMQ connection.");
+                Log.ConnectionDisposeError(Logger, ex);
             }
         }
     }

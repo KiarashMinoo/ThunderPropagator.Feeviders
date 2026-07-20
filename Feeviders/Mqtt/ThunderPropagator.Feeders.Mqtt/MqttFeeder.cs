@@ -17,11 +17,29 @@ namespace ThunderPropagator.Feeders.Mqtt
 #if !DEBUG
         sealed
 #endif
-        class MqttFeeder<TChannel, TMqttFeederMessage, TMqttFeederConfiguration> : DelegativeFeeder<TChannel, TMqttFeederMessage, TMqttFeederConfiguration>
+        partial class MqttFeeder<TChannel, TMqttFeederMessage, TMqttFeederConfiguration> : DelegativeFeeder<TChannel, TMqttFeederMessage, TMqttFeederConfiguration>
         where TChannel : class, IChannel
         where TMqttFeederMessage : MqttFeederMessage
         where TMqttFeederConfiguration : MqttFeederConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4200, Level = LogLevel.Information, Message = "{FeederName}/{ChannelName} on topic {Topic} has subscribed.")]
+            public static partial void Subscribed(ILogger logger, string feederName, string channelName, string topic);
+
+            [LoggerMessage(EventId = 4201, Level = LogLevel.Warning, Message = "{FeederName}/{ChannelName} is disabled (IsEnabled=false), skipping broker connection.")]
+            public static partial void FeederDisabled(ILogger logger, string feederName, string channelName);
+
+            [LoggerMessage(EventId = 4202, Level = LogLevel.Error, Message = "error has occured while consuming messages on Topic {Topic}.")]
+            public static partial void ConsumeException(ILogger logger, Exception exception, string topic);
+
+            [LoggerMessage(EventId = 4203, Level = LogLevel.Warning, Message = "Exception while disconnecting MQTT client.")]
+            public static partial void DisconnectException(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4204, Level = LogLevel.Warning, Message = "Exception while disposing MQTT client.")]
+            public static partial void DisposeException(ILogger logger, Exception exception);
+        }
+
         private readonly TMqttFeederConfiguration _mqttFeederConfiguration;
         private IMqttClient? _mqttClient;
         private readonly InFlightMessageTracker _inFlightMessages = new();
@@ -38,8 +56,8 @@ namespace ThunderPropagator.Feeders.Mqtt
             HealthName = $"feeder_{nameof(Mqtt)}_{_mqttFeederConfiguration.Topic}";
             HealthTags = [.. HealthTags, nameof(Mqtt), _mqttFeederConfiguration.Topic];
 
-            Logger.LogInformation(
-                "{FeederName}/{ChannelName} on topic {Topic} has subscribed.",
+            Log.Subscribed(
+                Logger,
                 GetType().Name,
                 channel.Metadata.ChannelName,
                 _mqttFeederConfiguration.Topic);
@@ -49,8 +67,8 @@ namespace ThunderPropagator.Feeders.Mqtt
         {
             if (!_mqttFeederConfiguration.IsEnabled)
             {
-                Logger.LogWarning(
-                    "{FeederName}/{ChannelName} is disabled (IsEnabled=false), skipping broker connection.",
+                Log.FeederDisabled(
+                    Logger,
                     GetType().Name,
                     Channel.Metadata.ChannelName);
                 return;
@@ -88,7 +106,7 @@ namespace ThunderPropagator.Feeders.Mqtt
                 {
                     ReportHealth(HealthStatus.Unhealthy, exception);
 
-                    Logger.LogError(exception, "error has occured while consuming messages on Topic {Topic}.", FeederConfiguration.Topic);
+                    Log.ConsumeException(Logger, exception, FeederConfiguration.Topic);
                 }
                 finally
                 {
@@ -113,7 +131,7 @@ namespace ThunderPropagator.Feeders.Mqtt
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while disconnecting MQTT client.");
+                Log.DisconnectException(Logger, ex);
             }
 
             await base.StopAsync(cancellationToken).ConfigureAwait(false);
@@ -127,7 +145,7 @@ namespace ThunderPropagator.Feeders.Mqtt
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while disposing MQTT client.");
+                Log.DisposeException(Logger, ex);
             }
 
             _receiveCancellation.Dispose();

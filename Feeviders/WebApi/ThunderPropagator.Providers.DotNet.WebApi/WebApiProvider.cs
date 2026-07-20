@@ -7,10 +7,19 @@ namespace ThunderPropagator.Providers.DotNet.WebApi
 #if !DEBUG
         sealed
 #endif
-        class WebApiProvider<TWebApiProviderMessage, TWebApiProviderConfiguration> : AbstractProvider<TWebApiProviderMessage, TWebApiProviderConfiguration>
+        partial class WebApiProvider<TWebApiProviderMessage, TWebApiProviderConfiguration> : AbstractProvider<TWebApiProviderMessage, TWebApiProviderConfiguration>
         where TWebApiProviderMessage : WebApiProviderMessage
         where TWebApiProviderConfiguration : WebApiProviderConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4802, Level = LogLevel.Error, Message = "error has occured while posting message to path {Path}.")]
+            public static partial void PostException(ILogger logger, Exception exception, string path);
+
+            [LoggerMessage(EventId = 4803, Level = LogLevel.Warning, Message = "Exception while disposing HttpClient.")]
+            public static partial void DisposeException(ILogger logger, Exception exception);
+        }
+
         private readonly HttpClient _httpClient;
         private readonly TWebApiProviderConfiguration _webApiProviderConfiguration;
 
@@ -34,9 +43,7 @@ namespace ThunderPropagator.Providers.DotNet.WebApi
             }
             catch (Exception exception)
             {
-                Logger.LogError(exception,
-                    "error has occured while posting message to path {Path}.",
-                    _webApiProviderConfiguration.Path);
+                Log.PostException(Logger, exception, _webApiProviderConfiguration.Path);
                 throw;
             }
         }
@@ -49,7 +56,7 @@ namespace ThunderPropagator.Providers.DotNet.WebApi
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while disposing HttpClient.");
+                Log.DisposeException(Logger, ex);
             }
         }
     }

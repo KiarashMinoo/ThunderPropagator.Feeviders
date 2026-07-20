@@ -17,11 +17,53 @@ namespace ThunderPropagator.Feeders.RabbitMQ
 #if !DEBUG
         sealed
 #endif
-        class RabbitMQFeeder<TChannel, TRabbitMQFeederMessage, TRabbitMQFeederConfiguration> : DelegativeFeeder<TChannel, TRabbitMQFeederMessage, TRabbitMQFeederConfiguration>
+        partial class RabbitMQFeeder<TChannel, TRabbitMQFeederMessage, TRabbitMQFeederConfiguration> : DelegativeFeeder<TChannel, TRabbitMQFeederMessage, TRabbitMQFeederConfiguration>
         where TChannel : class, ThunderPropagator.Application.Channels.IChannel
         where TRabbitMQFeederMessage : RabbitMQFeederMessage
         where TRabbitMQFeederConfiguration : RabbitMQFeederConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4100, Level = LogLevel.Warning, Message = "{Name}/{ChannelName} is disabled (IsEnabled=false), skipping broker connection.")]
+            public static partial void FeederDisabled(ILogger logger, string name, string channelName);
+
+            [LoggerMessage(EventId = 4101, Level = LogLevel.Information, Message = "{Name}/{ChannelName} on Queue {Queue} has configured.")]
+            public static partial void FeederConfigured(ILogger logger, string name, string channelName, string queue);
+
+            [LoggerMessage(EventId = 4102, Level = LogLevel.Error, Message = "Failed to negatively acknowledge Delivery {DeliveryTag} on Queue {Queue}.")]
+            public static partial void NegativeAcknowledgeFailed(ILogger logger, Exception exception, ulong deliveryTag, string queue);
+
+            [LoggerMessage(EventId = 4103, Level = LogLevel.Error, Message = "error has occured while consuming messages on Queue {Queue}.")]
+            public static partial void ConsumeError(ILogger logger, Exception exception, string queue);
+
+            [LoggerMessage(EventId = 4104, Level = LogLevel.Warning, Message = "RabbitMQ {Component} for Queue {Queue} shut down: {ReplyText}. Reconnection will be attempted.")]
+            public static partial void BrokerShutdown(ILogger logger, string component, string queue, string replyText);
+
+            [LoggerMessage(EventId = 4105, Level = LogLevel.Information, Message = "RabbitMQ feeder on Queue {Queue} reconnected after {AttemptCount} attempt(s).")]
+            public static partial void ReconnectSucceeded(ILogger logger, string queue, int attemptCount);
+
+            [LoggerMessage(EventId = 4106, Level = LogLevel.Warning, Message = "RabbitMQ feeder reconnect attempt {AttemptCount} for Queue {Queue} failed. Retrying in {Delay}.")]
+            public static partial void ReconnectAttemptFailed(ILogger logger, Exception exception, int attemptCount, string queue, TimeSpan delay);
+
+            [LoggerMessage(EventId = 4107, Level = LogLevel.Error, Message = "RabbitMQ feeder recovery for Queue {Queue} stopped unexpectedly.")]
+            public static partial void RecoveryStoppedUnexpectedly(ILogger logger, Exception exception, string queue);
+
+            [LoggerMessage(EventId = 4108, Level = LogLevel.Error, Message = "Failed to extract trace context: {Message}")]
+            public static partial void TraceContextExtractionFailed(ILogger logger, Exception exception, string message);
+
+            [LoggerMessage(EventId = 4109, Level = LogLevel.Debug, Message = "Failed to close RabbitMQ channel for Queue {Queue}.")]
+            public static partial void ChannelCloseFailed(ILogger logger, Exception exception, string queue);
+
+            [LoggerMessage(EventId = 4110, Level = LogLevel.Debug, Message = "Failed to dispose RabbitMQ channel for Queue {Queue}.")]
+            public static partial void ChannelDisposeFailed(ILogger logger, Exception exception, string queue);
+
+            [LoggerMessage(EventId = 4111, Level = LogLevel.Debug, Message = "Failed to close RabbitMQ connection for Queue {Queue}.")]
+            public static partial void ConnectionCloseFailed(ILogger logger, Exception exception, string queue);
+
+            [LoggerMessage(EventId = 4112, Level = LogLevel.Debug, Message = "Failed to dispose RabbitMQ connection for Queue {Queue}.")]
+            public static partial void ConnectionDisposeFailed(ILogger logger, Exception exception, string queue);
+        }
+
         private IChannel? _channel;
         private IConnection? _connection;
         private AsyncEventingBasicConsumer? _consumer;
@@ -47,8 +89,8 @@ namespace ThunderPropagator.Feeders.RabbitMQ
         {
             if (!FeederConfiguration.IsEnabled)
             {
-                Logger.LogWarning(
-                    "{Name}/{ChannelName} is disabled (IsEnabled=false), skipping broker connection.",
+                Log.FeederDisabled(
+                    Logger,
                     GetType().GetTypeInfo().Name,
                     Channel.Metadata.ChannelName);
                 return;
@@ -61,8 +103,8 @@ namespace ThunderPropagator.Feeders.RabbitMQ
 
             await ConnectAndConsumeAsync(cancellationToken).ConfigureAwait(false);
 
-            Logger.LogInformation(
-                "{Name}/{ChannelName} on Queue {Queue} has configured.",
+            Log.FeederConfigured(
+                Logger,
                 GetType().GetTypeInfo().Name,
                 Channel.Metadata.ChannelName,
                 FeederConfiguration.Queue);
@@ -156,15 +198,15 @@ namespace ThunderPropagator.Feeders.RabbitMQ
                 }
                 catch (Exception negativeAcknowledgeException)
                 {
-                    Logger.LogError(negativeAcknowledgeException,
-                        "Failed to negatively acknowledge Delivery {DeliveryTag} on Queue {Queue}.",
+                    Log.NegativeAcknowledgeFailed(Logger,
+                        negativeAcknowledgeException,
                         eventArgs.DeliveryTag,
                         FeederConfiguration.Queue);
                 }
 
                 ReportHealth(HealthStatus.Unhealthy, exception);
 
-                Logger.LogError(exception, "error has occured while consuming messages on Queue {Queue}.", FeederConfiguration.Queue);
+                Log.ConsumeError(Logger, exception, FeederConfiguration.Queue);
             }
             finally
             {
@@ -179,8 +221,8 @@ namespace ThunderPropagator.Feeders.RabbitMQ
                 return Task.CompletedTask;
 
             ReportHealth(HealthStatus.Unhealthy);
-            Logger.LogWarning(
-                "RabbitMQ {Component} for Queue {Queue} shut down: {ReplyText}. Reconnection will be attempted.",
+            Log.BrokerShutdown(
+                Logger,
                 ReferenceEquals(sender, _connection) ? "connection" : "channel",
                 FeederConfiguration.Queue,
                 eventArgs.ReplyText);
@@ -216,8 +258,8 @@ namespace ThunderPropagator.Feeders.RabbitMQ
                     {
                         await ConnectAndConsumeAsync(_lifetimeCancellation.Token).ConfigureAwait(false);
                         ReportHealth(HealthStatus.Healthy);
-                        Logger.LogInformation(
-                            "RabbitMQ feeder on Queue {Queue} reconnected after {AttemptCount} attempt(s).",
+                        Log.ReconnectSucceeded(
+                            Logger,
                             FeederConfiguration.Queue,
                             attempt);
                         return;
@@ -234,11 +276,7 @@ namespace ThunderPropagator.Feeders.RabbitMQ
                             FeederConfiguration.ReconnectMaxDelay,
                             attempt);
 
-                        Logger.LogWarning(exception,
-                            "RabbitMQ feeder reconnect attempt {AttemptCount} for Queue {Queue} failed. Retrying in {Delay}.",
-                            attempt,
-                            FeederConfiguration.Queue,
-                            delay);
+                        Log.ReconnectAttemptFailed(Logger, exception, attempt, FeederConfiguration.Queue, delay);
 
                         attempt++;
                         await Task.Delay(delay, _lifetimeCancellation.Token).ConfigureAwait(false);
@@ -252,9 +290,7 @@ namespace ThunderPropagator.Feeders.RabbitMQ
             catch (Exception exception)
             {
                 ReportHealth(HealthStatus.Unhealthy, exception);
-                Logger.LogError(exception,
-                    "RabbitMQ feeder recovery for Queue {Queue} stopped unexpectedly.",
-                    FeederConfiguration.Queue);
+                Log.RecoveryStoppedUnexpectedly(Logger, exception, FeederConfiguration.Queue);
             }
             finally
             {
@@ -271,7 +307,7 @@ namespace ThunderPropagator.Feeders.RabbitMQ
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Failed to extract trace context: {Message}", ex.Message);
+                Log.TraceContextExtractionFailed(Logger, ex, ex.Message);
             }
 
             return [];
@@ -338,7 +374,7 @@ namespace ThunderPropagator.Feeders.RabbitMQ
                 }
                 catch (Exception exception)
                 {
-                    Logger.LogDebug(exception, "Failed to close RabbitMQ channel for Queue {Queue}.", FeederConfiguration.Queue);
+                    Log.ChannelCloseFailed(Logger, exception, FeederConfiguration.Queue);
                 }
 
                 try
@@ -347,7 +383,7 @@ namespace ThunderPropagator.Feeders.RabbitMQ
                 }
                 catch (Exception exception)
                 {
-                    Logger.LogDebug(exception, "Failed to dispose RabbitMQ channel for Queue {Queue}.", FeederConfiguration.Queue);
+                    Log.ChannelDisposeFailed(Logger, exception, FeederConfiguration.Queue);
                 }
             }
 
@@ -360,7 +396,7 @@ namespace ThunderPropagator.Feeders.RabbitMQ
                 }
                 catch (Exception exception)
                 {
-                    Logger.LogDebug(exception, "Failed to close RabbitMQ connection for Queue {Queue}.", FeederConfiguration.Queue);
+                    Log.ConnectionCloseFailed(Logger, exception, FeederConfiguration.Queue);
                 }
 
                 try
@@ -369,7 +405,7 @@ namespace ThunderPropagator.Feeders.RabbitMQ
                 }
                 catch (Exception exception)
                 {
-                    Logger.LogDebug(exception, "Failed to dispose RabbitMQ connection for Queue {Queue}.", FeederConfiguration.Queue);
+                    Log.ConnectionDisposeFailed(Logger, exception, FeederConfiguration.Queue);
                 }
             }
         }

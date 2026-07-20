@@ -12,11 +12,17 @@ namespace ThunderPropagator.Feeders.WebSocket
 #if !DEBUG
         sealed
 #endif
-        class WebSocketFeeder<TChannel, TWebSocketFeederMessage, TWebSocketFeederConfiguration> : DelegativeFeeder<TChannel, TWebSocketFeederMessage, TWebSocketFeederConfiguration>, IFeature
+        partial class WebSocketFeeder<TChannel, TWebSocketFeederMessage, TWebSocketFeederConfiguration> : DelegativeFeeder<TChannel, TWebSocketFeederMessage, TWebSocketFeederConfiguration>, IFeature
         where TChannel : class, IChannel
         where TWebSocketFeederMessage : WebSocketFeederMessage
         where TWebSocketFeederConfiguration : WebSocketFeederConfiguration, IAbstractFeederConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4700, Level = LogLevel.Error, Message = "Error while enqueuing message")]
+            public static partial void EnqueueError(ILogger logger, Exception exception);
+        }
+
         public WebSocketFeeder(TChannel channel,
             TWebSocketFeederConfiguration webSocketFeederConfiguration,
             IFeederHandler<TChannel, TWebSocketFeederMessage> feederHandler,
@@ -43,7 +49,7 @@ namespace ThunderPropagator.Feeders.WebSocket
             {
                 ReportHealth(HealthStatus.Unhealthy, exception);
 
-                Logger.LogError(exception, "Error while enqueuing message");
+                Log.EnqueueError(Logger, exception);
             }
         }
     }

@@ -13,10 +13,19 @@ internal
 #if !DEBUG
     sealed
 #endif
-    class ServiceBusProvider<TMessage, TConfiguration> : AbstractProvider<TMessage, TConfiguration>, IServiceBusBatchProvider<TMessage>
+    partial class ServiceBusProvider<TMessage, TConfiguration> : AbstractProvider<TMessage, TConfiguration>, IServiceBusBatchProvider<TMessage>
     where TMessage : ServiceBusProviderMessage
     where TConfiguration : ServiceBusProviderConfiguration
 {
+    private static partial class Log
+    {
+        [LoggerMessage(EventId = 5201, Level = LogLevel.Error, Message = "Error occurred while producing an Azure Service Bus message to {EntityPath}.")]
+        public static partial void ProduceMessageError(ILogger logger, Exception exception, string entityPath);
+
+        [LoggerMessage(EventId = 5202, Level = LogLevel.Error, Message = "Error occurred while producing an Azure Service Bus batch to {EntityPath}.")]
+        public static partial void ProduceBatchError(ILogger logger, Exception exception, string entityPath);
+    }
+
     private readonly ServiceBusClient _client;
     private readonly ServiceBusSender _sender;
     private readonly IFeederMessageSerializer<TMessage, TConfiguration> _serializer;
@@ -43,7 +52,7 @@ internal
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Error occurred while producing an Azure Service Bus message to {EntityPath}.", _sender.EntityPath);
+            Log.ProduceMessageError(Logger, exception, _sender.EntityPath);
             throw;
         }
     }
@@ -77,7 +86,7 @@ internal
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Error occurred while producing an Azure Service Bus batch to {EntityPath}.", _sender.EntityPath);
+            Log.ProduceBatchError(Logger, exception, _sender.EntityPath);
             throw;
         }
         finally

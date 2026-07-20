@@ -13,11 +13,17 @@ internal
 #if !DEBUG
     sealed
 #endif
-    class ServiceBusFeeder<TChannel, TMessage, TConfiguration> : IterativeFeeder<TChannel, TMessage, TConfiguration>, IFeature
+    partial class ServiceBusFeeder<TChannel, TMessage, TConfiguration> : IterativeFeeder<TChannel, TMessage, TConfiguration>, IFeature
     where TChannel : class, IChannel
     where TMessage : ServiceBusFeederMessage
     where TConfiguration : ServiceBusFeederConfiguration
 {
+    private static partial class Log
+    {
+        [LoggerMessage(EventId = 5200, Level = LogLevel.Error, Message = "Azure Service Bus processor failed for {EntityPath} at {ErrorSource}.")]
+        public static partial void ProcessorError(ILogger logger, Exception exception, string entityPath, ServiceBusErrorSource errorSource);
+    }
+
     private readonly ServiceBusClient _client;
     private readonly ServiceBusProcessor _processor;
     private readonly Channel<ServiceBusMessageContext> _messages = System.Threading.Channels.Channel.CreateUnbounded<ServiceBusMessageContext>(
@@ -104,7 +110,7 @@ internal
 
     private Task HandleErrorAsync(ProcessErrorEventArgs eventArgs)
     {
-        Logger.LogError(eventArgs.Exception, "Azure Service Bus processor failed for {EntityPath} at {ErrorSource}.", eventArgs.EntityPath, eventArgs.ErrorSource);
+        Log.ProcessorError(Logger, eventArgs.Exception, eventArgs.EntityPath, eventArgs.ErrorSource);
         return Task.CompletedTask;
     }
 

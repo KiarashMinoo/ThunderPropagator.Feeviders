@@ -12,10 +12,34 @@ namespace ThunderPropagator.Providers.DotNet.ActiveMQ
 #if !DEBUG
         sealed
 #endif
-        class ActiveMQProvider<TActiveMQProviderMessage, TActiveMQProviderConfiguration> : AbstractProvider<TActiveMQProviderMessage, TActiveMQProviderConfiguration>
+        partial class ActiveMQProvider<TActiveMQProviderMessage, TActiveMQProviderConfiguration> : AbstractProvider<TActiveMQProviderMessage, TActiveMQProviderConfiguration>
         where TActiveMQProviderMessage : ActiveMQProviderMessage
         where TActiveMQProviderConfiguration : ActiveMQProviderConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4506, Level = LogLevel.Error, Message = "error has occured while producing message to queue {Queue}.")]
+            public static partial void ProduceError(ILogger logger, Exception exception, string queue);
+
+            [LoggerMessage(EventId = 4507, Level = LogLevel.Warning, Message = "Exception while closing ActiveMQ producer.")]
+            public static partial void ProducerCloseError(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4508, Level = LogLevel.Warning, Message = "Exception while closing ActiveMQ session.")]
+            public static partial void SessionCloseError(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4509, Level = LogLevel.Warning, Message = "Exception while closing ActiveMQ connection.")]
+            public static partial void ConnectionCloseError(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4510, Level = LogLevel.Warning, Message = "Exception while disposing ActiveMQ producer.")]
+            public static partial void ProducerDisposeError(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4511, Level = LogLevel.Warning, Message = "Exception while disposing ActiveMQ session.")]
+            public static partial void SessionDisposeError(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4512, Level = LogLevel.Warning, Message = "Exception while disposing ActiveMQ connection.")]
+            public static partial void ConnectionDisposeError(ILogger logger, Exception exception);
+        }
+
         private readonly TActiveMQProviderConfiguration _activeMQProviderConfiguration;
         private readonly IConnection _connection;
         private readonly IMessageProducer _producer;
@@ -76,9 +100,7 @@ namespace ThunderPropagator.Providers.DotNet.ActiveMQ
             }
             catch (Exception exception)
             {
-                Logger.LogError(exception,
-                    "error has occured while producing message to queue {Queue}.",
-                    _activeMQProviderConfiguration.Queue);
+                Log.ProduceError(Logger, exception, _activeMQProviderConfiguration.Queue);
                 throw;
             }
         }
@@ -91,7 +113,7 @@ namespace ThunderPropagator.Providers.DotNet.ActiveMQ
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while closing ActiveMQ producer.");
+                Log.ProducerCloseError(Logger, ex);
             }
 
             try
@@ -100,7 +122,7 @@ namespace ThunderPropagator.Providers.DotNet.ActiveMQ
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while closing ActiveMQ session.");
+                Log.SessionCloseError(Logger, ex);
             }
 
             try
@@ -109,7 +131,7 @@ namespace ThunderPropagator.Providers.DotNet.ActiveMQ
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while closing ActiveMQ connection.");
+                Log.ConnectionCloseError(Logger, ex);
             }
 
             try
@@ -118,7 +140,7 @@ namespace ThunderPropagator.Providers.DotNet.ActiveMQ
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while disposing ActiveMQ producer.");
+                Log.ProducerDisposeError(Logger, ex);
             }
 
             try
@@ -127,7 +149,7 @@ namespace ThunderPropagator.Providers.DotNet.ActiveMQ
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while disposing ActiveMQ session.");
+                Log.SessionDisposeError(Logger, ex);
             }
 
             try
@@ -136,7 +158,7 @@ namespace ThunderPropagator.Providers.DotNet.ActiveMQ
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "Exception while disposing ActiveMQ connection.");
+                Log.ConnectionDisposeError(Logger, ex);
             }
         }
     }

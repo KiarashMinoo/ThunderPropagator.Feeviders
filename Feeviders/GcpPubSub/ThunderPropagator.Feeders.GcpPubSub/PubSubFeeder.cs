@@ -13,11 +13,20 @@ internal
 #if !DEBUG
     sealed
 #endif
-    class PubSubFeeder<TChannel, TMessage, TConfiguration> : IterativeFeeder<TChannel, TMessage, TConfiguration>, IFeature
+    partial class PubSubFeeder<TChannel, TMessage, TConfiguration> : IterativeFeeder<TChannel, TMessage, TConfiguration>, IFeature
     where TChannel : class, IChannel
     where TMessage : PubSubFeederMessage
     where TConfiguration : PubSubFeederConfiguration
 {
+    private static partial class Log
+    {
+        [LoggerMessage(EventId = 5100, Level = LogLevel.Information, Message = "GCP Pub/Sub exactly-once delivery is expected for subscription {SubscriptionId}; enable it on the subscription.")]
+        public static partial void ExactlyOnceDeliveryExpected(ILogger logger, string subscriptionId);
+
+        [LoggerMessage(EventId = 5101, Level = LogLevel.Error, Message = "GCP Pub/Sub subscriber failed for subscription {SubscriptionId}.")]
+        public static partial void SubscriberFailed(ILogger logger, Exception exception, string subscriptionId);
+    }
+
     private readonly Channel<PubSubMessageContext> _messages;
     private SubscriberClient? _subscriber;
     private Task? _subscriberTask;
@@ -44,7 +53,7 @@ internal
         _subscriberTask = _subscriber.StartAsync(HandleMessageAsync);
         _ = ObserveSubscriberAsync(_subscriberTask);
         if (FeederConfiguration.ExactlyOnceDelivery)
-            Logger.LogInformation("GCP Pub/Sub exactly-once delivery is expected for subscription {SubscriptionId}; enable it on the subscription.", FeederConfiguration.SubscriptionId);
+            Log.ExactlyOnceDeliveryExpected(Logger, FeederConfiguration.SubscriptionId);
         await base.StartingAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -100,7 +109,7 @@ internal
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "GCP Pub/Sub subscriber failed for subscription {SubscriptionId}.", FeederConfiguration.SubscriptionId);
+            Log.SubscriberFailed(Logger, exception, FeederConfiguration.SubscriptionId);
             _messages.Writer.TryComplete(exception);
         }
     }
