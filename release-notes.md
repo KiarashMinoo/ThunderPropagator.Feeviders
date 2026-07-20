@@ -1,5 +1,10 @@
-## [1.0.1-beta.36] — 2026-07-20
+## [1.0.1-beta.37] — 2026-07-20
+
+### ♻️ Refactoring
+
+- centralize transport instrumentation `(f835284)` — Kiarash Minoo
 
 ### 🏠 Chores
 
-- Migrate all Feeder/Provider ILogger calls to LoggerMessageAttribute `(a47db6f)` — Kiarash Minoo
+- Add OTel ActivitySource/Meter instrumentation to all 11 transports `(74aae13)` — Kiarash Minoo
+- update dependency ignore list and clean up patterns `(ce6f103)` — Kiarash Minoo
