@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+  <suppress>
+    <notes><![CDATA[
+      False positive: Microsoft.AspNetCore.Connections.Abstractions is a NuGet
+      package and is unrelated to the WordPress Connections plugin.
+    ]]></notes>
+    <packageUrl regex="true">^pkg:nuget/Microsoft\.AspNetCore\.Connections\.Abstractions@.*$</packageUrl>
+    <cve>CVE-2011-5254</cve>
+  </suppress>
+  <suppress>
+    <notes><![CDATA[
+      False positive: Microsoft.Extensions.Diagnostics.HealthChecks is a NuGet
+      package and is unrelated to the Python healthchecks project.
+    ]]></notes>
+    <packageUrl regex="true">^pkg:nuget/Microsoft\.Extensions\.Diagnostics\.HealthChecks@.*$</packageUrl>
+    <cve>CVE-2023-0440</cve>
+  </suppress>
+  <suppress>
+    <notes><![CDATA[
+      False positives: OpenTelemetry.Api is the .NET NuGet package. These CVEs
+      affect the Go and C++ OpenTelemetry implementations, not OpenTelemetry .NET.
+    ]]></notes>
+    <packageUrl regex="true">^pkg:nuget/OpenTelemetry\.Api@.*$</packageUrl>
+    <cve>CVE-2026-39882</cve>
+    <cve>CVE-2026-39883</cve>
+    <cve>CVE-2026-41178</cve>
+    <cve>CVE-2026-44967</cve>
+  </suppress>
+</suppressions>
