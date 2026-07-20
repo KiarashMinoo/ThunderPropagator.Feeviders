@@ -172,40 +172,66 @@ namespace ThunderPropagator.Feeders.TcpSocket
                     }
 
                     // Read message data
-                    var reader = new FramedStreamReader(stream, _eomBytes.Span);
-                    var bytes = await reader.ReadUntilEomAsync(_tcpSocketFeederConfiguration.BufferSize, _receiveCancellation.Token).ConfigureAwait(false);
-
-                    if (bytes.Length == 0)
-                    {
-                        Log.ClientDisconnectedBeforeEom(Logger);
-                        continue;
-                    }
-
-                    // Handle authentication if required
-                    if (_requiresAuthentication && !Authenticate(bytes))
-                    {
-                        Log.AuthenticationFailed(Logger);
-                        continue;
-                    }
-
-                    // Process the message
-                    if (!_inFlightMessages.TryBegin())
-                        continue;
-
+                    var receiveStopwatch = Stopwatch.StartNew();
+                    Activity? receiveActivity = null;
                     try
                     {
-                        var tcpSocketFeederMessage = Deserialize(bytes) ??
-                                                     throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
+                        var reader = new FramedStreamReader(stream, _eomBytes.Span);
+                        var bytes = await reader.ReadUntilEomAsync(_tcpSocketFeederConfiguration.BufferSize, _receiveCancellation.Token).ConfigureAwait(false);
 
-                        var activityContext = tcpSocketFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
-                        var baggage = tcpSocketFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
-                        await ReceiveAsync(tcpSocketFeederMessage, activityContext, baggage, cancellationToken: _receiveCancellation.Token).ConfigureAwait(false);
+                        if (bytes.Length == 0)
+                        {
+                            Log.ClientDisconnectedBeforeEom(Logger);
+                            continue;
+                        }
 
-                        ReportHealth(HealthStatus.Healthy);
+                        // Handle authentication if required
+                        if (_requiresAuthentication && !Authenticate(bytes))
+                        {
+                            Log.AuthenticationFailed(Logger);
+                            continue;
+                        }
+
+                        // Process the message
+                        if (!_inFlightMessages.TryBegin())
+                            continue;
+
+                        try
+                        {
+                            var tcpSocketFeederMessage = Deserialize(bytes) ??
+                                                         throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
+
+                            var activityContext = tcpSocketFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
+                            var baggage = tcpSocketFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
+
+                            receiveActivity = activityContext != default
+                                ? TcpSocketTelemetry.ActivitySource.StartActivity("tcpsocket receive", ActivityKind.Consumer, activityContext)
+                                : TcpSocketTelemetry.ActivitySource.StartActivity("tcpsocket receive", ActivityKind.Consumer);
+                            receiveActivity?.SetTag("messaging.system", "tcpsocket");
+                            receiveActivity?.SetTag("messaging.destination.name",
+                                client.Client.RemoteEndPoint?.ToString() ?? $"0.0.0.0:{_tcpSocketFeederConfiguration.Port}");
+                            receiveActivity?.SetTag("messaging.operation", "receive");
+
+                            await ReceiveAsync(tcpSocketFeederMessage, activityContext, baggage, cancellationToken: _receiveCancellation.Token).ConfigureAwait(false);
+
+                            ReportHealth(HealthStatus.Healthy);
+                            TcpSocketTelemetry.MessagesReceived.Add(1);
+                        }
+                        finally
+                        {
+                            _inFlightMessages.Complete();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        receiveActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                        TcpSocketTelemetry.MessagesReceiveFailed.Add(1);
+                        throw;
                     }
                     finally
                     {
-                        _inFlightMessages.Complete();
+                        TcpSocketTelemetry.ReceiveDuration.Record(receiveStopwatch.Elapsed.TotalMilliseconds);
+                        receiveActivity?.Dispose();
                     }
                 }
                 catch (Exception) when (IsStopped || _receiveCancellation.IsCancellationRequested)

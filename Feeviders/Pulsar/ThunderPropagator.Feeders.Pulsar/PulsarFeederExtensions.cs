@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -12,6 +14,12 @@ namespace ThunderPropagator.Feeders.Pulsar
 {
     public static class PulsarFeederExtensions
     {
+        internal static readonly ActivitySource ActivitySource = new("thunderpropagator.feeviders.pulsar");
+        internal static readonly Meter Meter = new("thunderpropagator.feeviders.pulsar");
+        internal static readonly Counter<long> MessagesReceived = Meter.CreateCounter<long>("thunderpropagator.feeviders.pulsar.messages.received");
+        internal static readonly Counter<long> MessagesReceiveFailed = Meter.CreateCounter<long>("thunderpropagator.feeviders.pulsar.messages.receive.failed");
+        internal static readonly Histogram<double> ReceiveDuration = Meter.CreateHistogram<double>("thunderpropagator.feeviders.pulsar.receive.duration", unit: "ms");
+
         public static IServiceCollection AddPulsarFeeder<TChannel, TPulsarFeederMessage, TPulsarFeederConfiguration>
             (this IServiceCollection services, IConfigurationRoot configuration, string sectionName)
             where TChannel : class, IChannel

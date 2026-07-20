@@ -1,5 +1,6 @@
 ﻿using OpenTelemetry;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
+using ThunderPropagator.Feeviders.RedisPubSub.SharedKernel;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
@@ -59,6 +60,13 @@ namespace ThunderPropagator.Providers.DotNet.RedisPubSub
             if (bytes is null || bytes.Length == 0)
                 return Task.CompletedTask;
 
+            using var activity = RedisPubSubTelemetry.ActivitySource.StartActivity("redispubsub publish", ActivityKind.Producer);
+            activity?.SetTag("messaging.system", "redispubsub");
+            activity?.SetTag("messaging.destination.name", (string?)_redisChannel);
+            activity?.SetTag("messaging.operation", "publish");
+
+            var stopwatch = Stopwatch.StartNew();
+
             try
             {
                 // Fire-and-forget publish: do not await to reduce latency. Attach a continuation to log any unexpected faults.
@@ -66,18 +74,31 @@ namespace ThunderPropagator.Providers.DotNet.RedisPubSub
                 _ = publishTask.ContinueWith(t =>
                 {
                     if (t.IsFaulted && t.Exception is not null)
+                    {
                         Log.PublishTaskFaulted(Logger, t.Exception, _redisPubSubProviderConfiguration.Channel);
+                        activity?.SetStatus(ActivityStatusCode.Error, t.Exception.GetBaseException().Message);
+                        RedisPubSubTelemetry.MessagesPublishFailed.Add(1);
+                    }
                 }, TaskScheduler.Default);
 
+                RedisPubSubTelemetry.MessagesPublished.Add(1);
                 return Task.CompletedTask;
             }
             catch (Exception exception)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+                RedisPubSubTelemetry.MessagesPublishFailed.Add(1);
+
                 Log.PublishError(
                     Logger,
                     exception,
                     _redisPubSubProviderConfiguration.Channel);
                 throw;
+            }
+            finally
+            {
+                stopwatch.Stop();
+                RedisPubSubTelemetry.PublishDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
             }
         }
 

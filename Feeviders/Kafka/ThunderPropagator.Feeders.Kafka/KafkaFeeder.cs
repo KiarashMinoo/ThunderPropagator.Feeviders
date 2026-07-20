@@ -145,14 +145,40 @@ namespace ThunderPropagator.Feeders.Kafka
                         if (consumeResult.Message.Headers.TryGetLastBytes(nameof(Baggage), out var baggageBytes) && baggageBytes is not null)
                             baggage = baggageBytes.FromNJsonBytes<Baggage>();
 
-                        yield return new FeederReceivedMessage<TKafkaFeederMessage>(message,
-                            activityContext,
-                            baggage,
-                            new Dictionary<string, object?>
-                            {
-                                { nameof(consumeResult.Topic), consumeResult.Topic },
-                                { nameof(consumeResult.Offset), consumeResult.Offset },
-                            });
+                        using var activity = activityContext.HasValue
+                            ? KafkaFeederExtensions.ActivitySource.StartActivity("kafka receive", ActivityKind.Consumer, activityContext.Value)
+                            : KafkaFeederExtensions.ActivitySource.StartActivity("kafka receive", ActivityKind.Consumer);
+                        activity?.SetTag("messaging.system", "kafka");
+                        activity?.SetTag("messaging.destination.name", consumeResult.Topic);
+                        activity?.SetTag("messaging.operation", "receive");
+
+                        var receiveTimestamp = Stopwatch.GetTimestamp();
+                        FeederReceivedMessage<TKafkaFeederMessage> receivedMessage;
+                        try
+                        {
+                            receivedMessage = new FeederReceivedMessage<TKafkaFeederMessage>(message,
+                                activityContext,
+                                baggage,
+                                new Dictionary<string, object?>
+                                {
+                                    { nameof(consumeResult.Topic), consumeResult.Topic },
+                                    { nameof(consumeResult.Offset), consumeResult.Offset },
+                                });
+
+                            KafkaFeederExtensions.MessagesReceived.Add(1);
+                        }
+                        catch (Exception ex)
+                        {
+                            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                            KafkaFeederExtensions.MessagesReceiveFailed.Add(1);
+                            throw;
+                        }
+                        finally
+                        {
+                            KafkaFeederExtensions.ReceiveDuration.Record(Stopwatch.GetElapsedTime(receiveTimestamp).TotalMilliseconds);
+                        }
+
+                        yield return receivedMessage;
                     }
                     else
                         await Task.Yield();

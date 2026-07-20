@@ -94,7 +94,20 @@ namespace ThunderPropagator.Feeders.NATS
                     {
                         if (message.Data is not null)
                         {
-                            yield return MessageConsumed(message.Data, message.Headers);
+                            var (receivedMessage, activity) = ConsumeMessageOrRecordFailure(message.Data, message.Headers, message.Subject);
+                            var stopwatch = Stopwatch.StartNew();
+                            var settled = false;
+
+                            try
+                            {
+                                yield return receivedMessage;
+                                settled = true;
+                            }
+                            finally
+                            {
+                                stopwatch.Stop();
+                                RecordReceiveOutcome(activity, settled, stopwatch.Elapsed.TotalMilliseconds);
+                            }
                         }
                         else
                         {
@@ -130,11 +143,19 @@ namespace ThunderPropagator.Feeders.NATS
                             continue;
                         }
 
+                        var (consumedMessage, jsActivity) = ConsumeMessageOrRecordFailure(message.Data, message.Headers, message.Subject);
+                        var jsStopwatch = Stopwatch.StartNew();
+
                         await foreach (var receivedMessage in NatsJetStreamMessageSettlement.YieldAndSettleAsync(
                                            message,
-                                           MessageConsumed(message.Data, message.Headers),
+                                           consumedMessage,
                                            Logger,
-                                           cancellationToken))
+                                           cancellationToken,
+                                           settled =>
+                                           {
+                                               jsStopwatch.Stop();
+                                               RecordReceiveOutcome(jsActivity, settled, jsStopwatch.Elapsed.TotalMilliseconds);
+                                           }))
                         {
                             yield return receivedMessage;
                         }
@@ -147,7 +168,24 @@ namespace ThunderPropagator.Feeders.NATS
 
             yield break;
 
-            FeederReceivedMessage<TNatsFeederMessage> MessageConsumed(TNatsFeederMessage message, NatsHeaders? headers)
+            (FeederReceivedMessage<TNatsFeederMessage> ReceivedMessage, Activity? Activity) ConsumeMessageOrRecordFailure(TNatsFeederMessage message, NatsHeaders? headers, string subject)
+            {
+                var stopwatch = Stopwatch.StartNew();
+
+                try
+                {
+                    return ConsumeMessage(message, headers, subject);
+                }
+                catch (Exception)
+                {
+                    stopwatch.Stop();
+                    NatsFeederExtensions.MessagesReceiveFailed.Add(1);
+                    NatsFeederExtensions.ReceiveDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
+                    throw;
+                }
+            }
+
+            (FeederReceivedMessage<TNatsFeederMessage> ReceivedMessage, Activity? Activity) ConsumeMessage(TNatsFeederMessage message, NatsHeaders? headers, string subject)
             {
                 ActivityContext? activityContext = null;
                 if (headers?.TryGetValue(nameof(ActivityContext), out var activityContextStr) == true)
@@ -157,7 +195,31 @@ namespace ThunderPropagator.Feeders.NATS
                 if (headers?.TryGetValue(nameof(Baggage), out var baggageStr) == true)
                     baggage = baggageStr.ToString().FromNJsonBase64<Baggage>();
 
-                return new FeederReceivedMessage<TNatsFeederMessage>(message, activityContext, baggage);
+                var activity = activityContext.HasValue
+                    ? NatsFeederExtensions.ActivitySource.StartActivity("nats receive", ActivityKind.Consumer, activityContext.Value)
+                    : NatsFeederExtensions.ActivitySource.StartActivity("nats receive", ActivityKind.Consumer);
+
+                activity?.SetTag("messaging.system", "nats");
+                activity?.SetTag("messaging.destination.name", subject);
+                activity?.SetTag("messaging.operation", "receive");
+
+                return (new FeederReceivedMessage<TNatsFeederMessage>(message, activityContext, baggage), activity);
+            }
+
+            static void RecordReceiveOutcome(Activity? activity, bool settled, double elapsedMilliseconds)
+            {
+                if (settled)
+                {
+                    NatsFeederExtensions.MessagesReceived.Add(1);
+                }
+                else
+                {
+                    NatsFeederExtensions.MessagesReceiveFailed.Add(1);
+                    activity?.SetStatus(ActivityStatusCode.Error);
+                }
+
+                NatsFeederExtensions.ReceiveDuration.Record(elapsedMilliseconds);
+                activity?.Dispose();
             }
         }
 

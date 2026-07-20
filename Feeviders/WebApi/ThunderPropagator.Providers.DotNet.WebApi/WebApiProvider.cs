@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.Providers.DotNet.WebApi
@@ -34,17 +35,31 @@ namespace ThunderPropagator.Providers.DotNet.WebApi
 
         protected override async Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)
         {
+            using var activity = WebApiProviderExtensions.ActivitySource.StartActivity("webapi publish", ActivityKind.Producer);
+            activity?.SetTag("messaging.system", "webapi");
+            activity?.SetTag("messaging.destination.name", _webApiProviderConfiguration.Path);
+            activity?.SetTag("messaging.operation", "publish");
+
+            var publishTimestamp = Stopwatch.GetTimestamp();
             try
             {
                 using var request = new HttpRequestMessage(HttpMethod.Post, _webApiProviderConfiguration.Path);
                 request.Content = new ByteArrayContent(bytes);
                 var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
+
+                WebApiProviderExtensions.MessagesPublished.Add(1);
             }
             catch (Exception exception)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+                WebApiProviderExtensions.MessagesPublishFailed.Add(1);
                 Log.PostException(Logger, exception, _webApiProviderConfiguration.Path);
                 throw;
+            }
+            finally
+            {
+                WebApiProviderExtensions.PublishDuration.Record(Stopwatch.GetElapsedTime(publishTimestamp).TotalMilliseconds);
             }
         }
 

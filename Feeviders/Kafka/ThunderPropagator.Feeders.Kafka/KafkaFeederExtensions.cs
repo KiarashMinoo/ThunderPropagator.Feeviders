@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -11,6 +13,16 @@ namespace ThunderPropagator.Feeders.Kafka
 {
     public static class KafkaFeederExtensions
     {
+        internal static readonly ActivitySource ActivitySource = new("thunderpropagator.feeviders.kafka");
+        internal static readonly Meter Meter = new("thunderpropagator.feeviders.kafka");
+
+        internal static readonly Counter<long> MessagesReceived = Meter.CreateCounter<long>(
+            "thunderpropagator.feeviders.kafka.messages.received", "{message}", "Total messages received from Kafka");
+        internal static readonly Counter<long> MessagesReceiveFailed = Meter.CreateCounter<long>(
+            "thunderpropagator.feeviders.kafka.messages.receive.failed", "{message}", "Total Kafka receive failures");
+        internal static readonly Histogram<double> ReceiveDuration = Meter.CreateHistogram<double>(
+            "thunderpropagator.feeviders.kafka.receive.duration", "ms", "Kafka message receive latency");
+
         public static IServiceCollection AddKafkaFeeder<TChannel, TKafkaFeederMessage, TKafkaFeederConfiguration>
             (this IServiceCollection services, IConfigurationRoot configuration, string sectionName)
             where TChannel : class, IChannel

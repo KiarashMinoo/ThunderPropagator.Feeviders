@@ -52,6 +52,13 @@ namespace ThunderPropagator.Providers.DotNet.UdpClient
 
         protected override async Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)
         {
+            using var activity = UdpClientTelemetry.ActivitySource.StartActivity("udpclient publish", ActivityKind.Producer);
+            activity?.SetTag("messaging.system", "udpclient");
+            activity?.SetTag("messaging.destination.name", _remoteEndpoint.ToString());
+            activity?.SetTag("messaging.operation", "publish");
+
+            var stopwatch = Stopwatch.StartNew();
+
             await _semaphoreSlim.WaitAsync(cancellationToken);
 
             try
@@ -62,16 +69,24 @@ namespace ThunderPropagator.Providers.DotNet.UdpClient
                     dataToSend = _messageProtector.Protect(bytes);
 
                 await _udpClient.SendAsync(dataToSend, dataToSend.Length, _remoteEndpoint);
+
+                UdpClientTelemetry.MessagesPublished.Add(1);
             }
             catch (Exception exception)
             {
                 Log.ProduceError(Logger, exception,
                     _udpClientProviderConfiguration.Endpoint, _udpClientProviderConfiguration.Port);
+
+                activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+                UdpClientTelemetry.MessagesPublishFailed.Add(1);
+
                 throw;
             }
             finally
             {
                 _semaphoreSlim.Release();
+                stopwatch.Stop();
+                UdpClientTelemetry.PublishDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
             }
         }
 

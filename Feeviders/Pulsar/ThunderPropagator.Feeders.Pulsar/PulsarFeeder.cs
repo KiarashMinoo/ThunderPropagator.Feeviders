@@ -107,14 +107,50 @@ namespace ThunderPropagator.Feeders.Pulsar
                 var activityContext = value[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
                 var baggage = value[nameof(Baggage)] is Baggage b ? b : default;
 
-                await foreach (var receivedMessage in PulsarMessageSettlement.YieldAndSettleAsync(
+                using var activity = activityContext != default
+                    ? PulsarFeederExtensions.ActivitySource.StartActivity("pulsar receive", ActivityKind.Consumer, activityContext)
+                    : PulsarFeederExtensions.ActivitySource.StartActivity("pulsar receive", ActivityKind.Consumer);
+                activity?.SetTag("messaging.system", "pulsar");
+                activity?.SetTag("messaging.destination.name", consumer.Topic);
+                activity?.SetTag("messaging.operation", "receive");
+
+                var stopwatch = Stopwatch.StartNew();
+                var settlementEnumerator = PulsarMessageSettlement.YieldAndSettleAsync(
                                    consumer,
                                    message,
                                    new FeederReceivedMessage<TPulsarFeederMessage>(value, activityContext, baggage),
                                    Logger,
-                                   cancellationToken))
+                                   cancellationToken).GetAsyncEnumerator(cancellationToken);
+
+                try
                 {
-                    yield return receivedMessage;
+                    while (true)
+                    {
+                        bool hasNext;
+                        try
+                        {
+                            hasNext = await settlementEnumerator.MoveNextAsync().ConfigureAwait(false);
+                        }
+                        catch (Exception exception)
+                        {
+                            activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+                            PulsarFeederExtensions.MessagesReceiveFailed.Add(1);
+                            throw;
+                        }
+
+                        if (!hasNext)
+                            break;
+
+                        yield return settlementEnumerator.Current;
+                    }
+
+                    PulsarFeederExtensions.MessagesReceived.Add(1);
+                }
+                finally
+                {
+                    await settlementEnumerator.DisposeAsync().ConfigureAwait(false);
+                    stopwatch.Stop();
+                    PulsarFeederExtensions.ReceiveDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
                 }
             }
 

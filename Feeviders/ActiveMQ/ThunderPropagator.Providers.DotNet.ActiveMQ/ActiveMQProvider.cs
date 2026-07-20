@@ -87,6 +87,12 @@ namespace ThunderPropagator.Providers.DotNet.ActiveMQ
 
         protected override async Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)
         {
+            using var activity = ActiveMQTelemetry.ActivitySource.StartActivity("activemq publish", ActivityKind.Producer);
+            activity?.SetTag("messaging.system", "activemq");
+            activity?.SetTag("messaging.destination.name", _activeMQProviderConfiguration.Queue);
+            activity?.SetTag("messaging.operation", "publish");
+
+            var stopwatch = Stopwatch.StartNew();
             try
             {
                 var message = await _session.CreateBytesMessageAsync(bytes).ConfigureAwait(false);
@@ -97,11 +103,20 @@ namespace ThunderPropagator.Providers.DotNet.ActiveMQ
                 message.Properties.SetBytes(nameof(Baggage), Baggage.Current.ToNJsonBytes());
 
                 await _producer.SendAsync(message).ConfigureAwait(false);
+
+                ActiveMQTelemetry.MessagesPublished.Add(1);
             }
             catch (Exception exception)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+                ActiveMQTelemetry.MessagesPublishFailed.Add(1);
                 Log.ProduceError(Logger, exception, _activeMQProviderConfiguration.Queue);
                 throw;
+            }
+            finally
+            {
+                stopwatch.Stop();
+                ActiveMQTelemetry.PublishDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
             }
         }
 

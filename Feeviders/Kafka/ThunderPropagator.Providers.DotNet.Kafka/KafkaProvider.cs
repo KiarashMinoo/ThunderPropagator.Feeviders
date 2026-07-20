@@ -63,6 +63,12 @@ namespace ThunderPropagator.Providers.DotNet.Kafka
 
         protected override async Task InternalExecuteAsync(TKafkaProviderMessage feederMessage, CancellationToken cancellationToken = default)
         {
+            using var activity = KafkaProviderExtensions.ActivitySource.StartActivity("kafka publish", ActivityKind.Producer);
+            activity?.SetTag("messaging.system", "kafka");
+            activity?.SetTag("messaging.destination.name", _kafkaProviderConfiguration.TopicName);
+            activity?.SetTag("messaging.operation", "publish");
+
+            var publishTimestamp = Stopwatch.GetTimestamp();
             try
             {
                 var message = new Message<string, TKafkaProviderMessage>
@@ -79,11 +85,19 @@ namespace ThunderPropagator.Providers.DotNet.Kafka
                 await _producer.ProduceAsync(_kafkaProviderConfiguration.TopicName,
                     message,
                     cancellationToken).ConfigureAwait(false);
+
+                KafkaProviderExtensions.MessagesPublished.Add(1);
             }
             catch (Exception exception)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+                KafkaProviderExtensions.MessagesPublishFailed.Add(1);
                 Log.ProduceException(Logger, exception, _kafkaProviderConfiguration.TopicName);
                 throw;
+            }
+            finally
+            {
+                KafkaProviderExtensions.PublishDuration.Record(Stopwatch.GetElapsedTime(publishTimestamp).TotalMilliseconds);
             }
         }
 

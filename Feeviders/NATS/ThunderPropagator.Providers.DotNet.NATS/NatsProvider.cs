@@ -53,6 +53,13 @@ namespace ThunderPropagator.Providers.DotNet.NATS
 
         protected override async Task InternalExecuteAsync(TNatsProviderMessage feederMessage, CancellationToken cancellationToken = default)
         {
+            using var activity = NatsProviderExtensions.ActivitySource.StartActivity("nats publish", ActivityKind.Producer);
+            activity?.SetTag("messaging.system", "nats");
+            activity?.SetTag("messaging.destination.name", _natsProviderConfiguration.Subject);
+            activity?.SetTag("messaging.operation", "publish");
+
+            var stopwatch = Stopwatch.StartNew();
+
             try
             {
                 var natsHeaders = new NatsHeaders();
@@ -89,11 +96,21 @@ namespace ThunderPropagator.Providers.DotNet.NATS
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
+
+                NatsProviderExtensions.MessagesPublished.Add(1);
             }
             catch (Exception exception)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+                NatsProviderExtensions.MessagesPublishFailed.Add(1);
+
                 Log.ProduceException(Logger, exception, _natsProviderConfiguration.Subject);
                 throw;
+            }
+            finally
+            {
+                stopwatch.Stop();
+                NatsProviderExtensions.PublishDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
             }
         }
 

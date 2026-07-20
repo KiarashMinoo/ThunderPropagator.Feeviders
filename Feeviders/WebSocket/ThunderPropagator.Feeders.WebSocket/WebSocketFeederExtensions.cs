@@ -1,4 +1,6 @@
-﻿using System.Net.WebSockets;
+﻿using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using System.Net.WebSockets;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -13,6 +15,22 @@ namespace ThunderPropagator.Feeders.WebSocket
 {
     public static class WebSocketFeederExtensions
     {
+        internal static readonly ActivitySource ActivitySource = new("thunderpropagator.feeviders.websocket");
+        internal static readonly Meter Meter = new("thunderpropagator.feeviders.websocket");
+
+        internal static readonly Counter<long> MessagesReceived = Meter.CreateCounter<long>(
+            "thunderpropagator.feeviders.websocket.messages.received",
+            description: "Number of WebSocket messages successfully received.");
+
+        internal static readonly Counter<long> MessagesReceiveFailed = Meter.CreateCounter<long>(
+            "thunderpropagator.feeviders.websocket.messages.receive.failed",
+            description: "Number of WebSocket messages that failed to be received/processed.");
+
+        internal static readonly Histogram<double> ReceiveDuration = Meter.CreateHistogram<double>(
+            "thunderpropagator.feeviders.websocket.receive.duration",
+            unit: "ms",
+            description: "Duration of WebSocket message receive processing.");
+
         public static IServiceCollection AddWebSocketFeeder<TChannel, TWebSocketFeederMessage, TWebSocketFeederConfiguration>
             (this IServiceCollection services, IConfigurationRoot configuration, string sectionName)
             where TChannel : class, IChannel

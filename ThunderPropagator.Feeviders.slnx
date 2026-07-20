@@ -155,6 +155,11 @@
     </Project>
   </Folder>
   <Folder Name="/Feeviders/RedisPubSub/">
+    <Project Path="Feeviders/RedisPubSub/ThunderPropagator.Feeviders.RedisPubSub.SharedKernel/ThunderPropagator.Feeviders.RedisPubSub.SharedKernel.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
     <Project Path="Feeviders/RedisPubSub/ThunderPropagator.Feeders.RedisPubSub/ThunderPropagator.Feeders.RedisPubSub.csproj">
       <Platform Solution="*|ARM64" Project="ARM64" />
       <Platform Solution="*|x64" Project="x64" />

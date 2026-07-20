@@ -1,5 +1,6 @@
 ﻿using OpenTelemetry;
 using System.Diagnostics;
+using ThunderPropagator.Feeviders.RedisPubSub.SharedKernel;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels;
@@ -120,9 +121,33 @@ namespace ThunderPropagator.Feeders.RedisPubSub
 
             var activityContext = redisPubSubFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
             var baggage = redisPubSubFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
-            await ReceiveAsync(redisPubSubFeederMessage, activityContext, baggage).ConfigureAwait(false);
 
-            ReportHealth(HealthStatus.Healthy);
+            using var activity = activityContext != default
+                ? RedisPubSubTelemetry.ActivitySource.StartActivity("redispubsub receive", ActivityKind.Consumer, activityContext)
+                : RedisPubSubTelemetry.ActivitySource.StartActivity("redispubsub receive", ActivityKind.Consumer);
+            activity?.SetTag("messaging.system", "redispubsub");
+            activity?.SetTag("messaging.destination.name", (string?)channelMessage.Channel);
+            activity?.SetTag("messaging.operation", "receive");
+
+            var stopwatch = Stopwatch.StartNew();
+            try
+            {
+                await ReceiveAsync(redisPubSubFeederMessage, activityContext, baggage).ConfigureAwait(false);
+
+                ReportHealth(HealthStatus.Healthy);
+                RedisPubSubTelemetry.MessagesReceived.Add(1);
+            }
+            catch (Exception exception)
+            {
+                activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+                RedisPubSubTelemetry.MessagesReceiveFailed.Add(1);
+                throw;
+            }
+            finally
+            {
+                stopwatch.Stop();
+                RedisPubSubTelemetry.ReceiveDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
+            }
         }
 
         private void HandleProcessingError(Exception exception)

@@ -88,17 +88,41 @@ namespace ThunderPropagator.Feeders.ActiveMQ
             if (message.Properties.Contains(nameof(Baggage)))
                 baggage = message.Properties.GetBytes(nameof(Baggage)).FromNJsonBytes<Baggage>();
 
-            switch (message)
+            using var activity = activityContext.HasValue
+                ? ActiveMQTelemetry.ActivitySource.StartActivity("activemq receive", ActivityKind.Consumer, activityContext.Value)
+                : ActiveMQTelemetry.ActivitySource.StartActivity("activemq receive", ActivityKind.Consumer);
+            activity?.SetTag("messaging.system", "activemq");
+            activity?.SetTag("messaging.destination.name", message.NMSDestination?.ToString() ?? FeederConfiguration.Queue);
+            activity?.SetTag("messaging.operation", "receive");
+
+            var stopwatch = Stopwatch.StartNew();
+            try
             {
-                case IObjectMessage { Body: TActiveMQFeederMessage activeMQFeederMessage }:
-                    await ReceiveAsync(activeMQFeederMessage, activityContext, baggage).ConfigureAwait(false);
-                    break;
-                case ITextMessage textMessage:
-                    await ReceiveAsync(textMessage.Text, activityContext, baggage).ConfigureAwait(false);
-                    break;
-                case IBytesMessage bytesMessage:
-                    await ReceiveAsync(bytesMessage.Content, activityContext, baggage).ConfigureAwait(false);
-                    break;
+                switch (message)
+                {
+                    case IObjectMessage { Body: TActiveMQFeederMessage activeMQFeederMessage }:
+                        await ReceiveAsync(activeMQFeederMessage, activityContext, baggage).ConfigureAwait(false);
+                        break;
+                    case ITextMessage textMessage:
+                        await ReceiveAsync(textMessage.Text, activityContext, baggage).ConfigureAwait(false);
+                        break;
+                    case IBytesMessage bytesMessage:
+                        await ReceiveAsync(bytesMessage.Content, activityContext, baggage).ConfigureAwait(false);
+                        break;
+                }
+
+                ActiveMQTelemetry.MessagesReceived.Add(1);
+            }
+            catch (Exception ex)
+            {
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                ActiveMQTelemetry.MessagesReceiveFailed.Add(1);
+                throw;
+            }
+            finally
+            {
+                stopwatch.Stop();
+                ActiveMQTelemetry.ReceiveDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
             }
         }
 

@@ -10,6 +10,7 @@ using OpenTelemetry;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Feeviders.Mqtt.SharedKernel;
 
 namespace ThunderPropagator.Feeders.Mqtt
 {
@@ -84,11 +85,20 @@ namespace ThunderPropagator.Feeders.Mqtt
                 if (!_inFlightMessages.TryBegin())
                     return;
 
+                var activityContext = args.ApplicationMessage.UserProperties.Find(x => x.Name == nameof(ActivityContext))?.ReadValueAsString().FromNJsonBase64<ActivityContext>();
+                var baggage = args.ApplicationMessage.UserProperties.Find(x => x.Name == nameof(Baggage))?.ReadValueAsString().FromNJsonBase64<Baggage>();
+
+                using var activity = activityContext.HasValue
+                    ? MqttTelemetry.ActivitySource.StartActivity("mqtt receive", ActivityKind.Consumer, activityContext.Value)
+                    : MqttTelemetry.ActivitySource.StartActivity("mqtt receive", ActivityKind.Consumer);
+                activity?.SetTag("messaging.system", "mqtt");
+                activity?.SetTag("messaging.destination.name", args.ApplicationMessage.Topic);
+                activity?.SetTag("messaging.operation", "receive");
+
+                var stopwatch = Stopwatch.StartNew();
+
                 try
                 {
-                    var activityContext = args.ApplicationMessage.UserProperties.Find(x => x.Name == nameof(ActivityContext))?.ReadValueAsString().FromNJsonBase64<ActivityContext>();
-                    var baggage = args.ApplicationMessage.UserProperties.Find(x => x.Name == nameof(Baggage))?.ReadValueAsString().FromNJsonBase64<Baggage>();
-
                     await ReceiveAsync(args.ApplicationMessage.Payload.ToArray(),
                         activityContext,
                         baggage,
@@ -101,15 +111,21 @@ namespace ThunderPropagator.Feeders.Mqtt
                         _receiveCancellation.Token).ConfigureAwait(false);
 
                     ReportHealth(HealthStatus.Healthy);
+                    MqttTelemetry.MessagesReceived.Add(1);
                 }
                 catch (Exception exception)
                 {
                     ReportHealth(HealthStatus.Unhealthy, exception);
 
                     Log.ConsumeException(Logger, exception, FeederConfiguration.Topic);
+
+                    activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+                    MqttTelemetry.MessagesReceiveFailed.Add(1);
                 }
                 finally
                 {
+                    stopwatch.Stop();
+                    MqttTelemetry.ReceiveDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
                     _inFlightMessages.Complete();
                 }
             };

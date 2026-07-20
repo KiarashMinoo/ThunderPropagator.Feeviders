@@ -2,6 +2,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\SharedKernel\ThunderPropagator.Feeders.SharedKernel\ThunderPropagator.Feeders.SharedKernel.csproj"/>
+        <ProjectReference Include="..\ThunderPropagator.Feeviders.RedisPubSub.SharedKernel\ThunderPropagator.Feeviders.RedisPubSub.SharedKernel.csproj"/>
     </ItemGroup>
 
 </Project>
