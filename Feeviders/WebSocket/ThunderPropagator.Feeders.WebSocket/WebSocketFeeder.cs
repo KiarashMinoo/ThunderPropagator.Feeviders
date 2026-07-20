@@ -35,21 +35,43 @@ namespace ThunderPropagator.Feeders.WebSocket
 
         internal async ValueTask EnqueueAsync(byte[] bytes, CancellationToken cancellationToken = default)
         {
+            var receiveTimestamp = Stopwatch.GetTimestamp();
+            Activity? activity = null;
+
             try
             {
                 ReportHealth(HealthStatus.Healthy);
 
                 var webSocketFeederMessage = Deserialize(bytes, cancellationToken) ??
                                              throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
-                var activityContext = webSocketFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
+                var activityContextEntry = webSocketFeederMessage[nameof(ActivityContext)];
+                var activityContext = activityContextEntry is ActivityContext ac ? ac : default;
                 var baggage = webSocketFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
+
+                activity = activityContextEntry is ActivityContext
+                    ? WebSocketFeederExtensions.ActivitySource.StartActivity("websocket receive", ActivityKind.Consumer, activityContext)
+                    : WebSocketFeederExtensions.ActivitySource.StartActivity("websocket receive", ActivityKind.Consumer);
+                activity?.SetTag("messaging.system", "websocket");
+                activity?.SetTag("messaging.destination.name", FeederConfiguration.Path);
+                activity?.SetTag("messaging.operation", "receive");
+
                 await ReceiveAsync(webSocketFeederMessage, activityContext, baggage, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+                WebSocketFeederExtensions.MessagesReceived.Add(1);
             }
             catch (Exception exception)
             {
                 ReportHealth(HealthStatus.Unhealthy, exception);
 
                 Log.EnqueueError(Logger, exception);
+
+                activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+                WebSocketFeederExtensions.MessagesReceiveFailed.Add(1);
+            }
+            finally
+            {
+                WebSocketFeederExtensions.ReceiveDuration.Record(Stopwatch.GetElapsedTime(receiveTimestamp).TotalMilliseconds);
+                activity?.Dispose();
             }
         }
     }

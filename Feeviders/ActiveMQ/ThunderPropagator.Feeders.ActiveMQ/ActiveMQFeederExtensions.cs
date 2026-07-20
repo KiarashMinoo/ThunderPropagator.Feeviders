@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -9,6 +11,21 @@ using ThunderPropagator.Infrastructure.Extensions;
 
 namespace ThunderPropagator.Feeders.ActiveMQ
 {
+    internal static class ActiveMQFeederTelemetry
+    {
+        internal static readonly ActivitySource ActivitySource = new("thunderpropagator.feeviders.activemq");
+        internal static readonly Meter Meter = new("thunderpropagator.feeviders.activemq");
+
+        internal static readonly Counter<long> MessagesReceived =
+            Meter.CreateCounter<long>("thunderpropagator.feeviders.activemq.messages.received");
+
+        internal static readonly Counter<long> MessagesReceiveFailed =
+            Meter.CreateCounter<long>("thunderpropagator.feeviders.activemq.messages.receive.failed");
+
+        internal static readonly Histogram<double> ReceiveDuration =
+            Meter.CreateHistogram<double>("thunderpropagator.feeviders.activemq.receive.duration", unit: "ms");
+    }
+
     public static class ActiveMQFeederExtensions
     {
         public static IServiceCollection AddActiveMQFeeder<TChannel, TActiveMQFeederMessage, TActiveMQFeederConfiguration>

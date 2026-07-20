@@ -63,6 +63,13 @@ namespace ThunderPropagator.Providers.DotNet.Pulsar
 
         protected override async Task InternalExecuteAsync(TPulsarProviderMessage feederMessage, CancellationToken cancellationToken = default)
         {
+            using var activity = PulsarProviderExtensions.ActivitySource.StartActivity("pulsar publish", ActivityKind.Producer);
+            activity?.SetTag("messaging.system", "pulsar");
+            activity?.SetTag("messaging.destination.name", _pulsarProviderConfiguration.Topic);
+            activity?.SetTag("messaging.operation", "publish");
+
+            var stopwatch = Stopwatch.StartNew();
+
             try
             {
                 if (Activity.Current?.Context is not null)
@@ -71,11 +78,20 @@ namespace ThunderPropagator.Providers.DotNet.Pulsar
                 feederMessage.TryAdd(nameof(Baggage), Baggage.Current.ToNJsonBytes());
 
                 await _producer.Send(feederMessage, cancellationToken).ConfigureAwait(false);
+
+                PulsarProviderExtensions.MessagesPublished.Add(1);
             }
             catch (Exception exception)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+                PulsarProviderExtensions.MessagesPublishFailed.Add(1);
                 Log.ProduceException(Logger, exception, _pulsarProviderConfiguration.Topic);
                 throw;
+            }
+            finally
+            {
+                stopwatch.Stop();
+                PulsarProviderExtensions.PublishDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
             }
         }
 

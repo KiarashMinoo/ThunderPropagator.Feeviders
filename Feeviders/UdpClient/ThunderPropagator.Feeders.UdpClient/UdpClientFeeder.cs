@@ -121,11 +121,36 @@ namespace ThunderPropagator.Feeders.UdpClient
                         {
                             var udpClientFeederMessage = Deserialize(messageBytes) ?? throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
 
-                            var activityContext = udpClientFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
+                            ActivityContext? activityContext = udpClientFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : null;
                             var baggage = udpClientFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
-                            await ReceiveAsync(udpClientFeederMessage, activityContext, baggage, cancellationToken: _receiveCancellation.Token).ConfigureAwait(false);
 
-                            ReportHealth(HealthStatus.Healthy);
+                            using var activity = activityContext.HasValue
+                                ? UdpClientTelemetry.ActivitySource.StartActivity("udpclient receive", ActivityKind.Consumer, activityContext.Value)
+                                : UdpClientTelemetry.ActivitySource.StartActivity("udpclient receive", ActivityKind.Consumer);
+                            activity?.SetTag("messaging.system", "udpclient");
+                            activity?.SetTag("messaging.destination.name", result.RemoteEndPoint?.ToString());
+                            activity?.SetTag("messaging.operation", "receive");
+
+                            var stopwatch = Stopwatch.StartNew();
+
+                            try
+                            {
+                                await ReceiveAsync(udpClientFeederMessage, activityContext, baggage, cancellationToken: _receiveCancellation.Token).ConfigureAwait(false);
+
+                                ReportHealth(HealthStatus.Healthy);
+                                UdpClientTelemetry.MessagesReceived.Add(1);
+                            }
+                            catch (Exception ex)
+                            {
+                                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                                UdpClientTelemetry.MessagesReceiveFailed.Add(1);
+                                throw;
+                            }
+                            finally
+                            {
+                                stopwatch.Stop();
+                                UdpClientTelemetry.ReceiveDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
+                            }
                         }
                         finally
                         {

@@ -38,7 +38,8 @@ namespace ThunderPropagator.Feeders.NATS
             INatsJSMsg<TMessage> message,
             TReceivedMessage receivedMessage,
             ILogger logger,
-            [EnumeratorCancellation] CancellationToken cancellationToken)
+            [EnumeratorCancellation] CancellationToken cancellationToken,
+            Action<bool>? onSettled = null)
         {
             var acknowledged = false;
 
@@ -62,6 +63,8 @@ namespace ThunderPropagator.Feeders.NATS
                         logger.LogError(exception, "Failed to negatively acknowledge a NATS JetStream message.");
                     }
                 }
+
+                onSettled?.Invoke(acknowledged);
             }
         }
     }

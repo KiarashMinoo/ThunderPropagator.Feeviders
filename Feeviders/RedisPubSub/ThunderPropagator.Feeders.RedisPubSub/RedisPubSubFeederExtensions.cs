@@ -3,12 +3,29 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.Infrastructure.Extensions;
 
 namespace ThunderPropagator.Feeders.RedisPubSub
 {
+    internal static class RedisPubSubFeederTelemetry
+    {
+        internal static readonly ActivitySource ActivitySource = new("thunderpropagator.feeviders.redispubsub");
+        internal static readonly Meter Meter = new("thunderpropagator.feeviders.redispubsub");
+
+        internal static readonly Counter<long> MessagesReceived =
+            Meter.CreateCounter<long>("thunderpropagator.feeviders.redispubsub.messages.received");
+
+        internal static readonly Counter<long> MessagesReceiveFailed =
+            Meter.CreateCounter<long>("thunderpropagator.feeviders.redispubsub.messages.receive.failed");
+
+        internal static readonly Histogram<double> ReceiveDuration =
+            Meter.CreateHistogram<double>("thunderpropagator.feeviders.redispubsub.receive.duration", unit: "ms");
+    }
+
     public static class RedisPubSubFeederExtensions
     {
         public static IServiceCollection AddRedisPubSubFeeder<TChannel, TRedisPubSubFeederMessage, TRedisPubSubFeederConfiguration>

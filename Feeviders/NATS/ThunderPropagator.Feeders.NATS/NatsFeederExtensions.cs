@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -11,6 +13,18 @@ namespace ThunderPropagator.Feeders.NATS
 {
     public static class NatsFeederExtensions
     {
+        internal static readonly ActivitySource ActivitySource = new("thunderpropagator.feeviders.nats");
+        internal static readonly Meter Meter = new("thunderpropagator.feeviders.nats");
+
+        internal static readonly Counter<long> MessagesReceived =
+            Meter.CreateCounter<long>("thunderpropagator.feeviders.nats.messages.received");
+
+        internal static readonly Counter<long> MessagesReceiveFailed =
+            Meter.CreateCounter<long>("thunderpropagator.feeviders.nats.messages.receive.failed");
+
+        internal static readonly Histogram<double> ReceiveDuration =
+            Meter.CreateHistogram<double>("thunderpropagator.feeviders.nats.receive.duration", unit: "ms");
+
         public static IServiceCollection AddNatsFeeder<TChannel, TNatsFeederMessage, TNatsFeederConfiguration>
             (this IServiceCollection services, IConfigurationRoot configuration, string sectionName)
             where TChannel : class, IChannel

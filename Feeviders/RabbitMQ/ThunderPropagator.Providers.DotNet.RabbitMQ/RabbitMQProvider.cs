@@ -60,6 +60,13 @@ namespace ThunderPropagator.Providers.DotNet.RabbitMQ
 
         protected override async Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)
         {
+            using var activity = RabbitMQProviderExtensions.ActivitySource.StartActivity("rabbitmq publish", ActivityKind.Producer);
+            activity?.SetTag("messaging.system", "rabbitmq");
+            activity?.SetTag("messaging.destination.name", _rabbitMQProviderConfiguration.RoutingKey ?? _rabbitMQProviderConfiguration.Exchange);
+            activity?.SetTag("messaging.operation", "publish");
+
+            var stopwatch = Stopwatch.StartNew();
+
             try
             {
                 var channel = GetReadyChannel(_channel, _rabbitMQProviderConfiguration.Queue);
@@ -94,11 +101,21 @@ namespace ThunderPropagator.Providers.DotNet.RabbitMQ
                     basicProperties: channelProperties,
                     cancellationToken: cancellationToken,
                     mandatory: true);
+
+                RabbitMQProviderExtensions.MessagesPublished.Add(1);
             }
             catch (Exception exception)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+                RabbitMQProviderExtensions.MessagesPublishFailed.Add(1);
+
                 Log.ProduceException(Logger, exception, _rabbitMQProviderConfiguration.Queue);
                 throw;
+            }
+            finally
+            {
+                stopwatch.Stop();
+                RabbitMQProviderExtensions.PublishDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
             }
         }
 

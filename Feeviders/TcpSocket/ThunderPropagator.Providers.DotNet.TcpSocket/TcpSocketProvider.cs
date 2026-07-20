@@ -69,56 +69,78 @@ namespace ThunderPropagator.Providers.DotNet.TcpSocket
 
         protected override async Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)
         {
-            using var sendLock = await TcpSocketSendLock.AcquireAsync(_semaphoreSlim, cancellationToken).ConfigureAwait(false);
+            using var activity = TcpSocketTelemetry.ActivitySource.StartActivity("tcpsocket publish", ActivityKind.Producer);
+            activity?.SetTag("messaging.system", "tcpsocket");
+            activity?.SetTag("messaging.destination.name",
+                $"{_tcpSocketProviderConfiguration.Endpoint}:{_tcpSocketProviderConfiguration.Port}");
+            activity?.SetTag("messaging.operation", "publish");
 
-            if (!IsSocketConnected())
-            {
-                _tcpClient.Close();
-                _tcpClient.Dispose();
-                _tcpClient = new TcpClient();
-                await _tcpClient.ConnectAsync(_endPoint, cancellationToken);
-
-                Log.ClientConnected(Logger, _endPoint.Address, _endPoint.Port);
-
-                _stream = await InitializeStreamAsync();
-
-                if (_authenticationBytes is not null)
-                {
-                    await _stream.WriteAsync(_authenticationBytes, cancellationToken);
-                    await SendEomAsync();
-                }
-            }
-
-            ArgumentNullException.ThrowIfNull(_stream);
-
+            var publishStopwatch = Stopwatch.StartNew();
             try
             {
-                // Use pooled buffer for efficient chunking
-                var bufferSize = _tcpSocketProviderConfiguration.BufferSize;
-                for (int offset = 0; offset < bytes.Length; offset += bufferSize)
+                using var sendLock = await TcpSocketSendLock.AcquireAsync(_semaphoreSlim, cancellationToken).ConfigureAwait(false);
+
+                if (!IsSocketConnected())
                 {
-                    var remaining = bytes.Length - offset;
-                    var chunkSize = Math.Min(bufferSize, remaining);
-                    var buffer = _bufferPool.Rent(chunkSize);
-                    
-                    try
+                    _tcpClient.Close();
+                    _tcpClient.Dispose();
+                    _tcpClient = new TcpClient();
+                    await _tcpClient.ConnectAsync(_endPoint, cancellationToken);
+
+                    Log.ClientConnected(Logger, _endPoint.Address, _endPoint.Port);
+
+                    _stream = await InitializeStreamAsync();
+
+                    if (_authenticationBytes is not null)
                     {
-                        bytes.AsSpan(offset, chunkSize).CopyTo(buffer);
-                        await _stream.WriteAsync(buffer.AsMemory(0, chunkSize), cancellationToken);
-                    }
-                    finally
-                    {
-                        _bufferPool.Return(buffer);
+                        await _stream.WriteAsync(_authenticationBytes, cancellationToken);
+                        await SendEomAsync();
                     }
                 }
 
-                await SendEomAsync();
+                ArgumentNullException.ThrowIfNull(_stream);
+
+                try
+                {
+                    // Use pooled buffer for efficient chunking
+                    var bufferSize = _tcpSocketProviderConfiguration.BufferSize;
+                    for (int offset = 0; offset < bytes.Length; offset += bufferSize)
+                    {
+                        var remaining = bytes.Length - offset;
+                        var chunkSize = Math.Min(bufferSize, remaining);
+                        var buffer = _bufferPool.Rent(chunkSize);
+
+                        try
+                        {
+                            bytes.AsSpan(offset, chunkSize).CopyTo(buffer);
+                            await _stream.WriteAsync(buffer.AsMemory(0, chunkSize), cancellationToken);
+                        }
+                        finally
+                        {
+                            _bufferPool.Return(buffer);
+                        }
+                    }
+
+                    await SendEomAsync();
+                }
+                catch (Exception exception)
+                {
+                    Log.PostMessageError(Logger, exception,
+                        _tcpSocketProviderConfiguration.Endpoint, _tcpSocketProviderConfiguration.Port);
+                    throw;
+                }
+
+                TcpSocketTelemetry.MessagesPublished.Add(1);
             }
-            catch (Exception exception)
+            catch (Exception ex)
             {
-                Log.PostMessageError(Logger, exception,
-                    _tcpSocketProviderConfiguration.Endpoint, _tcpSocketProviderConfiguration.Port);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                TcpSocketTelemetry.MessagesPublishFailed.Add(1);
                 throw;
+            }
+            finally
+            {
+                TcpSocketTelemetry.PublishDuration.Record(publishStopwatch.Elapsed.TotalMilliseconds);
             }
             return;
 

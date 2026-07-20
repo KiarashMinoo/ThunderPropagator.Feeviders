@@ -1,5 +1,6 @@
 ﻿using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
+using System.Diagnostics;
 using System.Reflection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
@@ -37,18 +38,33 @@ namespace ThunderPropagator.Feeders.WebApi
             HealthTags = [.. HealthTags, nameof(WebApi), webApiFeederConfiguration.Path.Replace("/", "_")];
         }
 
-        internal async ValueTask EnqueueAsync(string rawMessage, CancellationToken cancellationToken = default)
+        internal async ValueTask EnqueueAsync(string rawMessage, string? traceparent, string? tracestate, CancellationToken cancellationToken = default)
         {
+            using var activity = traceparent is not null && ActivityContext.TryParse(traceparent, tracestate, out var parentContext)
+                ? WebApiFeederExtensions.ActivitySource.StartActivity("webapi receive", ActivityKind.Consumer, parentContext)
+                : WebApiFeederExtensions.ActivitySource.StartActivity("webapi receive", ActivityKind.Consumer);
+            activity?.SetTag("messaging.system", "webapi");
+            activity?.SetTag("messaging.destination.name", FeederConfiguration.Path);
+            activity?.SetTag("messaging.operation", "receive");
+
+            var receiveTimestamp = Stopwatch.GetTimestamp();
             try
             {
                 await ReceiveAsync(rawMessage, cancellationToken: cancellationToken).ConfigureAwait(false);
                 ReportHealth(HealthStatus.Healthy);
+                WebApiFeederExtensions.MessagesReceived.Add(1);
             }
             catch (Exception exception)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+                WebApiFeederExtensions.MessagesReceiveFailed.Add(1);
                 ReportHealth(HealthStatus.Unhealthy, exception);
                 Log.ProcessError(Logger, exception, FeederConfiguration.Path);
                 throw;
+            }
+            finally
+            {
+                WebApiFeederExtensions.ReceiveDuration.Record(Stopwatch.GetElapsedTime(receiveTimestamp).TotalMilliseconds);
             }
         }
     }

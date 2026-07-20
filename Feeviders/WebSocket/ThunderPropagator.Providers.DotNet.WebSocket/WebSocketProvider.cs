@@ -49,6 +49,13 @@ namespace ThunderPropagator.Providers.DotNet.WebSocket
 
         protected override async Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)
         {
+            using var activity = WebSocketProviderExtensions.ActivitySource.StartActivity("websocket publish", ActivityKind.Producer);
+            activity?.SetTag("messaging.system", "websocket");
+            activity?.SetTag("messaging.destination.name", _webSocketProviderConfiguration.Endpoint);
+            activity?.SetTag("messaging.operation", "publish");
+
+            var publishTimestamp = Stopwatch.GetTimestamp();
+
             await _semaphoreSlim.WaitAsync(cancellationToken).ConfigureAwait(false);
 
             try
@@ -60,15 +67,22 @@ namespace ThunderPropagator.Providers.DotNet.WebSocket
                 }
 
                 await _clientWebSocket.SendAsync(bytes, WebSocketMessageType.Text, true, cancellationToken).ConfigureAwait(false);
+
+                WebSocketProviderExtensions.MessagesPublished.Add(1);
             }
             catch (Exception exception)
             {
                 Log.PostException(Logger, exception, _webSocketProviderConfiguration.Endpoint);
+
+                activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+                WebSocketProviderExtensions.MessagesPublishFailed.Add(1);
+
                 throw;
             }
             finally
             {
                 _semaphoreSlim.Release();
+                WebSocketProviderExtensions.PublishDuration.Record(Stopwatch.GetElapsedTime(publishTimestamp).TotalMilliseconds);
             }
         }
 

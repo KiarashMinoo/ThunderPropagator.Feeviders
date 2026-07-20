@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
@@ -13,6 +16,16 @@ namespace ThunderPropagator.Feeders.WebApi
 {
     public static class WebApiFeederExtensions
     {
+        internal static readonly ActivitySource ActivitySource = new("thunderpropagator.feeviders.webapi");
+        internal static readonly Meter Meter = new("thunderpropagator.feeviders.webapi");
+
+        internal static readonly Counter<long> MessagesReceived = Meter.CreateCounter<long>(
+            "thunderpropagator.feeviders.webapi.messages.received", "{message}", "Total messages received via WebApi");
+        internal static readonly Counter<long> MessagesReceiveFailed = Meter.CreateCounter<long>(
+            "thunderpropagator.feeviders.webapi.messages.receive.failed", "{message}", "Total WebApi receive failures");
+        internal static readonly Histogram<double> ReceiveDuration = Meter.CreateHistogram<double>(
+            "thunderpropagator.feeviders.webapi.receive.duration", "ms", "WebApi message receive latency");
+
         public static IServiceCollection AddWebApiFeeder<TChannel, TWebApiFeederMessage, TWebApiFeederConfiguration>
             (this IServiceCollection services, IConfigurationRoot configuration, string sectionName)
             where TChannel : class, IChannel
@@ -53,8 +66,12 @@ namespace ThunderPropagator.Feeders.WebApi
         {
             Delegate receiveMessage = async ([FromServices] WebApiFeeder<TChannel, TWebApiFeederMessage, TWebApiFeederConfiguration> webApiFeeder,
                     [FromBody] string rawMessage,
+                    HttpContext httpContext,
                     CancellationToken cancellationToken)
-                => await webApiFeeder.EnqueueAsync(rawMessage, cancellationToken);
+                => await webApiFeeder.EnqueueAsync(rawMessage,
+                    httpContext.Request.Headers.TryGetValue("traceparent", out var traceparentValues) ? traceparentValues.ToString() : null,
+                    httpContext.Request.Headers.TryGetValue("tracestate", out var tracestateValues) ? tracestateValues.ToString() : null,
+                    cancellationToken);
 
             var webApiFeederConfiguration = endpointRouteBuilder.ServiceProvider.GetRequiredService<TWebApiFeederConfiguration>();
 

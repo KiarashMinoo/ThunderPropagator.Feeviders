@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -11,6 +13,16 @@ namespace ThunderPropagator.Feeders.RabbitMQ
 {
     public static class RabbitMQFeederExtensions
     {
+        internal static readonly ActivitySource ActivitySource = new("thunderpropagator.feeviders.rabbitmq");
+        internal static readonly Meter Meter = new("thunderpropagator.feeviders.rabbitmq");
+
+        internal static readonly Counter<long> MessagesReceived =
+            Meter.CreateCounter<long>("thunderpropagator.feeviders.rabbitmq.messages.received");
+        internal static readonly Counter<long> MessagesReceiveFailed =
+            Meter.CreateCounter<long>("thunderpropagator.feeviders.rabbitmq.messages.receive.failed");
+        internal static readonly Histogram<double> ReceiveDuration =
+            Meter.CreateHistogram<double>("thunderpropagator.feeviders.rabbitmq.receive.duration", unit: "ms");
+
         public static IServiceCollection AddRabbitMQFeeder<TChannel, TRabbitMQFeederMessage, TRabbitMQFeederConfiguration>
             (this IServiceCollection services, IConfigurationRoot configuration, string sectionName)
             where TChannel : class, IChannel

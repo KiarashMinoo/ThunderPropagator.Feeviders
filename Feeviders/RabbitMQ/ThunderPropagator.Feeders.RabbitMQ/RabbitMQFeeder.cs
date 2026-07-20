@@ -158,12 +158,21 @@ namespace ThunderPropagator.Feeders.RabbitMQ
                 return;
             }
 
+            Activity? activity = null;
+            var stopwatch = Stopwatch.StartNew();
+
             try
             {
                 var parentContext = _propagator.Extract(default, eventArgs.BasicProperties, ExtractTraceContextFromBasicProperties);
 
                 ActivityContext? activityContext = parentContext.ActivityContext;
                 Baggage? baggage = parentContext.Baggage;
+
+                activity = RabbitMQFeederExtensions.ActivitySource.StartActivity(
+                    "rabbitmq receive", ActivityKind.Consumer, parentContext.ActivityContext);
+                activity?.SetTag("messaging.system", "rabbitmq");
+                activity?.SetTag("messaging.destination.name", FeederConfiguration.Queue);
+                activity?.SetTag("messaging.operation", "receive");
 
                 await ReceiveAsync(eventArgs.Body.ToArray(),
                     activityContext,
@@ -184,6 +193,7 @@ namespace ThunderPropagator.Feeders.RabbitMQ
                     _receiveCancellation.Token).ConfigureAwait(false);
 
                 ReportHealth(HealthStatus.Healthy);
+                RabbitMQFeederExtensions.MessagesReceived.Add(1);
             }
             catch (Exception exception)
             {
@@ -204,12 +214,18 @@ namespace ThunderPropagator.Feeders.RabbitMQ
                         FeederConfiguration.Queue);
                 }
 
+                activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+                RabbitMQFeederExtensions.MessagesReceiveFailed.Add(1);
+
                 ReportHealth(HealthStatus.Unhealthy, exception);
 
                 Log.ConsumeError(Logger, exception, FeederConfiguration.Queue);
             }
             finally
             {
+                stopwatch.Stop();
+                RabbitMQFeederExtensions.ReceiveDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
+                activity?.Dispose();
                 _inFlightMessages.Complete();
             }
         }
