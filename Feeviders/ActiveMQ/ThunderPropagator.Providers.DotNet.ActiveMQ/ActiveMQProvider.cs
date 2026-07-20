@@ -87,7 +87,7 @@ namespace ThunderPropagator.Providers.DotNet.ActiveMQ
 
         protected override async Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)
         {
-            using var activity = ActiveMQProviderTelemetry.ActivitySource.StartActivity("activemq publish", ActivityKind.Producer);
+            using var activity = ActiveMQTelemetry.ActivitySource.StartActivity("activemq publish", ActivityKind.Producer);
             activity?.SetTag("messaging.system", "activemq");
             activity?.SetTag("messaging.destination.name", _activeMQProviderConfiguration.Queue);
             activity?.SetTag("messaging.operation", "publish");
@@ -104,19 +104,19 @@ namespace ThunderPropagator.Providers.DotNet.ActiveMQ
 
                 await _producer.SendAsync(message).ConfigureAwait(false);
 
-                ActiveMQProviderTelemetry.MessagesPublished.Add(1);
+                ActiveMQTelemetry.MessagesPublished.Add(1);
             }
             catch (Exception exception)
             {
                 activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
-                ActiveMQProviderTelemetry.MessagesPublishFailed.Add(1);
+                ActiveMQTelemetry.MessagesPublishFailed.Add(1);
                 Log.ProduceError(Logger, exception, _activeMQProviderConfiguration.Queue);
                 throw;
             }
             finally
             {
                 stopwatch.Stop();
-                ActiveMQProviderTelemetry.PublishDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
+                ActiveMQTelemetry.PublishDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
             }
         }
 

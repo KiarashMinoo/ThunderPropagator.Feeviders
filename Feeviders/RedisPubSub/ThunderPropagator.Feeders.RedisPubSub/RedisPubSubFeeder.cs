@@ -1,5 +1,6 @@
 ﻿using OpenTelemetry;
 using System.Diagnostics;
+using ThunderPropagator.Feeviders.RedisPubSub.SharedKernel;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels;
@@ -122,8 +123,8 @@ namespace ThunderPropagator.Feeders.RedisPubSub
             var baggage = redisPubSubFeederMessage[nameof(Baggage)] is Baggage b ? b : default;
 
             using var activity = activityContext != default
-                ? RedisPubSubFeederTelemetry.ActivitySource.StartActivity("redispubsub receive", ActivityKind.Consumer, activityContext)
-                : RedisPubSubFeederTelemetry.ActivitySource.StartActivity("redispubsub receive", ActivityKind.Consumer);
+                ? RedisPubSubTelemetry.ActivitySource.StartActivity("redispubsub receive", ActivityKind.Consumer, activityContext)
+                : RedisPubSubTelemetry.ActivitySource.StartActivity("redispubsub receive", ActivityKind.Consumer);
             activity?.SetTag("messaging.system", "redispubsub");
             activity?.SetTag("messaging.destination.name", (string?)channelMessage.Channel);
             activity?.SetTag("messaging.operation", "receive");
@@ -134,18 +135,18 @@ namespace ThunderPropagator.Feeders.RedisPubSub
                 await ReceiveAsync(redisPubSubFeederMessage, activityContext, baggage).ConfigureAwait(false);
 
                 ReportHealth(HealthStatus.Healthy);
-                RedisPubSubFeederTelemetry.MessagesReceived.Add(1);
+                RedisPubSubTelemetry.MessagesReceived.Add(1);
             }
             catch (Exception exception)
             {
                 activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
-                RedisPubSubFeederTelemetry.MessagesReceiveFailed.Add(1);
+                RedisPubSubTelemetry.MessagesReceiveFailed.Add(1);
                 throw;
             }
             finally
             {
                 stopwatch.Stop();
-                RedisPubSubFeederTelemetry.ReceiveDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
+                RedisPubSubTelemetry.ReceiveDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
             }
         }
 

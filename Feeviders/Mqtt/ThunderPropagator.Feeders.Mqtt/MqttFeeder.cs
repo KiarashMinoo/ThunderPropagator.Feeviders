@@ -10,6 +10,7 @@ using OpenTelemetry;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Feeviders.Mqtt.SharedKernel;
 
 namespace ThunderPropagator.Feeders.Mqtt
 {
@@ -88,8 +89,8 @@ namespace ThunderPropagator.Feeders.Mqtt
                 var baggage = args.ApplicationMessage.UserProperties.Find(x => x.Name == nameof(Baggage))?.ReadValueAsString().FromNJsonBase64<Baggage>();
 
                 using var activity = activityContext.HasValue
-                    ? MqttFeederTelemetry.ActivitySource.StartActivity("mqtt receive", ActivityKind.Consumer, activityContext.Value)
-                    : MqttFeederTelemetry.ActivitySource.StartActivity("mqtt receive", ActivityKind.Consumer);
+                    ? MqttTelemetry.ActivitySource.StartActivity("mqtt receive", ActivityKind.Consumer, activityContext.Value)
+                    : MqttTelemetry.ActivitySource.StartActivity("mqtt receive", ActivityKind.Consumer);
                 activity?.SetTag("messaging.system", "mqtt");
                 activity?.SetTag("messaging.destination.name", args.ApplicationMessage.Topic);
                 activity?.SetTag("messaging.operation", "receive");
@@ -110,7 +111,7 @@ namespace ThunderPropagator.Feeders.Mqtt
                         _receiveCancellation.Token).ConfigureAwait(false);
 
                     ReportHealth(HealthStatus.Healthy);
-                    MqttFeederTelemetry.MessagesReceived.Add(1);
+                    MqttTelemetry.MessagesReceived.Add(1);
                 }
                 catch (Exception exception)
                 {
@@ -119,12 +120,12 @@ namespace ThunderPropagator.Feeders.Mqtt
                     Log.ConsumeException(Logger, exception, FeederConfiguration.Topic);
 
                     activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
-                    MqttFeederTelemetry.MessagesReceiveFailed.Add(1);
+                    MqttTelemetry.MessagesReceiveFailed.Add(1);
                 }
                 finally
                 {
                     stopwatch.Stop();
-                    MqttFeederTelemetry.ReceiveDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
+                    MqttTelemetry.ReceiveDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
                     _inFlightMessages.Complete();
                 }
             };

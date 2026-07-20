@@ -1,5 +1,6 @@
 ﻿using OpenTelemetry;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
+using ThunderPropagator.Feeviders.RedisPubSub.SharedKernel;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
@@ -59,7 +60,7 @@ namespace ThunderPropagator.Providers.DotNet.RedisPubSub
             if (bytes is null || bytes.Length == 0)
                 return Task.CompletedTask;
 
-            using var activity = RedisPubSubProviderTelemetry.ActivitySource.StartActivity("redispubsub publish", ActivityKind.Producer);
+            using var activity = RedisPubSubTelemetry.ActivitySource.StartActivity("redispubsub publish", ActivityKind.Producer);
             activity?.SetTag("messaging.system", "redispubsub");
             activity?.SetTag("messaging.destination.name", (string?)_redisChannel);
             activity?.SetTag("messaging.operation", "publish");
@@ -76,17 +77,17 @@ namespace ThunderPropagator.Providers.DotNet.RedisPubSub
                     {
                         Log.PublishTaskFaulted(Logger, t.Exception, _redisPubSubProviderConfiguration.Channel);
                         activity?.SetStatus(ActivityStatusCode.Error, t.Exception.GetBaseException().Message);
-                        RedisPubSubProviderTelemetry.MessagesPublishFailed.Add(1);
+                        RedisPubSubTelemetry.MessagesPublishFailed.Add(1);
                     }
                 }, TaskScheduler.Default);
 
-                RedisPubSubProviderTelemetry.MessagesPublished.Add(1);
+                RedisPubSubTelemetry.MessagesPublished.Add(1);
                 return Task.CompletedTask;
             }
             catch (Exception exception)
             {
                 activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
-                RedisPubSubProviderTelemetry.MessagesPublishFailed.Add(1);
+                RedisPubSubTelemetry.MessagesPublishFailed.Add(1);
 
                 Log.PublishError(
                     Logger,
@@ -97,7 +98,7 @@ namespace ThunderPropagator.Providers.DotNet.RedisPubSub
             finally
             {
                 stopwatch.Stop();
-                RedisPubSubProviderTelemetry.PublishDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
+                RedisPubSubTelemetry.PublishDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
             }
         }
 

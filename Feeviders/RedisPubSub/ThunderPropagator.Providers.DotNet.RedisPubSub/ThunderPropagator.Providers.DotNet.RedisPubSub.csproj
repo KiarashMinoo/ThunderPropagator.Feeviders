@@ -6,6 +6,7 @@
     
     <ItemGroup>
         <ProjectReference Include="..\..\SharedKernel\ThunderPropagator.Providers.DotNet.SharedKernel\ThunderPropagator.Providers.DotNet.SharedKernel.csproj"/>
+        <ProjectReference Include="..\ThunderPropagator.Feeviders.RedisPubSub.SharedKernel\ThunderPropagator.Feeviders.RedisPubSub.SharedKernel.csproj"/>
     </ItemGroup>
 
 </Project>

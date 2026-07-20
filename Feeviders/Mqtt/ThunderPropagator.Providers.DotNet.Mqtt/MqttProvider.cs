@@ -1,5 +1,6 @@
 ﻿using OpenTelemetry;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
+using ThunderPropagator.Feeviders.Mqtt.SharedKernel;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
@@ -41,7 +42,7 @@ namespace ThunderPropagator.Providers.DotNet.Mqtt
 
         protected override async Task InternalExecuteAsync(TMqttProviderMessage feederMessage, CancellationToken cancellationToken = default)
         {
-            using var activity = MqttProviderTelemetry.ActivitySource.StartActivity("mqtt publish", ActivityKind.Producer);
+            using var activity = MqttTelemetry.ActivitySource.StartActivity("mqtt publish", ActivityKind.Producer);
             activity?.SetTag("messaging.system", "mqtt");
             activity?.SetTag("messaging.destination.name", _mqttProviderConfiguration.Topic);
             activity?.SetTag("messaging.operation", "publish");
@@ -72,21 +73,21 @@ namespace ThunderPropagator.Providers.DotNet.Mqtt
 
                 await _mqttClient.PublishAsync(applicationMessage, cancellationToken).ConfigureAwait(false);
 
-                MqttProviderTelemetry.MessagesPublished.Add(1);
+                MqttTelemetry.MessagesPublished.Add(1);
             }
             catch (Exception exception)
             {
                 Log.PublishException(Logger, exception, _mqttProviderConfiguration.Topic);
 
                 activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
-                MqttProviderTelemetry.MessagesPublishFailed.Add(1);
+                MqttTelemetry.MessagesPublishFailed.Add(1);
 
                 throw;
             }
             finally
             {
                 stopwatch.Stop();
-                MqttProviderTelemetry.PublishDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
+                MqttTelemetry.PublishDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
             }
         }
 

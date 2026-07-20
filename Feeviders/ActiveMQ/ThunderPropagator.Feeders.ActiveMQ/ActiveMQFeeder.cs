@@ -89,8 +89,8 @@ namespace ThunderPropagator.Feeders.ActiveMQ
                 baggage = message.Properties.GetBytes(nameof(Baggage)).FromNJsonBytes<Baggage>();
 
             using var activity = activityContext.HasValue
-                ? ActiveMQFeederTelemetry.ActivitySource.StartActivity("activemq receive", ActivityKind.Consumer, activityContext.Value)
-                : ActiveMQFeederTelemetry.ActivitySource.StartActivity("activemq receive", ActivityKind.Consumer);
+                ? ActiveMQTelemetry.ActivitySource.StartActivity("activemq receive", ActivityKind.Consumer, activityContext.Value)
+                : ActiveMQTelemetry.ActivitySource.StartActivity("activemq receive", ActivityKind.Consumer);
             activity?.SetTag("messaging.system", "activemq");
             activity?.SetTag("messaging.destination.name", message.NMSDestination?.ToString() ?? FeederConfiguration.Queue);
             activity?.SetTag("messaging.operation", "receive");
@@ -111,18 +111,18 @@ namespace ThunderPropagator.Feeders.ActiveMQ
                         break;
                 }
 
-                ActiveMQFeederTelemetry.MessagesReceived.Add(1);
+                ActiveMQTelemetry.MessagesReceived.Add(1);
             }
             catch (Exception ex)
             {
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                ActiveMQFeederTelemetry.MessagesReceiveFailed.Add(1);
+                ActiveMQTelemetry.MessagesReceiveFailed.Add(1);
                 throw;
             }
             finally
             {
                 stopwatch.Stop();
-                ActiveMQFeederTelemetry.ReceiveDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
+                ActiveMQTelemetry.ReceiveDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
             }
         }
 
