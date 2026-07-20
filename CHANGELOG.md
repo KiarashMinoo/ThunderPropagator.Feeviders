@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.38] — 2026-07-20
+
+### 📦 Dependencies
+
+| Package | Old | New |
+|---------|-----|-----|
+| NATS.Net | 3.0.0 | 3.0.1 |
+
+- Bump the messaging group with 1 update `(6041ce6)` — dependabot[bot]
+
 ## [1.0.1-beta.37] — 2026-07-20
 
 ### ♻️ Refactoring

@@ -1,10 +1,9 @@
-## [1.0.1-beta.37] — 2026-07-20
+## [1.0.1-beta.38] — 2026-07-20
 
-### ♻️ Refactoring
+### 📦 Dependencies
 
-- centralize transport instrumentation `(f835284)` — Kiarash Minoo
+| Package | Old | New |
+|---------|-----|-----|
+| NATS.Net | 3.0.0 | 3.0.1 |
 
-### 🏠 Chores
-
-- Add OTel ActivitySource/Meter instrumentation to all 11 transports `(74aae13)` — Kiarash Minoo
-- update dependency ignore list and clean up patterns `(ce6f103)` — Kiarash Minoo
+- Bump the messaging group with 1 update `(6041ce6)` — dependabot[bot]
