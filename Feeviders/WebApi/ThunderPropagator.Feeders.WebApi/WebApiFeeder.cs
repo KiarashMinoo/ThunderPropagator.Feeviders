@@ -11,19 +11,27 @@ namespace ThunderPropagator.Feeders.WebApi
 #if !DEBUG
         sealed
 #endif
-        class WebApiFeeder<TChannel, TWebApiFeederMessage, TWebApiFeederConfiguration> : DelegativeFeeder<TChannel, TWebApiFeederMessage, TWebApiFeederConfiguration>, IFeature
+        partial class WebApiFeeder<TChannel, TWebApiFeederMessage, TWebApiFeederConfiguration> : DelegativeFeeder<TChannel, TWebApiFeederMessage, TWebApiFeederConfiguration>, IFeature
         where TChannel : class, IChannel
         where TWebApiFeederMessage : WebApiFeederMessage
         where TWebApiFeederConfiguration : WebApiFeederConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4800, Level = LogLevel.Information, Message = "{Name}/{ChannelName} on Endpoint {Endpoint} has configured.")]
+            public static partial void FeederConfigured(ILogger logger, string name, string channelName, string endpoint);
+
+            [LoggerMessage(EventId = 4801, Level = LogLevel.Error, Message = "Error while processing a WebApi message on Endpoint {Endpoint}.")]
+            public static partial void ProcessError(ILogger logger, Exception exception, string endpoint);
+        }
+
         public WebApiFeeder(TChannel channel,
             TWebApiFeederConfiguration webApiFeederConfiguration,
             IFeederHandler<TChannel, TWebApiFeederMessage> feederHandler,
             IServiceProvider serviceProvider)
             : base(channel, webApiFeederConfiguration, feederHandler, serviceProvider)
         {
-            Logger.LogInformation("{Name}/{ChannelName} on Endpoint {Endpoint} has configured.",
-                GetType().GetTypeInfo().Name, channel.Metadata.ChannelName, webApiFeederConfiguration.Path);
+            Log.FeederConfigured(Logger, GetType().GetTypeInfo().Name, channel.Metadata.ChannelName, webApiFeederConfiguration.Path);
 
             HealthName = $"feeder_{nameof(WebApi)}_{webApiFeederConfiguration.Path.Replace("/", "_")}";
             HealthTags = [.. HealthTags, nameof(WebApi), webApiFeederConfiguration.Path.Replace("/", "_")];
@@ -39,7 +47,7 @@ namespace ThunderPropagator.Feeders.WebApi
             catch (Exception exception)
             {
                 ReportHealth(HealthStatus.Unhealthy, exception);
-                Logger.LogError(exception, "Error while processing a WebApi message on Endpoint {Endpoint}.", FeederConfiguration.Path);
+                Log.ProcessError(Logger, exception, FeederConfiguration.Path);
                 throw;
             }
         }

@@ -16,10 +16,22 @@ namespace ThunderPropagator.Providers.DotNet.TcpSocket
 #if !DEBUG
         sealed
 #endif
-        class TcpSocketProvider<TTcpSocketProviderMessage, TTcpSocketProviderConfiguration> : AbstractProvider<TTcpSocketProviderMessage, TTcpSocketProviderConfiguration>
+        partial class TcpSocketProvider<TTcpSocketProviderMessage, TTcpSocketProviderConfiguration> : AbstractProvider<TTcpSocketProviderMessage, TTcpSocketProviderConfiguration>
         where TTcpSocketProviderMessage : TcpSocketProviderMessage
         where TTcpSocketProviderConfiguration : TcpSocketProviderConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4904, Level = LogLevel.Information, Message = "TCP client connected to {Endpoint}:{Port}")]
+            public static partial void ClientConnected(ILogger logger, IPAddress endpoint, int port);
+
+            [LoggerMessage(EventId = 4905, Level = LogLevel.Error, Message = "error has occured while posting message to path {Endpoint}, port {Port}.")]
+            public static partial void PostMessageError(ILogger logger, Exception exception, string endpoint, short port);
+
+            [LoggerMessage(EventId = 4906, Level = LogLevel.Debug, Message = "Socket connectivity check failed; reconnecting TCP client.")]
+            public static partial void SocketConnectivityCheckFailed(ILogger logger, Exception exception);
+        }
+
         private readonly TTcpSocketProviderConfiguration _tcpSocketProviderConfiguration;
         private TcpClient _tcpClient;
         private readonly IPEndPoint _endPoint;
@@ -66,7 +78,7 @@ namespace ThunderPropagator.Providers.DotNet.TcpSocket
                 _tcpClient = new TcpClient();
                 await _tcpClient.ConnectAsync(_endPoint, cancellationToken);
 
-                Logger.LogInformation("TCP client connected to {Endpoint}:{Port}", _endPoint.Address, _endPoint.Port);
+                Log.ClientConnected(Logger, _endPoint.Address, _endPoint.Port);
 
                 _stream = await InitializeStreamAsync();
 
@@ -104,8 +116,7 @@ namespace ThunderPropagator.Providers.DotNet.TcpSocket
             }
             catch (Exception exception)
             {
-                Logger.LogError(exception,
-                    "error has occured while posting message to path {Endpoint}, port {Port}.",
+                Log.PostMessageError(Logger, exception,
                     _tcpSocketProviderConfiguration.Endpoint, _tcpSocketProviderConfiguration.Port);
                 throw;
             }
@@ -122,7 +133,7 @@ namespace ThunderPropagator.Providers.DotNet.TcpSocket
                 }
                 catch (Exception exception)
                 {
-                    Logger.LogDebug(exception, "Socket connectivity check failed; reconnecting TCP client.");
+                    Log.SocketConnectivityCheckFailed(Logger, exception);
                     return false;
                 }
             }

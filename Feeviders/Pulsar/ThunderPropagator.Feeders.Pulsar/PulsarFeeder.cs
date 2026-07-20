@@ -16,11 +16,23 @@ namespace ThunderPropagator.Feeders.Pulsar
 #if !DEBUG
         sealed
 #endif
-        class PulsarFeeder<TChannel, TPulsarFeederMessage, TPulsarFeederConfiguration> : IterativeFeeder<TChannel, TPulsarFeederMessage, TPulsarFeederConfiguration>, IFeature
+        partial class PulsarFeeder<TChannel, TPulsarFeederMessage, TPulsarFeederConfiguration> : IterativeFeeder<TChannel, TPulsarFeederMessage, TPulsarFeederConfiguration>, IFeature
         where TChannel : class, IChannel
         where TPulsarFeederMessage : PulsarFeederMessage
         where TPulsarFeederConfiguration : PulsarFeederConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4400, Level = LogLevel.Warning, Message = "{FeederName}/{ChannelName} is disabled (IsEnabled=false), skipping broker connection.")]
+            public static partial void FeederDisabled(ILogger logger, string feederName, string channelName);
+
+            [LoggerMessage(EventId = 4401, Level = LogLevel.Error, Message = "Failed to obtain a usable payload from a Pulsar message (MessageId: {MessageId}) on Topic {Topic}; redelivering instead of processing.")]
+            public static partial void UnprocessableMessage(ILogger logger, Exception? exception, MessageId messageId, string topic);
+
+            [LoggerMessage(EventId = 4402, Level = LogLevel.Error, Message = "Failed to redeliver an unacknowledged Pulsar message.")]
+            public static partial void RedeliverFailed(ILogger logger, Exception exception);
+        }
+
         private readonly IPulsarClient? _client;
         private readonly IConsumer<TPulsarFeederMessage>? _consumer;
 
@@ -32,10 +44,7 @@ namespace ThunderPropagator.Feeders.Pulsar
         {
             if (!feederConfiguration.IsEnabled)
             {
-                Logger.LogWarning(
-                    "{FeederName}/{ChannelName} is disabled (IsEnabled=false), skipping broker connection.",
-                    GetType().Name,
-                    channel.Metadata.ChannelName);
+                Log.FeederDisabled(Logger, GetType().Name, channel.Metadata.ChannelName);
                 return;
             }
 
@@ -113,10 +122,7 @@ namespace ThunderPropagator.Feeders.Pulsar
 
             async Task HandleUnprocessableMessageAsync(IMessage<TPulsarFeederMessage> message, Exception? exception)
             {
-                Logger.LogError(exception,
-                    "Failed to obtain a usable payload from a Pulsar message (MessageId: {MessageId}) on Topic {Topic}; redelivering instead of processing.",
-                    message.MessageId,
-                    consumer.Topic);
+                Log.UnprocessableMessage(Logger, exception, message.MessageId, consumer.Topic);
                 ReportHealth(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded, exception);
 
                 try
@@ -125,7 +131,7 @@ namespace ThunderPropagator.Feeders.Pulsar
                 }
                 catch (Exception redeliverException)
                 {
-                    Logger.LogError(redeliverException, "Failed to redeliver an unacknowledged Pulsar message.");
+                    Log.RedeliverFailed(Logger, redeliverException);
                 }
             }
         }

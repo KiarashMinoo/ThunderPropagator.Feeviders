@@ -13,10 +13,16 @@ namespace ThunderPropagator.Providers.DotNet.AwsSqs
 #if !DEBUG
         sealed
 #endif
-        class SnsProvider<TSnsProviderMessage, TSnsProviderConfiguration> : AbstractProvider<TSnsProviderMessage, TSnsProviderConfiguration>
+        partial class SnsProvider<TSnsProviderMessage, TSnsProviderConfiguration> : AbstractProvider<TSnsProviderMessage, TSnsProviderConfiguration>
         where TSnsProviderMessage : SnsProviderMessage
         where TSnsProviderConfiguration : SnsProviderConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 5302, Level = LogLevel.Error, Message = "error has occured while publishing message to topic {TopicArn}.")]
+            public static partial void PublishException(ILogger logger, Exception exception, string topicArn);
+        }
+
         private readonly TSnsProviderConfiguration _snsProviderConfiguration;
         private readonly IAmazonSimpleNotificationService _client;
 
@@ -42,7 +48,7 @@ namespace ThunderPropagator.Providers.DotNet.AwsSqs
             }
             catch (Exception exception)
             {
-                Logger.LogError(exception, "error has occured while publishing message to topic {TopicArn}.", _snsProviderConfiguration.TopicArn);
+                Log.PublishException(Logger, exception, _snsProviderConfiguration.TopicArn);
                 throw;
             }
         }

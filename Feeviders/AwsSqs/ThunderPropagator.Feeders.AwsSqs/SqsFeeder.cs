@@ -16,11 +16,17 @@ namespace ThunderPropagator.Feeders.AwsSqs
 #if !DEBUG
         sealed
 #endif
-        class SqsFeeder<TChannel, TSqsFeederMessage, TSqsFeederConfiguration> : IterativeFeeder<TChannel, TSqsFeederMessage, TSqsFeederConfiguration>, IFeature
+        partial class SqsFeeder<TChannel, TSqsFeederMessage, TSqsFeederConfiguration> : IterativeFeeder<TChannel, TSqsFeederMessage, TSqsFeederConfiguration>, IFeature
         where TChannel : class, IChannel
         where TSqsFeederMessage : SqsFeederMessage
         where TSqsFeederConfiguration : SqsFeederConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 5300, Level = LogLevel.Information, Message = "{FeederName}/{ChannelName} on Queue {QueueUrl} has configured.")]
+            public static partial void FeederConfigured(ILogger logger, string feederName, string channelName, string queueUrl);
+        }
+
         private readonly IAmazonSQS _client;
 
         public SqsFeeder(TChannel channel,
@@ -34,8 +40,8 @@ namespace ThunderPropagator.Feeders.AwsSqs
             HealthName = $"feeder_{nameof(AwsSqs)}_{feederConfiguration.QueueUrl}";
             HealthTags = [.. HealthTags, nameof(AwsSqs), feederConfiguration.QueueUrl];
 
-            Logger.LogInformation(
-                "{FeederName}/{ChannelName} on Queue {QueueUrl} has configured.",
+            Log.FeederConfigured(
+                Logger,
                 GetType().Name,
                 channel.Metadata.ChannelName,
                 feederConfiguration.QueueUrl);

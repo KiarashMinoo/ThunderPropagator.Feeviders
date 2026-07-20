@@ -16,10 +16,19 @@ namespace ThunderPropagator.Providers.DotNet.Kafka
 #if !DEBUG
         sealed
 #endif
-        class KafkaProvider<TKafkaProviderMessage, TKafkaProviderConfiguration> : AbstractProvider<TKafkaProviderMessage, TKafkaProviderConfiguration>
+        partial class KafkaProvider<TKafkaProviderMessage, TKafkaProviderConfiguration> : AbstractProvider<TKafkaProviderMessage, TKafkaProviderConfiguration>
         where TKafkaProviderMessage : KafkaProviderMessage
         where TKafkaProviderConfiguration : KafkaProviderConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4000, Level = LogLevel.Error, Message = "Error: {Reason}")]
+            public static partial void ProduceError(ILogger logger, string reason);
+
+            [LoggerMessage(EventId = 4001, Level = LogLevel.Error, Message = "error has occured while producing message to topic {Topic}.")]
+            public static partial void ProduceException(ILogger logger, Exception exception, string topic);
+        }
+
         private readonly TKafkaProviderConfiguration _kafkaProviderConfiguration;
         private readonly IProducer<string, TKafkaProviderMessage> _producer;
         private CachedSchemaRegistryClient? _schemaRegistry;
@@ -40,7 +49,7 @@ namespace ThunderPropagator.Providers.DotNet.Kafka
                         KafkaSerializerType.Avro => new AvroSerializer<TKafkaProviderMessage>(SchemaRegistryClient).AsSyncOverAsync(),
                         _ => throw new ArgumentOutOfRangeException()
                     })
-                .SetErrorHandler((_, e) => Logger.LogError("Error: {Reason}", e.Reason))
+                .SetErrorHandler((_, e) => Log.ProduceError(Logger, e.Reason))
                 .Build();
         }
 
@@ -73,7 +82,7 @@ namespace ThunderPropagator.Providers.DotNet.Kafka
             }
             catch (Exception exception)
             {
-                Logger.LogError(exception, "error has occured while producing message to topic {Topic}.", _kafkaProviderConfiguration.TopicName);
+                Log.ProduceException(Logger, exception, _kafkaProviderConfiguration.TopicName);
                 throw;
             }
         }

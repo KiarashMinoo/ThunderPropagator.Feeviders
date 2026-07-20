@@ -14,10 +14,16 @@ namespace ThunderPropagator.Providers.DotNet.Pulsar
 #if !DEBUG
         sealed
 #endif
-        class PulsarProvider<TPulsarProviderMessage, TPulsarProviderConfiguration> : AbstractProvider<TPulsarProviderMessage, TPulsarProviderConfiguration>
+        partial class PulsarProvider<TPulsarProviderMessage, TPulsarProviderConfiguration> : AbstractProvider<TPulsarProviderMessage, TPulsarProviderConfiguration>
         where TPulsarProviderMessage : PulsarProviderMessage
         where TPulsarProviderConfiguration : PulsarProviderConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4403, Level = LogLevel.Error, Message = "error has occured while producing message to queue {Topic}.")]
+            public static partial void ProduceException(ILogger logger, Exception exception, string topic);
+        }
+
         private readonly TPulsarProviderConfiguration _pulsarProviderConfiguration;
         private readonly IPulsarClient _client;
         private readonly IProducer<TPulsarProviderMessage> _producer;
@@ -68,9 +74,7 @@ namespace ThunderPropagator.Providers.DotNet.Pulsar
             }
             catch (Exception exception)
             {
-                Logger.LogError(exception,
-                    "error has occured while producing message to queue {Topic}.",
-                    _pulsarProviderConfiguration.Topic);
+                Log.ProduceException(Logger, exception, _pulsarProviderConfiguration.Topic);
                 throw;
             }
         }

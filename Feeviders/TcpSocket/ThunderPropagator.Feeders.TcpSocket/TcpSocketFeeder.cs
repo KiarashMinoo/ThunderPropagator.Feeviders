@@ -22,11 +22,26 @@ namespace ThunderPropagator.Feeders.TcpSocket
 #if !DEBUG
         sealed
 #endif
-        class TcpSocketFeeder<TChannel, TTcpSocketFeederMessage, TTcpSocketFeederConfiguration> : DelegativeFeeder<TChannel, TTcpSocketFeederMessage, TTcpSocketFeederConfiguration>, IFeature
+        partial class TcpSocketFeeder<TChannel, TTcpSocketFeederMessage, TTcpSocketFeederConfiguration> : DelegativeFeeder<TChannel, TTcpSocketFeederMessage, TTcpSocketFeederConfiguration>, IFeature
         where TChannel : class, IChannel
         where TTcpSocketFeederMessage : TcpSocketFeederMessage
         where TTcpSocketFeederConfiguration : TcpSocketFeederConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4900, Level = LogLevel.Warning, Message = "Client disconnected before EOM.")]
+            public static partial void ClientDisconnectedBeforeEom(ILogger logger);
+
+            [LoggerMessage(EventId = 4901, Level = LogLevel.Warning, Message = "Authentication failed.")]
+            public static partial void AuthenticationFailed(ILogger logger);
+
+            [LoggerMessage(EventId = 4902, Level = LogLevel.Error, Message = "An error occurred while serving the TCP socket client on port: {Port}.")]
+            public static partial void ServeClientError(ILogger logger, Exception exception, short port);
+
+            [LoggerMessage(EventId = 4903, Level = LogLevel.Error, Message = "Unhandled exception in TCP socket feeder background loop.")]
+            public static partial void BackgroundLoopUnhandledException(ILogger logger, Exception exception);
+        }
+
         private class FramedStreamReader(Stream stream, ReadOnlySpan<byte> eom)
         {
             private readonly ReadOnlyMemory<byte> _eom = eom.ToArray();
@@ -162,14 +177,14 @@ namespace ThunderPropagator.Feeders.TcpSocket
 
                     if (bytes.Length == 0)
                     {
-                        Logger.LogWarning("Client disconnected before EOM.");
+                        Log.ClientDisconnectedBeforeEom(Logger);
                         continue;
                     }
 
                     // Handle authentication if required
                     if (_requiresAuthentication && !Authenticate(bytes))
                     {
-                        Logger.LogWarning("Authentication failed.");
+                        Log.AuthenticationFailed(Logger);
                         continue;
                     }
 
@@ -200,7 +215,7 @@ namespace ThunderPropagator.Feeders.TcpSocket
                 catch (Exception exception) when (exception is not OperationCanceledException)
                 {
                     ReportHealth(HealthStatus.Unhealthy, exception);
-                    Logger.LogError(exception, "An error occurred while serving the TCP socket client on port: {Port}.", _tcpSocketFeederConfiguration.Port);
+                    Log.ServeClientError(Logger, exception, _tcpSocketFeederConfiguration.Port);
                 }
                 finally
                 {
@@ -220,7 +235,7 @@ namespace ThunderPropagator.Feeders.TcpSocket
             catch (Exception ex)
             {
                 ReportHealth(HealthStatus.Unhealthy, ex);
-                Logger.LogError(ex, "Unhandled exception in TCP socket feeder background loop.");
+                Log.BackgroundLoopUnhandledException(Logger, ex);
             }
         }
 

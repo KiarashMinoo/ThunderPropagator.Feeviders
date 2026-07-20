@@ -12,10 +12,19 @@ namespace ThunderPropagator.Providers.DotNet.RedisPubSub
 #if !DEBUG
         sealed
 #endif
-        class RedisPubSubProvider<TRedisPubSubProviderMessage, TRedisPubSubProviderConfiguration> : AbstractProvider<TRedisPubSubProviderMessage, TRedisPubSubProviderConfiguration>
+        partial class RedisPubSubProvider<TRedisPubSubProviderMessage, TRedisPubSubProviderConfiguration> : AbstractProvider<TRedisPubSubProviderMessage, TRedisPubSubProviderConfiguration>
         where TRedisPubSubProviderMessage : RedisPubSubProviderMessage
         where TRedisPubSubProviderConfiguration : RedisPubSubProviderConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4603, Level = LogLevel.Warning, Message = "Redis publish task faulted for channel {Channel}")]
+            public static partial void PublishTaskFaulted(ILogger logger, AggregateException exception, string channel);
+
+            [LoggerMessage(EventId = 4604, Level = LogLevel.Error, Message = "error has occured while publishing message to channel {Channel}.")]
+            public static partial void PublishError(ILogger logger, Exception exception, string channel);
+        }
+
         private readonly IConnectionMultiplexer _connectionMultiplexer;
         private readonly RedisChannel _redisChannel;
         private readonly TRedisPubSubProviderConfiguration _redisPubSubProviderConfiguration;
@@ -57,15 +66,16 @@ namespace ThunderPropagator.Providers.DotNet.RedisPubSub
                 _ = publishTask.ContinueWith(t =>
                 {
                     if (t.IsFaulted && t.Exception is not null)
-                        Logger.LogWarning(t.Exception, "Redis publish task faulted for channel {Channel}", _redisPubSubProviderConfiguration.Channel);
+                        Log.PublishTaskFaulted(Logger, t.Exception, _redisPubSubProviderConfiguration.Channel);
                 }, TaskScheduler.Default);
 
                 return Task.CompletedTask;
             }
             catch (Exception exception)
             {
-                Logger.LogError(exception,
-                    "error has occured while publishing message to channel {Channel}.",
+                Log.PublishError(
+                    Logger,
+                    exception,
                     _redisPubSubProviderConfiguration.Channel);
                 throw;
             }

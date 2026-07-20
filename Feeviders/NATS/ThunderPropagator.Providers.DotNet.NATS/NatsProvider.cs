@@ -17,10 +17,19 @@ namespace ThunderPropagator.Providers.DotNet.NATS
 #if !DEBUG
         sealed
 #endif
-        class NatsProvider<TNatsProviderMessage, TNatsProviderConfiguration> : AbstractProvider<TNatsProviderMessage, TNatsProviderConfiguration>
+        partial class NatsProvider<TNatsProviderMessage, TNatsProviderConfiguration> : AbstractProvider<TNatsProviderMessage, TNatsProviderConfiguration>
         where TNatsProviderMessage : NatsProviderMessage
         where TNatsProviderConfiguration : NatsProviderConfiguration
     {
+        private static partial class Log
+        {
+            [LoggerMessage(EventId = 4304, Level = LogLevel.Error, Message = "error has occured while producing message to Subject {Subject}.")]
+            public static partial void ProduceException(ILogger logger, Exception exception, string subject);
+
+            [LoggerMessage(EventId = 4305, Level = LogLevel.Error, Message = "Failed to initialize JetStream context.")]
+            public static partial void JetStreamContextInitializationFailed(ILogger logger, Exception exception);
+        }
+
         private readonly TNatsProviderConfiguration _natsProviderConfiguration;
         private readonly INatsClient _client;
         private readonly INatsJSContext? _jetStreamContext;
@@ -83,9 +92,7 @@ namespace ThunderPropagator.Providers.DotNet.NATS
             }
             catch (Exception exception)
             {
-                Logger.LogError(exception,
-                    "error has occured while producing message to Subject {Subject}.",
-                    _natsProviderConfiguration.Subject);
+                Log.ProduceException(Logger, exception, _natsProviderConfiguration.Subject);
                 throw;
             }
         }
@@ -105,7 +112,7 @@ namespace ThunderPropagator.Providers.DotNet.NATS
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Failed to initialize JetStream context.");
+                Log.JetStreamContextInitializationFailed(Logger, ex);
                 throw;
             }
         }
