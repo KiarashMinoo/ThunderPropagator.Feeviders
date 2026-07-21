@@ -15,8 +15,8 @@ public class JsonNatsSerializerTests
     }
 
     [Theory]
-    [InlineData(SerializerType.Json)]
-    [InlineData(SerializerType.NJson)]
+    [InlineData(JsonFormatSerializer.Json)]
+    [InlineData(NJsonFormatSerializer.NJson)]
     [InlineData(SerializerType.NetJson)]
     public void Constructor_WithValidSerializerType_ShouldNotThrow(SerializerType serializerType)
     {
@@ -28,8 +28,8 @@ public class JsonNatsSerializerTests
     }
 
     [Theory]
-    [InlineData(SerializerType.Json)]
-    [InlineData(SerializerType.NJson)]
+    [InlineData(JsonFormatSerializer.Json)]
+    [InlineData(NJsonFormatSerializer.NJson)]
     [InlineData(SerializerType.NetJson)]
     public void Serialize_WithValidMessage_ShouldWriteToBuffer(SerializerType serializerType)
     {
@@ -46,8 +46,8 @@ public class JsonNatsSerializerTests
     }
 
     [Theory]
-    [InlineData(SerializerType.Json)]
-    [InlineData(SerializerType.NJson)]
+    [InlineData(JsonFormatSerializer.Json)]
+    [InlineData(NJsonFormatSerializer.NJson)]
     [InlineData(SerializerType.NetJson)]
     public void Serialize_WithEmptyMessage_ShouldWriteToBuffer(SerializerType serializerType)
     {
@@ -64,8 +64,8 @@ public class JsonNatsSerializerTests
     }
 
     [Theory]
-    [InlineData(SerializerType.Json)]
-    [InlineData(SerializerType.NJson)]
+    [InlineData(JsonFormatSerializer.Json)]
+    [InlineData(NJsonFormatSerializer.NJson)]
     [InlineData(SerializerType.NetJson)]
     public void Serialize_WithComplexMessage_ShouldWriteToBuffer(SerializerType serializerType)
     {
@@ -89,8 +89,8 @@ public class JsonNatsSerializerTests
     }
 
     [Theory]
-    [InlineData(SerializerType.Json)]
-    [InlineData(SerializerType.NJson)]
+    [InlineData(JsonFormatSerializer.Json)]
+    [InlineData(NJsonFormatSerializer.NJson)]
     [InlineData(SerializerType.NetJson)]
     public void Serialize_MultipleMessages_ShouldWriteEachToBuffer(SerializerType serializerType)
     {

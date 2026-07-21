@@ -14,8 +14,8 @@ public class JsonNatsSerializerRegistryTests
     }
 
     [Theory]
-    [InlineData(SerializerType.Json)]
-    [InlineData(SerializerType.NJson)]
+    [InlineData(JsonFormatSerializer.Json)]
+    [InlineData(NJsonFormatSerializer.NJson)]
     [InlineData(SerializerType.NetJson)]
     public void Constructor_WithValidSerializerType_ShouldNotThrow(SerializerType serializerType)
     {
@@ -27,8 +27,8 @@ public class JsonNatsSerializerRegistryTests
     }
 
     [Theory]
-    [InlineData(SerializerType.Json)]
-    [InlineData(SerializerType.NJson)]
+    [InlineData(JsonFormatSerializer.Json)]
+    [InlineData(NJsonFormatSerializer.NJson)]
     [InlineData(SerializerType.NetJson)]
     public void GetSerializer_ShouldReturnSerializer(SerializerType serializerType)
     {
@@ -44,8 +44,8 @@ public class JsonNatsSerializerRegistryTests
     }
 
     [Theory]
-    [InlineData(SerializerType.Json)]
-    [InlineData(SerializerType.NJson)]
+    [InlineData(JsonFormatSerializer.Json)]
+    [InlineData(NJsonFormatSerializer.NJson)]
     [InlineData(SerializerType.NetJson)]
     public void GetDeserializer_ShouldReturnDeserializer(SerializerType serializerType)
     {
@@ -61,8 +61,8 @@ public class JsonNatsSerializerRegistryTests
     }
 
     [Theory]
-    [InlineData(SerializerType.Json)]
-    [InlineData(SerializerType.NJson)]
+    [InlineData(JsonFormatSerializer.Json)]
+    [InlineData(NJsonFormatSerializer.NJson)]
     [InlineData(SerializerType.NetJson)]
     public void GetSerializer_CalledTwice_ShouldReturnSameInstance(SerializerType serializerType)
     {
@@ -78,8 +78,8 @@ public class JsonNatsSerializerRegistryTests
     }
 
     [Theory]
-    [InlineData(SerializerType.Json)]
-    [InlineData(SerializerType.NJson)]
+    [InlineData(JsonFormatSerializer.Json)]
+    [InlineData(NJsonFormatSerializer.NJson)]
     [InlineData(SerializerType.NetJson)]
     public void GetDeserializer_CalledTwice_ShouldReturnSameInstance(SerializerType serializerType)
     {
@@ -95,8 +95,8 @@ public class JsonNatsSerializerRegistryTests
     }
 
     [Theory]
-    [InlineData(SerializerType.Json)]
-    [InlineData(SerializerType.NJson)]
+    [InlineData(JsonFormatSerializer.Json)]
+    [InlineData(NJsonFormatSerializer.NJson)]
     [InlineData(SerializerType.NetJson)]
     public void GetSerializer_WithDifferentTypes_ShouldReturnDifferentInstances(SerializerType serializerType)
     {
@@ -112,8 +112,8 @@ public class JsonNatsSerializerRegistryTests
     }
 
     [Theory]
-    [InlineData(SerializerType.Json)]
-    [InlineData(SerializerType.NJson)]
+    [InlineData(JsonFormatSerializer.Json)]
+    [InlineData(NJsonFormatSerializer.NJson)]
     [InlineData(SerializerType.NetJson)]
     public void GetDeserializer_WithDifferentTypes_ShouldReturnDifferentInstances(SerializerType serializerType)
     {

@@ -2,6 +2,8 @@
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
 using NATS.Net;
+using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.Feeviders.NATS.SharedKernel
 {
@@ -11,7 +13,11 @@ namespace ThunderPropagator.Feeviders.NATS.SharedKernel
 #endif
         class NatsClientFactory
     {
-        public static INatsClient CreateClient(AbstractNatsFeevidersConfiguration configuration, ILoggerFactory loggerFactory)
+        public static INatsClient CreateClient(
+            AbstractNatsFeevidersConfiguration configuration,
+            ILoggerFactory loggerFactory,
+            FormatDeserializerInvoker formatDeserializerInvoker,
+            FormatSerializerInvoker formatSerializerInvoker)
         {
             var natsOpts = new NatsOpts
             {
@@ -46,7 +52,7 @@ namespace ThunderPropagator.Feeviders.NATS.SharedKernel
                 SubPendingChannelCapacity = configuration.SubPendingChannelCapacity,
                 SubPendingChannelFullMode = configuration.SubPendingChannelFullMode,
                 LoggerFactory = loggerFactory,
-                SerializerRegistry = new JsonNatsSerializerRegistry(configuration.SerializerType)
+                SerializerRegistry = new JsonNatsSerializerRegistry(formatDeserializerInvoker, formatSerializerInvoker, configuration.SerializerType)
             };
 
             return new NatsClient(natsOpts);

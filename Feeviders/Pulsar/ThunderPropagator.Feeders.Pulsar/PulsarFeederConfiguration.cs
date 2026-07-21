@@ -1,6 +1,7 @@
 ﻿using DotPulsar;
 using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
+using ThunderPropagator.BuildingBlocks.Application.Serializations.Json;
 using ThunderPropagator.Feeviders.Pulsar.SharedKernel;
 
 namespace ThunderPropagator.Feeders.Pulsar
@@ -15,7 +16,7 @@ namespace ThunderPropagator.Feeders.Pulsar
 
         public SerializerType SerializerType
         {
-            get => Get(SerializerType.Json);
+            get => Get(JsonFormatSerializer.Json);
             set => Set(value);
         }
 

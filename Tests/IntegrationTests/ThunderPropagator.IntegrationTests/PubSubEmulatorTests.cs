@@ -4,12 +4,11 @@ using Google.Api.Gax;
 using Google.Cloud.PubSub.V1;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
-using ThunderPropagator.BuildingBlocks.Application;
 using ThunderPropagator.Providers.DotNet.GcpPubSub;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 using Xunit;
 
-namespace ThunderPropagator.IntegrationTests.GcpPubSub;
+namespace ThunderPropagator.IntegrationTests;
 
 public sealed class PubSubEmulatorTests : IAsyncLifetime
 {

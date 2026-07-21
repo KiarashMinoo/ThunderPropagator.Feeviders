@@ -1,6 +1,7 @@
 ﻿using ThunderPropagator.Feeviders.RabbitMQ.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
+using ThunderPropagator.BuildingBlocks.Application.Serializations.Json;
 
 namespace ThunderPropagator.Providers.DotNet.RabbitMQ
 {
@@ -8,7 +9,7 @@ namespace ThunderPropagator.Providers.DotNet.RabbitMQ
     {
         public SerializerType SerializerType
         {
-            get => Get(SerializerType.Json);
+            get => Get(JsonFormatSerializer.Json);
             set => Set(value);
         }
     }

@@ -1,29 +1,19 @@
 ﻿using System.Buffers;
 using NATS.Client.Core;
-using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
+using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.Feeviders.NATS.SharedKernel
 {
-    public class JsonNatsDeserializer<T> : INatsDeserialize<T>
+    public class JsonNatsDeserializer<T>(
+        FormatDeserializerInvoker formatDeserializerInvoker,
+        SerializerType serializerType
+    ) : INatsDeserialize<T>
     {
-        private readonly SerializerType _serializerType;
-
-        public JsonNatsDeserializer(SerializerType serializerType)
-        {
-            _serializerType = serializerType;
-        }
-
         public T? Deserialize(in ReadOnlySequence<byte> buffer)
         {
             var array = buffer.ToArray();
-            return _serializerType switch
-            {
-                SerializerType.Json => array.FromJsonBytes<T>(),
-                SerializerType.NJson => array.FromNJsonBytes<T>(),
-                SerializerType.NetJson => array.FromNetJsonBytes<T>(),
-                _ => throw new ArgumentOutOfRangeException()
-            };
+            return formatDeserializerInvoker(serializerType).Deserialize<T>(array);
         }
     }
 }

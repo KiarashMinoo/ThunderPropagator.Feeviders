@@ -1,0 +1,5 @@
+﻿using ThunderPropagator.BuildingBlocks.Application.Serializations;
+
+namespace ThunderPropagator.Feeders.SharedKernel;
+
+public delegate IFormatSerializer FormatSerializerInvoker(SerializerType serializerType);

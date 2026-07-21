@@ -6,6 +6,8 @@ using System.Diagnostics;
 using DotPulsar;
 using DotPulsar.Abstractions;
 using DotPulsar.Extensions;
+using Microsoft.Extensions.DependencyInjection;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.Pulsar.SharedKernel;
 
 namespace ThunderPropagator.Providers.DotNet.Pulsar
@@ -33,7 +35,10 @@ namespace ThunderPropagator.Providers.DotNet.Pulsar
         {
             _pulsarProviderConfiguration = pulsarProviderConfiguration;
             _client = PulsarClientFactory.CreateClient(pulsarProviderConfiguration);
-            var schema = new JsonSchema<TPulsarProviderMessage>(pulsarProviderConfiguration.SerializerType);
+            var formatDeserializerInvoker = serviceProvider.GetRequiredService<FormatDeserializerInvoker>();
+            var formatSerializerInvoker = serviceProvider.GetRequiredService<FormatSerializerInvoker>();
+
+            var schema = new JsonSchema<TPulsarProviderMessage>(formatDeserializerInvoker, formatSerializerInvoker, pulsarProviderConfiguration.SerializerType);
 
             var producerOptions = new ProducerOptions<TPulsarProviderMessage>(pulsarProviderConfiguration.Topic, schema);
 

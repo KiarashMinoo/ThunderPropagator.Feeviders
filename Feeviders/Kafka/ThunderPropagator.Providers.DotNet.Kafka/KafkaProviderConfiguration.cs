@@ -1,5 +1,6 @@
 ﻿using Confluent.Kafka;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
+using ThunderPropagator.BuildingBlocks.Application.Serializations.Json;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.Providers.DotNet.Kafka
@@ -19,19 +20,9 @@ namespace ThunderPropagator.Providers.DotNet.Kafka
             set => Set("schema.registry.url", value);
         }
 
-        SerializerType IAbstractProviderConfiguration.SerializerType
+        public SerializerType SerializerType
         {
-            get => (SerializerType)SerializerType;
-            set => SerializerType = (KafkaSerializerType)value;
-        }
-
-        public KafkaSerializerType SerializerType
-        {
-            get
-            {
-                var @enum = GetEnum(typeof(KafkaSerializerType), "serializer.type");
-                return @enum is not null ? (KafkaSerializerType)@enum : KafkaSerializerType.Json;
-            }
+            get => GetInt("serializer.type") ?? JsonFormatSerializer.Json;
             set => SetObject("serializer.type", value);
         }
 

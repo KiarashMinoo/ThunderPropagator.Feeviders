@@ -2,9 +2,11 @@
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using ThunderPropagator.Feeviders.Mqtt.SharedKernel;
 using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.Providers.DotNet.Mqtt
@@ -31,6 +33,7 @@ namespace ThunderPropagator.Providers.DotNet.Mqtt
 
         private readonly TMqttProviderConfiguration _mqttProviderConfiguration;
         private readonly IMqttClient _mqttClient;
+        private readonly FormatSerializerInvoker _formatSerializerInvoker;
 
         public MqttProvider(TMqttProviderConfiguration mqttProviderConfiguration, IServiceProvider serviceProvider) : base(serviceProvider)
         {
@@ -38,6 +41,8 @@ namespace ThunderPropagator.Providers.DotNet.Mqtt
 
             var mqttFactory = new MqttClientFactory();
             _mqttClient = mqttFactory.CreateMqttClient();
+
+            _formatSerializerInvoker = serviceProvider.GetRequiredService<FormatSerializerInvoker>();
         }
 
         protected override async Task InternalExecuteAsync(TMqttProviderMessage feederMessage, CancellationToken cancellationToken = default)
@@ -56,13 +61,7 @@ namespace ThunderPropagator.Providers.DotNet.Mqtt
 
                 var applicationMessageBuilder = new MqttApplicationMessageBuilder()
                     .WithTopic(_mqttProviderConfiguration.Topic)
-                    .WithPayload(_mqttProviderConfiguration.SerializerType switch
-                    {
-                        SerializerType.Json => feederMessage.ToJson(),
-                        SerializerType.NJson => feederMessage.ToNJson(),
-                        SerializerType.NetJson => feederMessage.ToNetJson(),
-                        _ => throw new ArgumentOutOfRangeException()
-                    });
+                    .WithPayload(_formatSerializerInvoker(_mqttProviderConfiguration.SerializerType).Serialize(feederMessage));
 
                 if (Activity.Current?.Context is not null)
                     applicationMessageBuilder.WithUserProperty(nameof(ActivityContext), Activity.Current.Context.ToNJsonBase64());

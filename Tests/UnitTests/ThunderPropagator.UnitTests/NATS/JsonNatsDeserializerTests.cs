@@ -15,8 +15,8 @@ public class JsonNatsDeserializerTests
     }
 
     [Theory]
-    [InlineData(SerializerType.Json)]
-    [InlineData(SerializerType.NJson)]
+    [InlineData(JsonFormatSerializer.Json)]
+    [InlineData(NJsonFormatSerializer.NJson)]
     [InlineData(SerializerType.NetJson)]
     public void Constructor_WithValidSerializerType_ShouldNotThrow(SerializerType serializerType)
     {
@@ -31,8 +31,8 @@ public class JsonNatsDeserializerTests
     public void Deserialize_WithValidBuffer_ShouldReturnMessage()
     {
         // Arrange
-        var serializer = new JsonNatsSerializer<TestMessage>(SerializerType.Json);
-        var deserializer = new JsonNatsDeserializer<TestMessage>(SerializerType.Json);
+        var serializer = new JsonNatsSerializer<TestMessage>(JsonFormatSerializer.Json);
+        var deserializer = new JsonNatsDeserializer<TestMessage>(JsonFormatSerializer.Json);
         var originalMessage = new TestMessage { Id = "123", Content = "Test content" };
         var bufferWriter = new ArrayBufferWriter<byte>();
         serializer.Serialize(bufferWriter, originalMessage);
@@ -48,8 +48,8 @@ public class JsonNatsDeserializerTests
     }
 
     [Theory]
-    [InlineData(SerializerType.Json)]
-    [InlineData(SerializerType.NJson)]
+    [InlineData(JsonFormatSerializer.Json)]
+    [InlineData(NJsonFormatSerializer.NJson)]
     [InlineData(SerializerType.NetJson)]
     public void Deserialize_WithEmptyMessage_ShouldReturnEmptyMessage(SerializerType serializerType)
     {
@@ -72,8 +72,8 @@ public class JsonNatsDeserializerTests
     public void Deserialize_WithComplexMessage_ShouldReturnCompleteMessage()
     {
         // Arrange
-        var serializer = new JsonNatsSerializer<ComplexMessage>(SerializerType.Json);
-        var deserializer = new JsonNatsDeserializer<ComplexMessage>(SerializerType.Json);
+        var serializer = new JsonNatsSerializer<ComplexMessage>(JsonFormatSerializer.Json);
+        var deserializer = new JsonNatsDeserializer<ComplexMessage>(JsonFormatSerializer.Json);
         var originalMessage = new ComplexMessage
         {
             Id = 42,
@@ -101,8 +101,8 @@ public class JsonNatsDeserializerTests
     public void Deserialize_MultipleMessages_ShouldDeserializeEachCorrectly()
     {
         // Arrange
-        var serializer = new JsonNatsSerializer<TestMessage>(SerializerType.Json);
-        var deserializer = new JsonNatsDeserializer<TestMessage>(SerializerType.Json);
+        var serializer = new JsonNatsSerializer<TestMessage>(JsonFormatSerializer.Json);
+        var deserializer = new JsonNatsDeserializer<TestMessage>(JsonFormatSerializer.Json);
         var messages = new[]
         {
             new TestMessage { Id = "1", Content = "First" },
@@ -117,7 +117,7 @@ public class JsonNatsDeserializerTests
             serializer.Serialize(bufferWriter, originalMessage);
             var buffer = new ReadOnlySequence<byte>(bufferWriter.WrittenMemory);
             var result = deserializer.Deserialize(buffer);
-            
+
             Assert.NotNull(result);
             Assert.Equal(originalMessage.Id, result.Id);
             Assert.Equal(originalMessage.Content, result.Content);
@@ -128,23 +128,23 @@ public class JsonNatsDeserializerTests
     public void Deserialize_RoundTrip_ShouldPreserveData()
     {
         // Arrange
-        var serializer = new JsonNatsSerializer<TestMessage>(SerializerType.Json);
-        var deserializer = new JsonNatsDeserializer<TestMessage>(SerializerType.Json);
+        var serializer = new JsonNatsSerializer<TestMessage>(JsonFormatSerializer.Json);
+        var deserializer = new JsonNatsDeserializer<TestMessage>(JsonFormatSerializer.Json);
         var originalMessage = new TestMessage { Id = "round-trip-test", Content = "Testing round trip serialization" };
-        
+
         // Act - Serialize
         var bufferWriter = new ArrayBufferWriter<byte>();
         serializer.Serialize(bufferWriter, originalMessage);
         var buffer = new ReadOnlySequence<byte>(bufferWriter.WrittenMemory);
-        
+
         // Act - Deserialize
         var deserializedMessage = deserializer.Deserialize(buffer);
-        
+
         // Act - Serialize again
         var bufferWriter2 = new ArrayBufferWriter<byte>();
         serializer.Serialize(bufferWriter2, deserializedMessage!);
         var buffer2 = new ReadOnlySequence<byte>(bufferWriter2.WrittenMemory);
-        
+
         // Act - Deserialize again
         var result = deserializer.Deserialize(buffer2);
 

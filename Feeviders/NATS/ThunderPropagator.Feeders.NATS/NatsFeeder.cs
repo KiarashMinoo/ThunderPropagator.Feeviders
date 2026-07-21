@@ -11,7 +11,9 @@ using ThunderPropagator.Application;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.NATS.SharedKernel;
+using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.Feeders.NATS
 {
@@ -50,7 +52,12 @@ namespace ThunderPropagator.Feeders.NATS
             IServiceProvider serviceProvider)
             : base(channel, feederConfiguration, feederHandler, serviceProvider)
         {
-            _client = NatsClientFactory.CreateClient(feederConfiguration, serviceProvider.GetRequiredService<ILoggerFactory>());
+            _client = NatsClientFactory.CreateClient(
+                feederConfiguration,
+                serviceProvider.GetRequiredService<ILoggerFactory>(),
+                serviceProvider.GetRequiredService<FormatDeserializerInvoker>(),
+                serviceProvider.GetRequiredService<FormatSerializerInvoker>()
+            );
 
             if (feederConfiguration.MessagingType == MessagingType.JetStream)
             {

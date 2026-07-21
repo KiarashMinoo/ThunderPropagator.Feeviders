@@ -1,5 +1,6 @@
 ﻿using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
+using ThunderPropagator.BuildingBlocks.Application.Serializations.Json;
 using ThunderPropagator.Infrastructure.Protocols.WebSockets;
 
 namespace ThunderPropagator.Feeders.WebSocket
@@ -21,7 +22,7 @@ namespace ThunderPropagator.Feeders.WebSocket
 
         public new SerializerType SerializerType
         {
-            get => Get(SerializerType.NJson);
+            get => Get(NJsonFormatSerializer.NJson);
             set => Set(value);
         }
 
@@ -37,11 +38,40 @@ namespace ThunderPropagator.Feeders.WebSocket
             set => Set(value);
         }
 
-        public TimeSpan ReceiveTimeout { get => Get(TimeSpan.FromHours(1)); set => Set(value); }
-        public TimeSpan StartupTimeout { get => Get(TimeSpan.FromSeconds(30)); set => Set(value); }
-        public TimeSpan MessageHandlerTimeout { get => Get(TimeSpan.FromHours(1)); set => Set(value); }
-        public double MemoryPressurePauseThreshold { get => Get(0.0); set => Set(value); }
-        public double MemoryPressureResumeThreshold { get => Get(0.70); set => Set(value); }
-        public TimeSpan MemoryPressurePollingInterval { get => Get(TimeSpan.FromSeconds(5)); set => Set(value); }
+        public TimeSpan ReceiveTimeout
+        {
+            get => Get(TimeSpan.FromHours(1));
+            set => Set(value);
+        }
+
+        public TimeSpan StartupTimeout
+        {
+            get => Get(TimeSpan.FromSeconds(30));
+            set => Set(value);
+        }
+
+        public TimeSpan MessageHandlerTimeout
+        {
+            get => Get(TimeSpan.FromHours(1));
+            set => Set(value);
+        }
+
+        public double MemoryPressurePauseThreshold
+        {
+            get => Get(0.0);
+            set => Set(value);
+        }
+
+        public double MemoryPressureResumeThreshold
+        {
+            get => Get(0.70);
+            set => Set(value);
+        }
+
+        public TimeSpan MemoryPressurePollingInterval
+        {
+            get => Get(TimeSpan.FromSeconds(5));
+            set => Set(value);
+        }
     }
 }

@@ -1,13 +1,12 @@
-﻿using OpenTelemetry;
-using ThunderPropagator.BuildingBlocks.Application.Helpers;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Confluent.Kafka;
 using Confluent.Kafka.SyncOverAsync;
 using Confluent.SchemaRegistry;
-using Confluent.SchemaRegistry.Serdes;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using ThunderPropagator.BuildingBlocks.Application.Serializations;
-using ThunderPropagator.Providers.DotNet.Kafka.KafkaSerializers;
+using OpenTelemetry;
+using ThunderPropagator.BuildingBlocks.Application.Helpers;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.Providers.DotNet.Kafka
@@ -36,19 +35,11 @@ namespace ThunderPropagator.Providers.DotNet.Kafka
         public KafkaProvider(TKafkaProviderConfiguration kafkaProviderConfiguration, IServiceProvider serviceProvider) : base(serviceProvider)
         {
             _kafkaProviderConfiguration = kafkaProviderConfiguration;
+            var formatSerializerInvoker = serviceProvider.GetRequiredService<FormatSerializerInvoker>();
 
             _producer = new ProducerBuilder<string, TKafkaProviderMessage>(_kafkaProviderConfiguration)
                 .SetKeySerializer(Serializers.Utf8)
-                .SetValueSerializer(
-                    _kafkaProviderConfiguration.SerializerType switch
-                    {
-                        KafkaSerializerType.Json => new KafkaJsonSerializer<TKafkaProviderMessage>(this).AsSyncOverAsync(),
-                        KafkaSerializerType.NJson => new KafkaNJsonSerializer<TKafkaProviderMessage>(this).AsSyncOverAsync(),
-                        KafkaSerializerType.NetJson => new KafkaNetJsonSerializer<TKafkaProviderMessage>(this).AsSyncOverAsync(),
-                        KafkaSerializerType.SchemaJson => new JsonSerializer<TKafkaProviderMessage>(SchemaRegistryClient).AsSyncOverAsync(),
-                        KafkaSerializerType.Avro => new AvroSerializer<TKafkaProviderMessage>(SchemaRegistryClient).AsSyncOverAsync(),
-                        _ => throw new ArgumentOutOfRangeException()
-                    })
+                .SetValueSerializer(new KafkaSerializer<TKafkaProviderMessage>(formatSerializerInvoker, this, _kafkaProviderConfiguration.SerializerType).AsSyncOverAsync())
                 .SetErrorHandler((_, e) => Log.ProduceError(Logger, e.Reason))
                 .Build();
         }

@@ -1,18 +1,16 @@
-﻿using System.Reflection;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using Confluent.Kafka;
 using Confluent.Kafka.SyncOverAsync;
 using Confluent.SchemaRegistry;
-using Confluent.SchemaRegistry.Serdes;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
-using ThunderPropagator.BuildingBlocks.Application.Serializations;
-using ThunderPropagator.Feeders.Kafka.KafkaDeserializers;
 using OpenTelemetry;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
+using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.Feeders.Kafka
 {
@@ -85,19 +83,12 @@ namespace ThunderPropagator.Feeders.Kafka
             HealthTags = [.. HealthTags, nameof(Kafka), .. _kafkaFeederConfiguration.TopicNames];
 
             var consumerConfig = _kafkaFeederConfiguration.ToConsumerConfig();
+            var formatDeserializerInvoker = serviceProvider.GetRequiredService<FormatDeserializerInvoker>();
 
             _consumer = KafkaFeederInitializer.Initialize(
                 () => new ConsumerBuilder<string, TKafkaFeederMessage>(consumerConfig)
                     .SetKeyDeserializer(Deserializers.Utf8)
-                    .SetValueDeserializer(_kafkaFeederConfiguration.SerializerType switch
-                    {
-                        KafkaSerializerType.Json => new KafkaJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
-                        KafkaSerializerType.NJson => new KafkaNJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
-                        KafkaSerializerType.NetJson => new KafkaNetJsonDeserializer<TKafkaFeederMessage>(this).AsSyncOverAsync(),
-                        KafkaSerializerType.SchemaJson => new JsonDeserializer<TKafkaFeederMessage>(SchemaRegistryClient).AsSyncOverAsync(),
-                        KafkaSerializerType.Avro => new AvroDeserializer<TKafkaFeederMessage>(SchemaRegistryClient).AsSyncOverAsync(),
-                        _ => throw new ArgumentOutOfRangeException()
-                    })
+                    .SetValueDeserializer(new KafkaDeserializer<TKafkaFeederMessage>(formatDeserializerInvoker, this, _kafkaFeederConfiguration.SerializerType).AsSyncOverAsync())
                     .SetErrorHandler((_, e) =>
                     {
                         ReportHealth(HealthStatus.Unhealthy, new KafkaException(e));

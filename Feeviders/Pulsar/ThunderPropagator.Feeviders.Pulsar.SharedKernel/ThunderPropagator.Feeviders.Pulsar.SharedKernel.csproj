@@ -6,4 +6,9 @@
         <PackageReference Include="JetBrains.Annotations" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\..\SharedKernel\ThunderPropagator.Feeders.SharedKernel\ThunderPropagator.Feeders.SharedKernel.csproj" />
+      <ProjectReference Include="..\..\SharedKernel\ThunderPropagator.Providers.DotNet.SharedKernel\ThunderPropagator.Providers.DotNet.SharedKernel.csproj" />
+    </ItemGroup>
+
 </Project>

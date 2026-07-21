@@ -3,12 +3,15 @@ using System.Runtime.CompilerServices;
 using DotPulsar;
 using DotPulsar.Abstractions;
 using DotPulsar.Extensions;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using ThunderPropagator.Application;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.Pulsar.SharedKernel;
+using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.Feeders.Pulsar
 {
@@ -49,8 +52,10 @@ namespace ThunderPropagator.Feeders.Pulsar
             }
 
             _client = PulsarClientFactory.CreateClient(feederConfiguration);
+            var formatDeserializerInvoker = serviceProvider.GetRequiredService<FormatDeserializerInvoker>();
+            var formatSerializerInvoker = serviceProvider.GetRequiredService<FormatSerializerInvoker>();
 
-            var schema = new JsonSchema<TPulsarFeederMessage>(feederConfiguration.SerializerType);
+            var schema = new JsonSchema<TPulsarFeederMessage>(formatDeserializerInvoker, formatSerializerInvoker, feederConfiguration.SerializerType);
 
             var consumerOptions = new ConsumerOptions<TPulsarFeederMessage>(feederConfiguration.SubscriptionName, feederConfiguration.Topic, schema);
 
@@ -116,11 +121,11 @@ namespace ThunderPropagator.Feeders.Pulsar
 
                 var stopwatch = Stopwatch.StartNew();
                 var settlementEnumerator = PulsarMessageSettlement.YieldAndSettleAsync(
-                                   consumer,
-                                   message,
-                                   new FeederReceivedMessage<TPulsarFeederMessage>(value, activityContext, baggage),
-                                   Logger,
-                                   cancellationToken).GetAsyncEnumerator(cancellationToken);
+                    consumer,
+                    message,
+                    new FeederReceivedMessage<TPulsarFeederMessage>(value, activityContext, baggage),
+                    Logger,
+                    cancellationToken).GetAsyncEnumerator(cancellationToken);
 
                 try
                 {

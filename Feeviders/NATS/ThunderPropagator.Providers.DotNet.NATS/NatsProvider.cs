@@ -8,6 +8,7 @@ using NATS.Client.JetStream.Models;
 using NATS.Net;
 using OpenTelemetry;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.NATS.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 
@@ -32,7 +33,9 @@ namespace ThunderPropagator.Providers.DotNet.NATS
 
         private readonly TNatsProviderConfiguration _natsProviderConfiguration;
         private readonly INatsClient _client;
+
         private readonly INatsJSContext? _jetStreamContext;
+
         // Background initialization task for JetStream context
         private readonly Task? _jetStreamInitTask;
 
@@ -40,7 +43,12 @@ namespace ThunderPropagator.Providers.DotNet.NATS
             : base(serviceProvider)
         {
             _natsProviderConfiguration = natsProviderConfiguration;
-            _client = NatsClientFactory.CreateClient(_natsProviderConfiguration, serviceProvider.GetRequiredService<ILoggerFactory>());
+            _client = NatsClientFactory.CreateClient(
+                _natsProviderConfiguration,
+                serviceProvider.GetRequiredService<ILoggerFactory>(),
+                serviceProvider.GetRequiredService<FormatDeserializerInvoker>(),
+                serviceProvider.GetRequiredService<FormatSerializerInvoker>()
+            );
 
             if (_natsProviderConfiguration.MessagingType == MessagingType.JetStream)
             {

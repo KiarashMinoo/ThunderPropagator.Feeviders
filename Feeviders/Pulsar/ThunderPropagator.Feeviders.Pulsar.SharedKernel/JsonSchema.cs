@@ -3,8 +3,9 @@ using System.Collections.Immutable;
 using System.Reflection;
 using DotPulsar;
 using DotPulsar.Abstractions;
-using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
+using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.Feeviders.Pulsar.SharedKernel
 {
@@ -12,41 +13,23 @@ namespace ThunderPropagator.Feeviders.Pulsar.SharedKernel
 #if !DEBUG
         sealed
 #endif
-        class JsonSchema<T> : ISchema<T> where T : notnull
+        class JsonSchema<T>(
+            FormatDeserializerInvoker formatDeserializerInvoker,
+            FormatSerializerInvoker formatSerializerInvoker,
+            SerializerType serializerType
+        ) : ISchema<T>
+        where T : notnull
     {
-        private readonly SerializerType _serializerType;
-
-        public SchemaInfo SchemaInfo { get; }
-
-        public JsonSchema(SerializerType serializerType)
-        {
-            _serializerType = serializerType;
-
-            SchemaInfo = new SchemaInfo(typeof(T).GetTypeInfo().Name, [], SchemaType.Json, ImmutableDictionary<string, string>.Empty);
-        }
+        public SchemaInfo SchemaInfo { get; } = new(typeof(T).GetTypeInfo().Name, [], SchemaType.Json, ImmutableDictionary<string, string>.Empty);
 
         public T Decode(ReadOnlySequence<byte> bytes, byte[]? schemaVersion = null)
         {
-            var array = bytes.ToArray();
-            var rtn = _serializerType switch
-            {
-                SerializerType.Json => array.FromJsonBytes<T>(),
-                SerializerType.NJson => array.FromNJsonBytes<T>(),
-                SerializerType.NetJson => array.FromNetJsonBytes<T>(),
-                _ => throw new ArgumentOutOfRangeException()
-            };
-            return rtn ?? throw new NullReferenceException();
+            return formatDeserializerInvoker(serializerType).Deserialize<T>(bytes.ToArray()) ?? throw new NullReferenceException();
         }
 
         public ReadOnlySequence<byte> Encode(T message)
         {
-            var array = _serializerType switch
-            {
-                SerializerType.Json => message.ToJsonBytes(),
-                SerializerType.NJson => message.ToNJsonBytes(),
-                SerializerType.NetJson => message.ToNetJsonBytes(),
-                _ => throw new ArgumentOutOfRangeException()
-            };
+            var array = formatSerializerInvoker(serializerType).SerializeToBytes(message);
             return new ReadOnlySequence<byte>(array);
         }
     }
