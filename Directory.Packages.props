@@ -4,9 +4,9 @@
     <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
   </PropertyGroup>
   <PropertyGroup Label="ThunderPropagatorPackages">
-    <BuildingBlocksVersion>1.0.1-beta.106</BuildingBlocksVersion>
+    <BuildingBlocksVersion>1.0.1-beta.114</BuildingBlocksVersion>
     <BuildingBlocksPackageId>ThunderPropagator.BuildingBlocks$(PackageIdConfigurationSuffix)$(PackageIdPlatformSuffix)</BuildingBlocksPackageId>
-    <ThunderPropagatorVersion>1.0.1-beta.176</ThunderPropagatorVersion>
+    <ThunderPropagatorVersion>1.0.1-beta.186</ThunderPropagatorVersion>
     <ThunderPropagatorPackageId>ThunderPropagator$(PackageIdConfigurationSuffix)$(PackageIdPlatformSuffix)</ThunderPropagatorPackageId>
   </PropertyGroup>
   <ItemGroup>
