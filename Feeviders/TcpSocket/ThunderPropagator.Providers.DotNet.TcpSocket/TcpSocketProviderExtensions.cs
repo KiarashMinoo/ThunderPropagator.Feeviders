@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Providers.DotNet.TcpSocket
@@ -17,6 +18,8 @@ namespace ThunderPropagator.Providers.DotNet.TcpSocket
             services.TryAddSingleton(tcpSocketProviderConfiguration);
 
             services.AddChannelProvider<TcpSocketProvider<TTcpSocketProviderMessage, TTcpSocketProviderConfiguration>, TTcpSocketProviderMessage, TTcpSocketProviderConfiguration>();
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

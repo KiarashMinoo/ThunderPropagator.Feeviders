@@ -5,6 +5,9 @@ using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Channels.Metadata;
 using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.BuildingBlocks.Application;
+using ThunderPropagator.BuildingBlocks.Application.Serializations;
+using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.UnitTests.IsEnabledGuards
 {
@@ -36,6 +39,9 @@ namespace ThunderPropagator.UnitTests.IsEnabledGuards
             FeederMessageDeserializerResolver<TFeederMessage, TFeederConfiguration> resolver =
                 _ => Substitute.For<IFeederMessageDeserializer<TFeederMessage, TFeederConfiguration>>();
             services.AddSingleton(resolver);
+
+            services.AddSingleton<FormatSerializerInvoker>(_ => serializerType => Substitute.For<IFormatSerializer>());
+            services.AddSingleton<FormatDeserializerInvoker>(_ => serializerType => Substitute.For<IFormatDeserializer>());
 
             if (includeHostApplicationLifetime)
                 services.AddSingleton(Substitute.For<IHostApplicationLifetime>());

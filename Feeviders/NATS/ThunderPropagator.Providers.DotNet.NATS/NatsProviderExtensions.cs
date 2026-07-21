@@ -3,6 +3,7 @@ using System.Diagnostics.Metrics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Providers.DotNet.NATS
@@ -31,6 +32,8 @@ namespace ThunderPropagator.Providers.DotNet.NATS
             services.TryAddSingleton(natsProviderConfiguration);
 
             services.AddChannelProvider<NatsProvider<TNatsProviderMessage, TNatsProviderConfiguration>, TNatsProviderMessage, TNatsProviderConfiguration>();
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

@@ -5,7 +5,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Infrastructure.Extensions;
+using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.TcpSocket
 {
@@ -25,6 +27,8 @@ namespace ThunderPropagator.Feeders.TcpSocket
                 TcpSocketFeeder<TChannel, TTcpSocketFeederMessage, TTcpSocketFeederConfiguration>,
                 TTcpSocketFeederMessage,
                 TTcpSocketFeederConfiguration>();
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }
@@ -40,6 +44,8 @@ namespace ThunderPropagator.Feeders.TcpSocket
                 TTcpSocketFeederMessage,
                 TTcpSocketFeederConfiguration>(services, (serviceProvider, channel, tcpSocketFeederConfiguration, feederHandler) =>
                 new TcpSocketFeeder<TChannel, TTcpSocketFeederMessage, TTcpSocketFeederConfiguration>(channel, tcpSocketFeederConfiguration, feederHandler, serviceProvider));
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

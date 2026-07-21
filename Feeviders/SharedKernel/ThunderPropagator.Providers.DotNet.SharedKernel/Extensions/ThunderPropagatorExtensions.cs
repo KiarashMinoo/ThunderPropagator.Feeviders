@@ -34,15 +34,7 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel.Extensions
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService,
                 ProviderSerializerValidationHostedService<TProviderMessage, TProviderConfiguration>>());
 
-            services.TryAddTransient<FormatDeserializerInvoker>(serviceProvider =>
-            {
-                return serializerType =>
-                {
-                    var deserializers = serviceProvider.GetServices<IFormatDeserializer>();
-                    var deserializer = deserializers.FirstOrDefault(d => d.SerializerType == serializerType);
-                    return deserializer ?? throw new InvalidOperationException($"No IFormatDeserializer registered for {serializerType}");
-                };
-            });
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

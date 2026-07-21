@@ -10,7 +10,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Infrastructure.Extensions;
+using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.WebApi
 {
@@ -40,6 +42,8 @@ namespace ThunderPropagator.Feeders.WebApi
                 WebApiFeeder<TChannel, TWebApiFeederMessage, TWebApiFeederConfiguration>,
                 TWebApiFeederMessage,
                 TWebApiFeederConfiguration>();
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }
@@ -55,6 +59,8 @@ namespace ThunderPropagator.Feeders.WebApi
                 TWebApiFeederMessage,
                 TWebApiFeederConfiguration>(services, (serviceProvider, channel, webApiFeederConfiguration, feederHandler) =>
                 new WebApiFeeder<TChannel, TWebApiFeederMessage, TWebApiFeederConfiguration>(channel, webApiFeederConfiguration, feederHandler, serviceProvider));
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

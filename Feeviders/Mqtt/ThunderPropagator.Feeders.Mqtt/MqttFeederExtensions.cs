@@ -5,7 +5,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Infrastructure.Extensions;
+using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.Mqtt
 {
@@ -25,6 +27,8 @@ namespace ThunderPropagator.Feeders.Mqtt
                 MqttFeeder<TChannel, TMqttFeederMessage, TMqttFeederConfiguration>,
                 TMqttFeederMessage,
                 TMqttFeederConfiguration>();
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }
@@ -40,6 +44,8 @@ namespace ThunderPropagator.Feeders.Mqtt
                 TMqttFeederMessage,
                 TMqttFeederConfiguration>(services, (serviceProvider, channel, mqttFeederConfiguration, feederHandler) =>
                 new MqttFeeder<TChannel, TMqttFeederMessage, TMqttFeederConfiguration>(channel, mqttFeederConfiguration, feederHandler, serviceProvider));
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

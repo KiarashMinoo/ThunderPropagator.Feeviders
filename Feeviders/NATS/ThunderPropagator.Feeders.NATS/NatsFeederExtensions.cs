@@ -7,7 +7,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Infrastructure.Extensions;
+using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.NATS
 {
@@ -39,6 +41,8 @@ namespace ThunderPropagator.Feeders.NATS
                 NatsFeeder<TChannel, TNatsFeederMessage, TNatsFeederConfiguration>,
                 TNatsFeederMessage,
                 TNatsFeederConfiguration>();
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }
@@ -54,6 +58,8 @@ namespace ThunderPropagator.Feeders.NATS
                 TNatsFeederMessage,
                 TNatsFeederConfiguration>(services, (serviceProvider, channel, natsFeederConfiguration, feederHandler) =>
                 new NatsFeeder<TChannel, TNatsFeederMessage, TNatsFeederConfiguration>(channel, natsFeederConfiguration, feederHandler, serviceProvider));
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

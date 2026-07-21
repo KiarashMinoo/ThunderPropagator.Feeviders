@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.BuildingBlocks.Application;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
+using ThunderPropagator.BuildingBlocks.Application.Serializations.Json;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
@@ -10,8 +11,10 @@ namespace ThunderPropagator.UnitTests
 {
     public class FeederMessageSerializerTests
     {
+        private static readonly SerializerType UnregisteredSerializerType = new(int.MaxValue);
+
         public static TheoryData<SerializerType> SerializerTypes
-            => new(Enum.GetValues<SerializerType>());
+            => new(JsonFormatSerializer.Json, NJsonFormatSerializer.NJson);
 
         [Theory]
         [MemberData(nameof(SerializerTypes))]
@@ -30,7 +33,7 @@ namespace ThunderPropagator.UnitTests
         [Fact]
         public void Serialize_ShouldDelegateToResolvedFormatSerializer()
         {
-            var formatSerializer = new RecordingFormatSerializer(SerializerType.Yaml);
+            var formatSerializer = new RecordingFormatSerializer(JsonFormatSerializer.Json);
             var serializer = CreateSerializer(formatSerializer);
             var message = new TestProviderMessage();
 
@@ -43,7 +46,7 @@ namespace ThunderPropagator.UnitTests
         [Fact]
         public void SerializeToBytes_ShouldDelegateToResolvedFormatSerializer()
         {
-            var formatSerializer = new RecordingFormatSerializer(SerializerType.MessagePack);
+            var formatSerializer = new RecordingFormatSerializer(NJsonFormatSerializer.NJson);
             var serializer = CreateSerializer(formatSerializer);
             var message = new TestProviderMessage();
 
@@ -57,15 +60,15 @@ namespace ThunderPropagator.UnitTests
         public void Constructor_ShouldDescribeMissingSerializerRegistration()
         {
             var registry = Substitute.For<IFormatSerializerRegistry>();
-            registry.GetSerializer(SerializerType.Protobuf)
+            registry.GetSerializer(UnregisteredSerializerType)
                 .Returns(_ => throw new InvalidOperationException("Serializer is missing."));
 
             var exception = Assert.Throws<InvalidOperationException>(() =>
                 new FeederMessageSerializer<TestProviderMessage, TestProviderConfiguration>(
-                    new TestProviderConfiguration { SerializerType = SerializerType.Protobuf },
+                    new TestProviderConfiguration { SerializerType = UnregisteredSerializerType },
                     registry));
 
-            Assert.Contains(nameof(SerializerType.Protobuf), exception.Message);
+            Assert.Contains(UnregisteredSerializerType.ToString(), exception.Message);
             Assert.Contains(nameof(TestProviderConfiguration), exception.Message);
             Assert.IsType<InvalidOperationException>(exception.InnerException);
         }
@@ -74,18 +77,18 @@ namespace ThunderPropagator.UnitTests
         public void AddChannelProvider_ShouldValidateSerializerWhenHostedServicesAreResolved()
         {
             var registry = Substitute.For<IFormatSerializerRegistry>();
-            registry.GetSerializer(SerializerType.Protobuf)
+            registry.GetSerializer(UnregisteredSerializerType)
                 .Returns(_ => throw new InvalidOperationException("Serializer is missing."));
             var services = new ServiceCollection();
             services.AddSingleton<IFormatSerializerRegistry>(registry);
-            services.AddSingleton(new TestProviderConfiguration { SerializerType = SerializerType.Protobuf });
+            services.AddSingleton(new TestProviderConfiguration { SerializerType = UnregisteredSerializerType });
             services.AddChannelProvider<TestProvider, TestProviderMessage, TestProviderConfiguration>();
 
             using var serviceProvider = services.BuildServiceProvider();
 
             var exception = Assert.Throws<InvalidOperationException>(() =>
                 serviceProvider.GetServices<IHostedService>().ToArray());
-            Assert.Contains(nameof(SerializerType.Protobuf), exception.Message);
+            Assert.Contains(UnregisteredSerializerType.ToString(), exception.Message);
             Assert.Contains(nameof(TestProviderConfiguration), exception.Message);
         }
 

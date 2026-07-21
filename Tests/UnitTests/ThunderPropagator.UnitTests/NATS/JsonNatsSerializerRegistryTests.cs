@@ -1,5 +1,8 @@
-﻿using ThunderPropagator.BuildingBlocks.Application.Serializations;
+using ThunderPropagator.BuildingBlocks.Application.Serializations;
+using ThunderPropagator.BuildingBlocks.Application.Serializations.Json;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.NATS.SharedKernel;
+using ThunderPropagator.Providers.DotNet.SharedKernel;
 using Xunit.Abstractions;
 
 namespace ThunderPropagator.UnitTests.NATS;
@@ -13,27 +16,48 @@ public class JsonNatsSerializerRegistryTests
         _output = output;
     }
 
+    public static IEnumerable<object[]> SerializerTypes()
+    {
+        yield return [JsonFormatSerializer.Json];
+        yield return [NJsonFormatSerializer.NJson];
+    }
+
+    private static FormatSerializerInvoker CreateFormatSerializerInvoker()
+    {
+        IFormatSerializer jsonFormatSerializer = new JsonFormatSerializer();
+        IFormatSerializer nJsonFormatSerializer = new NJsonFormatSerializer();
+
+        return serializerType => serializerType.Value == JsonFormatSerializer.Json.Value ? jsonFormatSerializer : nJsonFormatSerializer;
+    }
+
+    private static FormatDeserializerInvoker CreateFormatDeserializerInvoker()
+    {
+        IFormatDeserializer jsonFormatDeserializer = new JsonFormatSerializer();
+        IFormatDeserializer nJsonFormatDeserializer = new NJsonFormatSerializer();
+
+        return serializerType => serializerType.Value == JsonFormatSerializer.Json.Value ? jsonFormatDeserializer : nJsonFormatDeserializer;
+    }
+
+    private static JsonNatsSerializerRegistry CreateRegistry(SerializerType serializerType)
+        => new(CreateFormatDeserializerInvoker(), CreateFormatSerializerInvoker(), serializerType);
+
     [Theory]
-    [InlineData(JsonFormatSerializer.Json)]
-    [InlineData(NJsonFormatSerializer.NJson)]
-    [InlineData(SerializerType.NetJson)]
+    [MemberData(nameof(SerializerTypes))]
     public void Constructor_WithValidSerializerType_ShouldNotThrow(SerializerType serializerType)
     {
         // Act
-        var exception = Record.Exception(() => new JsonNatsSerializerRegistry(serializerType));
+        var exception = Record.Exception(() => CreateRegistry(serializerType));
 
         // Assert
         Assert.Null(exception);
     }
 
     [Theory]
-    [InlineData(JsonFormatSerializer.Json)]
-    [InlineData(NJsonFormatSerializer.NJson)]
-    [InlineData(SerializerType.NetJson)]
+    [MemberData(nameof(SerializerTypes))]
     public void GetSerializer_ShouldReturnSerializer(SerializerType serializerType)
     {
         // Arrange
-        var registry = new JsonNatsSerializerRegistry(serializerType);
+        var registry = CreateRegistry(serializerType);
 
         // Act
         var serializer = registry.GetSerializer<TestMessage>();
@@ -44,13 +68,11 @@ public class JsonNatsSerializerRegistryTests
     }
 
     [Theory]
-    [InlineData(JsonFormatSerializer.Json)]
-    [InlineData(NJsonFormatSerializer.NJson)]
-    [InlineData(SerializerType.NetJson)]
+    [MemberData(nameof(SerializerTypes))]
     public void GetDeserializer_ShouldReturnDeserializer(SerializerType serializerType)
     {
         // Arrange
-        var registry = new JsonNatsSerializerRegistry(serializerType);
+        var registry = CreateRegistry(serializerType);
 
         // Act
         var deserializer = registry.GetDeserializer<TestMessage>();
@@ -61,13 +83,11 @@ public class JsonNatsSerializerRegistryTests
     }
 
     [Theory]
-    [InlineData(JsonFormatSerializer.Json)]
-    [InlineData(NJsonFormatSerializer.NJson)]
-    [InlineData(SerializerType.NetJson)]
+    [MemberData(nameof(SerializerTypes))]
     public void GetSerializer_CalledTwice_ShouldReturnSameInstance(SerializerType serializerType)
     {
         // Arrange
-        var registry = new JsonNatsSerializerRegistry(serializerType);
+        var registry = CreateRegistry(serializerType);
 
         // Act
         var serializer1 = registry.GetSerializer<TestMessage>();
@@ -78,13 +98,11 @@ public class JsonNatsSerializerRegistryTests
     }
 
     [Theory]
-    [InlineData(JsonFormatSerializer.Json)]
-    [InlineData(NJsonFormatSerializer.NJson)]
-    [InlineData(SerializerType.NetJson)]
+    [MemberData(nameof(SerializerTypes))]
     public void GetDeserializer_CalledTwice_ShouldReturnSameInstance(SerializerType serializerType)
     {
         // Arrange
-        var registry = new JsonNatsSerializerRegistry(serializerType);
+        var registry = CreateRegistry(serializerType);
 
         // Act
         var deserializer1 = registry.GetDeserializer<TestMessage>();
@@ -95,13 +113,11 @@ public class JsonNatsSerializerRegistryTests
     }
 
     [Theory]
-    [InlineData(JsonFormatSerializer.Json)]
-    [InlineData(NJsonFormatSerializer.NJson)]
-    [InlineData(SerializerType.NetJson)]
+    [MemberData(nameof(SerializerTypes))]
     public void GetSerializer_WithDifferentTypes_ShouldReturnDifferentInstances(SerializerType serializerType)
     {
         // Arrange
-        var registry = new JsonNatsSerializerRegistry(serializerType);
+        var registry = CreateRegistry(serializerType);
 
         // Act
         var serializer1 = registry.GetSerializer<TestMessage>();
@@ -112,13 +128,11 @@ public class JsonNatsSerializerRegistryTests
     }
 
     [Theory]
-    [InlineData(JsonFormatSerializer.Json)]
-    [InlineData(NJsonFormatSerializer.NJson)]
-    [InlineData(SerializerType.NetJson)]
+    [MemberData(nameof(SerializerTypes))]
     public void GetDeserializer_WithDifferentTypes_ShouldReturnDifferentInstances(SerializerType serializerType)
     {
         // Arrange
-        var registry = new JsonNatsSerializerRegistry(serializerType);
+        var registry = CreateRegistry(serializerType);
 
         // Act
         var deserializer1 = registry.GetDeserializer<TestMessage>();

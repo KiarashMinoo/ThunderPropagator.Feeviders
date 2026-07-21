@@ -7,7 +7,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Infrastructure.Extensions;
+using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.Kafka
 {
@@ -37,6 +39,8 @@ namespace ThunderPropagator.Feeders.Kafka
                 KafkaFeeder<TChannel, TKafkaFeederMessage, TKafkaFeederConfiguration>,
                 TKafkaFeederMessage,
                 TKafkaFeederConfiguration>();
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }
@@ -52,6 +56,8 @@ namespace ThunderPropagator.Feeders.Kafka
                 TKafkaFeederMessage,
                 TKafkaFeederConfiguration>(services, (serviceProvider, channel, kafkaFeederConfiguration, feederHandler) =>
                 new KafkaFeeder<TChannel, TKafkaFeederMessage, TKafkaFeederConfiguration>(channel, kafkaFeederConfiguration, feederHandler, serviceProvider));
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

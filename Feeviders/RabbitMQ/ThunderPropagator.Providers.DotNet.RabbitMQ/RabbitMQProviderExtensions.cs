@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenTelemetry.Context.Propagation;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Providers.DotNet.RabbitMQ
@@ -32,6 +33,8 @@ namespace ThunderPropagator.Providers.DotNet.RabbitMQ
             services.TryAddSingleton(rabbitMQProviderConfiguration);
 
             services.AddChannelProvider<RabbitMQProvider<TRabbitMQProviderMessage, TRabbitMQProviderConfiguration>, TRabbitMQProviderMessage, TRabbitMQProviderConfiguration>();
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

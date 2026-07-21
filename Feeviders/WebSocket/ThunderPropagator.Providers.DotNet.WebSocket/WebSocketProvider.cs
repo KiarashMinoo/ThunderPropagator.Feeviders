@@ -44,7 +44,7 @@ namespace ThunderPropagator.Providers.DotNet.WebSocket
 
             feederMessage.TryAdd(nameof(Baggage), Baggage.Current.ToNJsonBytes());
 
-            return Task.CompletedTask;
+            return base.InternalExecuteAsync(feederMessage, cancellationToken);
         }
 
         protected override async Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)

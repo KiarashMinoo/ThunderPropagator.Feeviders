@@ -1,5 +1,7 @@
-﻿using System.Buffers;
+using System.Buffers;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
+using ThunderPropagator.BuildingBlocks.Application.Serializations.Json;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.NATS.SharedKernel;
 using Xunit.Abstractions;
 
@@ -14,27 +16,37 @@ public class JsonNatsSerializerTests
         _output = output;
     }
 
+    public static IEnumerable<object[]> SerializerTypes()
+    {
+        yield return [JsonFormatSerializer.Json];
+        yield return [NJsonFormatSerializer.NJson];
+    }
+
+    private static FormatSerializerInvoker CreateFormatSerializerInvoker()
+    {
+        IFormatSerializer jsonFormatSerializer = new JsonFormatSerializer();
+        IFormatSerializer nJsonFormatSerializer = new NJsonFormatSerializer();
+
+        return serializerType => serializerType.Value == JsonFormatSerializer.Json.Value ? jsonFormatSerializer : nJsonFormatSerializer;
+    }
+
     [Theory]
-    [InlineData(JsonFormatSerializer.Json)]
-    [InlineData(NJsonFormatSerializer.NJson)]
-    [InlineData(SerializerType.NetJson)]
+    [MemberData(nameof(SerializerTypes))]
     public void Constructor_WithValidSerializerType_ShouldNotThrow(SerializerType serializerType)
     {
         // Act
-        var exception = Record.Exception(() => new JsonNatsSerializer<TestMessage>(serializerType));
+        var exception = Record.Exception(() => new JsonNatsSerializer<TestMessage>(CreateFormatSerializerInvoker(), serializerType));
 
         // Assert
         Assert.Null(exception);
     }
 
     [Theory]
-    [InlineData(JsonFormatSerializer.Json)]
-    [InlineData(NJsonFormatSerializer.NJson)]
-    [InlineData(SerializerType.NetJson)]
+    [MemberData(nameof(SerializerTypes))]
     public void Serialize_WithValidMessage_ShouldWriteToBuffer(SerializerType serializerType)
     {
         // Arrange
-        var serializer = new JsonNatsSerializer<TestMessage>(serializerType);
+        var serializer = new JsonNatsSerializer<TestMessage>(CreateFormatSerializerInvoker(), serializerType);
         var message = new TestMessage { Id = "123", Content = "Test content" };
         var bufferWriter = new ArrayBufferWriter<byte>();
 
@@ -46,13 +58,11 @@ public class JsonNatsSerializerTests
     }
 
     [Theory]
-    [InlineData(JsonFormatSerializer.Json)]
-    [InlineData(NJsonFormatSerializer.NJson)]
-    [InlineData(SerializerType.NetJson)]
+    [MemberData(nameof(SerializerTypes))]
     public void Serialize_WithEmptyMessage_ShouldWriteToBuffer(SerializerType serializerType)
     {
         // Arrange
-        var serializer = new JsonNatsSerializer<TestMessage>(serializerType);
+        var serializer = new JsonNatsSerializer<TestMessage>(CreateFormatSerializerInvoker(), serializerType);
         var message = new TestMessage();
         var bufferWriter = new ArrayBufferWriter<byte>();
 
@@ -64,13 +74,11 @@ public class JsonNatsSerializerTests
     }
 
     [Theory]
-    [InlineData(JsonFormatSerializer.Json)]
-    [InlineData(NJsonFormatSerializer.NJson)]
-    [InlineData(SerializerType.NetJson)]
+    [MemberData(nameof(SerializerTypes))]
     public void Serialize_WithComplexMessage_ShouldWriteToBuffer(SerializerType serializerType)
     {
         // Arrange
-        var serializer = new JsonNatsSerializer<ComplexMessage>(serializerType);
+        var serializer = new JsonNatsSerializer<ComplexMessage>(CreateFormatSerializerInvoker(), serializerType);
         var message = new ComplexMessage
         {
             Id = 42,
@@ -89,13 +97,11 @@ public class JsonNatsSerializerTests
     }
 
     [Theory]
-    [InlineData(JsonFormatSerializer.Json)]
-    [InlineData(NJsonFormatSerializer.NJson)]
-    [InlineData(SerializerType.NetJson)]
+    [MemberData(nameof(SerializerTypes))]
     public void Serialize_MultipleMessages_ShouldWriteEachToBuffer(SerializerType serializerType)
     {
         // Arrange
-        var serializer = new JsonNatsSerializer<TestMessage>(serializerType);
+        var serializer = new JsonNatsSerializer<TestMessage>(CreateFormatSerializerInvoker(), serializerType);
         var messages = new[]
         {
             new TestMessage { Id = "1", Content = "First" },

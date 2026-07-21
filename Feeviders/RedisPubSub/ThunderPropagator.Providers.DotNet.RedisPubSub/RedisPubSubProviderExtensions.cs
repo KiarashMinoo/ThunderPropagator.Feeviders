@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Providers.DotNet.RedisPubSub
@@ -19,6 +20,8 @@ namespace ThunderPropagator.Providers.DotNet.RedisPubSub
 
             services.AddChannelProvider<RedisPubSubProvider<TRedisPubSubProviderMessage, TRedisPubSubProviderConfiguration>, TRedisPubSubProviderMessage,
                 TRedisPubSubProviderConfiguration>();
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

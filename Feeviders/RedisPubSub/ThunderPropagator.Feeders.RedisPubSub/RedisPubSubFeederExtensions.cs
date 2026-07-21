@@ -5,7 +5,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Infrastructure.Extensions;
+using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.RedisPubSub
 {
@@ -25,6 +27,8 @@ namespace ThunderPropagator.Feeders.RedisPubSub
                 RedisPubSubFeeder<TChannel, TRedisPubSubFeederMessage, TRedisPubSubFeederConfiguration>,
                 TRedisPubSubFeederMessage,
                 TRedisPubSubFeederConfiguration>();
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }
@@ -40,6 +44,8 @@ namespace ThunderPropagator.Feeders.RedisPubSub
                 TRedisPubSubFeederMessage,
                 TRedisPubSubFeederConfiguration>(services, (serviceProvider, channel, redisPubSubFeederConfiguration, feederHandler) =>
                 new RedisPubSubFeeder<TChannel, TRedisPubSubFeederMessage, TRedisPubSubFeederConfiguration>(channel, redisPubSubFeederConfiguration, feederHandler, serviceProvider));
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

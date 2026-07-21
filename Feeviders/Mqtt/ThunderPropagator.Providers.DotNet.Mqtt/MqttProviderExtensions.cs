@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Providers.DotNet.Mqtt
@@ -17,6 +18,8 @@ namespace ThunderPropagator.Providers.DotNet.Mqtt
             services.TryAddSingleton(mqttProviderConfiguration);
 
             services.AddChannelProvider<MqttProvider<TMqttProviderMessage, TMqttProviderConfiguration>, TMqttProviderMessage, TMqttProviderConfiguration>();
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

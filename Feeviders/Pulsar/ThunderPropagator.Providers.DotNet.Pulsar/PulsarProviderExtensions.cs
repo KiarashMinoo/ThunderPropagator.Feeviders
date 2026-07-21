@@ -3,6 +3,7 @@ using System.Diagnostics.Metrics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Providers.DotNet.Pulsar
@@ -25,6 +26,8 @@ namespace ThunderPropagator.Providers.DotNet.Pulsar
             services.TryAddSingleton(pulsarProviderConfiguration);
 
             services.AddChannelProvider<PulsarProvider<TPulsarProviderMessage, TPulsarProviderConfiguration>, TPulsarProviderMessage, TPulsarProviderConfiguration>();
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

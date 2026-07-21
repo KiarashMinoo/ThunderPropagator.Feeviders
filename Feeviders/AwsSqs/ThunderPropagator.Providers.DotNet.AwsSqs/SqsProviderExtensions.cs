@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Providers.DotNet.AwsSqs
@@ -17,6 +18,8 @@ namespace ThunderPropagator.Providers.DotNet.AwsSqs
             services.TryAddSingleton(sqsProviderConfiguration);
 
             services.AddChannelProvider<SqsProvider<TSqsProviderMessage, TSqsProviderConfiguration>, TSqsProviderMessage, TSqsProviderConfiguration>();
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

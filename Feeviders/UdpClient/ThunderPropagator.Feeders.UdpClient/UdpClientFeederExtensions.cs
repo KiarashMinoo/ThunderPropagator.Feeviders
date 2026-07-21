@@ -5,7 +5,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Infrastructure.Extensions;
+using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.UdpClient
 {
@@ -25,6 +27,8 @@ namespace ThunderPropagator.Feeders.UdpClient
                 UdpClientFeeder<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration>,
                 TUdpClientFeederMessage,
                 TUdpClientFeederConfiguration>();
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }
@@ -40,6 +44,8 @@ namespace ThunderPropagator.Feeders.UdpClient
                 TUdpClientFeederMessage,
                 TUdpClientFeederConfiguration>(services, (serviceProvider, channel, udpClientFeederConfiguration, feederHandler) =>
                 new UdpClientFeeder<TChannel, TUdpClientFeederMessage, TUdpClientFeederConfiguration>(channel, udpClientFeederConfiguration, feederHandler, serviceProvider));
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

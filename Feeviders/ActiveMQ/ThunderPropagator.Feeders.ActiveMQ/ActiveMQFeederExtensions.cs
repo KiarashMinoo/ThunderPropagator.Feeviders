@@ -5,7 +5,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Infrastructure.Extensions;
+using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.ActiveMQ
 {
@@ -25,6 +27,8 @@ namespace ThunderPropagator.Feeders.ActiveMQ
                 ActiveMQFeeder<TChannel, TActiveMQFeederMessage, TActiveMQFeederConfiguration>,
                 TActiveMQFeederMessage,
                 TActiveMQFeederConfiguration>();
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }
@@ -40,6 +44,8 @@ namespace ThunderPropagator.Feeders.ActiveMQ
                 TActiveMQFeederMessage,
                 TActiveMQFeederConfiguration>(services, (serviceProvider, channel, activeMQFeederConfiguration, feederHandler) =>
                 new ActiveMQFeeder<TChannel, TActiveMQFeederMessage, TActiveMQFeederConfiguration>(channel, activeMQFeederConfiguration, feederHandler, serviceProvider));
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

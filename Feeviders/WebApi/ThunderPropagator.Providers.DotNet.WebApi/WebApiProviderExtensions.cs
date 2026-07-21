@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Providers.DotNet.WebApi
@@ -59,6 +60,8 @@ namespace ThunderPropagator.Providers.DotNet.WebApi
                     });
 
             services.AddChannelProvider<WebApiProvider<TWebApiProviderMessage, TWebApiProviderConfiguration>, TWebApiProviderMessage, TWebApiProviderConfiguration>();
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

@@ -34,7 +34,7 @@ Package versions are managed centrally in `Directory.Packages.props` with `Manag
 
 ## Architecture
 
-**Feeviders** = **Feed**ers + Prov**iders** — reusable .NET libraries for real-time data streaming across 11 messaging systems.
+**Feeviders** = **Feed**ers + Prov**iders** — reusable .NET libraries for real-time data streaming across 14 messaging systems.
 
 ### Naming Convention
 
@@ -53,11 +53,14 @@ Feeviders/
   Pulsar/                 # Feeders + Providers + SharedKernel (DotPulsar)
   Mqtt/                   # Feeders + Providers + SharedKernel (MQTTnet v5)
   ActiveMQ/               # Feeders + Providers + SharedKernel (Apache.NMS)
-  RedisPubSub/            # Feeders + Providers (StackExchange.Redis)
+  RedisPubSub/            # Feeders + Providers + SharedKernel (StackExchange.Redis)
   WebSocket/              # Feeders + Providers
   WebApi/                 # Feeders + Providers (HTTP/REST)
   TcpSocket/              # Feeders + Providers + SharedKernel
-  UdpClient/              # Feeders + Providers
+  UdpClient/              # Feeders + Providers + SharedKernel
+  AwsSqs/                 # Feeders + Providers + SharedKernel (Amazon SQS + SNS)
+  AzureServiceBus/        # Feeders + Providers + SharedKernel
+  GcpPubSub/              # Feeders + Providers + SharedKernel (Google Cloud Pub/Sub)
 Tests/
   ThunderPropagator.UnitTests/     # xunit + NSubstitute + Bogus; references all Feeviders projects
   ThunderPropagator.ArchTests/     # NetArchTest.Rules — enforces namespace/layer rules

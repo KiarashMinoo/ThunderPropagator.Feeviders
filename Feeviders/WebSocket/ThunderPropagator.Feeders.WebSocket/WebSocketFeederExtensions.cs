@@ -9,7 +9,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Infrastructure.Extensions;
+using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.WebSocket
 {
@@ -45,6 +47,8 @@ namespace ThunderPropagator.Feeders.WebSocket
                 WebSocketFeeder<TChannel, TWebSocketFeederMessage, TWebSocketFeederConfiguration>,
                 TWebSocketFeederMessage,
                 TWebSocketFeederConfiguration>();
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }
@@ -61,6 +65,8 @@ namespace ThunderPropagator.Feeders.WebSocket
                 TWebSocketFeederMessage,
                 TWebSocketFeederConfiguration>(services, (serviceProvider, channel, webSocketFeederConfiguration, feederHandler) =>
                 new WebSocketFeeder<TChannel, TWebSocketFeederMessage, TWebSocketFeederConfiguration>(channel, webSocketFeederConfiguration, feederHandler, serviceProvider));
+            services.AddFormatSerializerInvoker();
+            services.AddFormatDeserializerInvoker();
 
             return services;
         }

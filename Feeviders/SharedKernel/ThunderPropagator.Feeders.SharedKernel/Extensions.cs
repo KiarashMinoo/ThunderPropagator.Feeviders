@@ -7,7 +7,7 @@ using ThunderPropagator.BuildingBlocks.Application.Serializations;
 
 namespace ThunderPropagator.Feeders.SharedKernel
 {
-    internal static class Extensions
+    public static class Extensions
     {
         public static IServiceCollection AddFormatSerializerInvoker(this IServiceCollection services)
         {

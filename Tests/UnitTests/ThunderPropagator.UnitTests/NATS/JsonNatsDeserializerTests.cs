@@ -1,6 +1,9 @@
-﻿using System.Buffers;
+using System.Buffers;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
+using ThunderPropagator.BuildingBlocks.Application.Serializations.Json;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.NATS.SharedKernel;
+using ThunderPropagator.Providers.DotNet.SharedKernel;
 using Xunit.Abstractions;
 
 namespace ThunderPropagator.UnitTests.NATS;
@@ -14,14 +17,34 @@ public class JsonNatsDeserializerTests
         _output = output;
     }
 
+    public static IEnumerable<object[]> SerializerTypes()
+    {
+        yield return [JsonFormatSerializer.Json];
+        yield return [NJsonFormatSerializer.NJson];
+    }
+
+    private static FormatSerializerInvoker CreateFormatSerializerInvoker()
+    {
+        IFormatSerializer jsonFormatSerializer = new JsonFormatSerializer();
+        IFormatSerializer nJsonFormatSerializer = new NJsonFormatSerializer();
+
+        return serializerType => serializerType.Value == JsonFormatSerializer.Json.Value ? jsonFormatSerializer : nJsonFormatSerializer;
+    }
+
+    private static FormatDeserializerInvoker CreateFormatDeserializerInvoker()
+    {
+        IFormatDeserializer jsonFormatDeserializer = new JsonFormatSerializer();
+        IFormatDeserializer nJsonFormatDeserializer = new NJsonFormatSerializer();
+
+        return serializerType => serializerType.Value == JsonFormatSerializer.Json.Value ? jsonFormatDeserializer : nJsonFormatDeserializer;
+    }
+
     [Theory]
-    [InlineData(JsonFormatSerializer.Json)]
-    [InlineData(NJsonFormatSerializer.NJson)]
-    [InlineData(SerializerType.NetJson)]
+    [MemberData(nameof(SerializerTypes))]
     public void Constructor_WithValidSerializerType_ShouldNotThrow(SerializerType serializerType)
     {
         // Act
-        var exception = Record.Exception(() => new JsonNatsDeserializer<TestMessage>(serializerType));
+        var exception = Record.Exception(() => new JsonNatsDeserializer<TestMessage>(CreateFormatDeserializerInvoker(), serializerType));
 
         // Assert
         Assert.Null(exception);
@@ -31,8 +54,8 @@ public class JsonNatsDeserializerTests
     public void Deserialize_WithValidBuffer_ShouldReturnMessage()
     {
         // Arrange
-        var serializer = new JsonNatsSerializer<TestMessage>(JsonFormatSerializer.Json);
-        var deserializer = new JsonNatsDeserializer<TestMessage>(JsonFormatSerializer.Json);
+        var serializer = new JsonNatsSerializer<TestMessage>(CreateFormatSerializerInvoker(), JsonFormatSerializer.Json);
+        var deserializer = new JsonNatsDeserializer<TestMessage>(CreateFormatDeserializerInvoker(), JsonFormatSerializer.Json);
         var originalMessage = new TestMessage { Id = "123", Content = "Test content" };
         var bufferWriter = new ArrayBufferWriter<byte>();
         serializer.Serialize(bufferWriter, originalMessage);
@@ -48,14 +71,12 @@ public class JsonNatsDeserializerTests
     }
 
     [Theory]
-    [InlineData(JsonFormatSerializer.Json)]
-    [InlineData(NJsonFormatSerializer.NJson)]
-    [InlineData(SerializerType.NetJson)]
+    [MemberData(nameof(SerializerTypes))]
     public void Deserialize_WithEmptyMessage_ShouldReturnEmptyMessage(SerializerType serializerType)
     {
         // Arrange
-        var serializer = new JsonNatsSerializer<TestMessage>(serializerType);
-        var deserializer = new JsonNatsDeserializer<TestMessage>(serializerType);
+        var serializer = new JsonNatsSerializer<TestMessage>(CreateFormatSerializerInvoker(), serializerType);
+        var deserializer = new JsonNatsDeserializer<TestMessage>(CreateFormatDeserializerInvoker(), serializerType);
         var originalMessage = new TestMessage();
         var bufferWriter = new ArrayBufferWriter<byte>();
         serializer.Serialize(bufferWriter, originalMessage);
@@ -72,8 +93,8 @@ public class JsonNatsDeserializerTests
     public void Deserialize_WithComplexMessage_ShouldReturnCompleteMessage()
     {
         // Arrange
-        var serializer = new JsonNatsSerializer<ComplexMessage>(JsonFormatSerializer.Json);
-        var deserializer = new JsonNatsDeserializer<ComplexMessage>(JsonFormatSerializer.Json);
+        var serializer = new JsonNatsSerializer<ComplexMessage>(CreateFormatSerializerInvoker(), JsonFormatSerializer.Json);
+        var deserializer = new JsonNatsDeserializer<ComplexMessage>(CreateFormatDeserializerInvoker(), JsonFormatSerializer.Json);
         var originalMessage = new ComplexMessage
         {
             Id = 42,
@@ -101,8 +122,8 @@ public class JsonNatsDeserializerTests
     public void Deserialize_MultipleMessages_ShouldDeserializeEachCorrectly()
     {
         // Arrange
-        var serializer = new JsonNatsSerializer<TestMessage>(JsonFormatSerializer.Json);
-        var deserializer = new JsonNatsDeserializer<TestMessage>(JsonFormatSerializer.Json);
+        var serializer = new JsonNatsSerializer<TestMessage>(CreateFormatSerializerInvoker(), JsonFormatSerializer.Json);
+        var deserializer = new JsonNatsDeserializer<TestMessage>(CreateFormatDeserializerInvoker(), JsonFormatSerializer.Json);
         var messages = new[]
         {
             new TestMessage { Id = "1", Content = "First" },
@@ -128,8 +149,8 @@ public class JsonNatsDeserializerTests
     public void Deserialize_RoundTrip_ShouldPreserveData()
     {
         // Arrange
-        var serializer = new JsonNatsSerializer<TestMessage>(JsonFormatSerializer.Json);
-        var deserializer = new JsonNatsDeserializer<TestMessage>(JsonFormatSerializer.Json);
+        var serializer = new JsonNatsSerializer<TestMessage>(CreateFormatSerializerInvoker(), JsonFormatSerializer.Json);
+        var deserializer = new JsonNatsDeserializer<TestMessage>(CreateFormatDeserializerInvoker(), JsonFormatSerializer.Json);
         var originalMessage = new TestMessage { Id = "round-trip-test", Content = "Testing round trip serialization" };
 
         // Act - Serialize

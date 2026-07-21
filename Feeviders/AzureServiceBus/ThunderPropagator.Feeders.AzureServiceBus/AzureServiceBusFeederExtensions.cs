@@ -5,7 +5,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Infrastructure.Extensions;
+using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.AzureServiceBus;
 
@@ -23,6 +25,8 @@ public static class AzureServiceBusFeederExtensions
         configuration.GetSection(sectionName).Bind(feederConfiguration);
         services.TryAddSingleton(feederConfiguration);
         services.AddChannelFeeder<TChannel, ServiceBusFeeder<TChannel, TMessage, TConfiguration>, TMessage, TConfiguration>();
+        services.AddFormatSerializerInvoker();
+        services.AddFormatDeserializerInvoker();
         return services;
     }
 
@@ -44,6 +48,8 @@ public static class AzureServiceBusFeederExtensions
             services,
             (serviceProvider, channel, feederConfiguration, feederHandler) =>
                 new ServiceBusFeeder<TChannel, TMessage, TConfiguration>(channel, feederConfiguration, feederHandler, serviceProvider));
+        services.AddFormatSerializerInvoker();
+        services.AddFormatDeserializerInvoker();
         return services;
     }
 
