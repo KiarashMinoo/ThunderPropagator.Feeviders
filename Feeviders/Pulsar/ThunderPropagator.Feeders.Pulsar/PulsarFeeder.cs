@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using ThunderPropagator.Application;
 using ThunderPropagator.Application.Channels;
+using ThunderPropagator.Application.Features;
 using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.Pulsar.SharedKernel;

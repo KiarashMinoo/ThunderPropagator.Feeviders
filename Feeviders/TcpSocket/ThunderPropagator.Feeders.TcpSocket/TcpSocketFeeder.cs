@@ -14,6 +14,7 @@ using System.Security.Authentication;
 using System.Text;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application;
+using ThunderPropagator.Application.Features;
 using ThunderPropagator.Feeders.SharedKernel;
 
 namespace ThunderPropagator.Feeders.TcpSocket

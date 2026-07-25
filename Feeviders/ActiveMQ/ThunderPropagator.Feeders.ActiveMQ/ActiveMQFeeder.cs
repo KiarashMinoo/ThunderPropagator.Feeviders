@@ -9,6 +9,7 @@ using ThunderPropagator.Feeviders.ActiveMQ.SharedKernel;
 using System.Reflection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using ThunderPropagator.Application;
+using ThunderPropagator.Application.Features;
 
 namespace ThunderPropagator.Feeders.ActiveMQ
 {

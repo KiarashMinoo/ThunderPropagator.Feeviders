@@ -4,6 +4,7 @@ using Google.Cloud.PubSub.V1;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application;
 using ThunderPropagator.Application.Channels;
+using ThunderPropagator.Application.Features;
 using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.Feeviders.GcpPubSub.SharedKernel;
 

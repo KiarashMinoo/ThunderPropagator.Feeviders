@@ -4,6 +4,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application;
 using ThunderPropagator.Application.Channels;
+using ThunderPropagator.Application.Features;
 using ThunderPropagator.Application.Feeders;
 
 namespace ThunderPropagator.Feeders.WebSocket

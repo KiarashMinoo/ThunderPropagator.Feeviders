@@ -5,6 +5,7 @@ using System.Reflection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application;
+using ThunderPropagator.Application.Features;
 
 namespace ThunderPropagator.Feeders.WebApi
 {

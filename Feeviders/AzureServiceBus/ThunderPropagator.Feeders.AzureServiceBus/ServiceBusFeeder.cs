@@ -4,6 +4,7 @@ using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application;
 using ThunderPropagator.Application.Channels;
+using ThunderPropagator.Application.Features;
 using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.Feeviders.AzureServiceBus.SharedKernel;
 
