@@ -34,6 +34,8 @@ namespace ThunderPropagator.Providers.DotNet.Grpc
             _client = new GrpcFeeviderService.GrpcFeeviderServiceClient(_channel);
         }
 
+        // Test-only seam: the caller-supplied client is never disposed here, since this constructor
+        // never creates (and so never owns) a channel for it - see DisposeManagedResourcesAsync.
         internal GrpcProvider(TGrpcProviderConfiguration grpcProviderConfiguration,
             IServiceProvider serviceProvider,
             GrpcFeeviderService.GrpcFeeviderServiceClient client)

@@ -52,6 +52,10 @@ namespace ThunderPropagator.Feeders.Grpc
             _channel = GrpcChannelFactory.CreateChannel(feederConfiguration);
             _client = new GrpcFeeviderService.GrpcFeeviderServiceClient(_channel);
             _formatDeserializerInvoker = serviceProvider.GetRequiredService<FormatDeserializerInvoker>();
+
+            // Fail fast on a bad reconnect-delay configuration here, rather than deep inside a live
+            // reconnect loop where GrpcReconnectDelay.Calculate would otherwise throw unhandled.
+            GrpcReconnectDelay.Calculate(feederConfiguration.ReconnectInitialDelay, feederConfiguration.ReconnectMaxDelay, 1);
         }
 
         protected override async Task StartingAsync(CancellationToken cancellationToken = default)
