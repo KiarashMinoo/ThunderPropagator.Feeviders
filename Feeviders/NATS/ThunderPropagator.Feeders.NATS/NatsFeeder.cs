@@ -9,6 +9,7 @@ using NATS.Net;
 using OpenTelemetry;
 using ThunderPropagator.Application;
 using ThunderPropagator.Application.Channels;
+using ThunderPropagator.Application.Features;
 using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using ThunderPropagator.Feeders.SharedKernel;

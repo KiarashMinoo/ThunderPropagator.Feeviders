@@ -55,6 +55,9 @@
         <ProjectReference Include="..\..\..\Feeviders\GcpPubSub\ThunderPropagator.Feeders.GcpPubSub\ThunderPropagator.Feeders.GcpPubSub.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\GcpPubSub\ThunderPropagator.Providers.DotNet.GcpPubSub\ThunderPropagator.Providers.DotNet.GcpPubSub.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\GcpPubSub\ThunderPropagator.Feeviders.GcpPubSub.SharedKernel\ThunderPropagator.Feeviders.GcpPubSub.SharedKernel.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\Grpc\ThunderPropagator.Feeders.Grpc\ThunderPropagator.Feeders.Grpc.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\Grpc\ThunderPropagator.Providers.DotNet.Grpc\ThunderPropagator.Providers.DotNet.Grpc.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\Grpc\ThunderPropagator.Feeviders.Grpc.SharedKernel\ThunderPropagator.Feeviders.Grpc.SharedKernel.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="$(BuildingBlocksPackageId)"/>
+        <PackageReference Include="JetBrains.Annotations" />
+        <PackageReference Include="Grpc.Net.Client"/>
+        <PackageReference Include="Google.Protobuf"/>
+        <PackageReference Include="Grpc.Tools"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Protobuf Include="Protos\grpc_feevider.proto" GrpcServices="Both" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\SharedKernel\ThunderPropagator.Feeders.SharedKernel\ThunderPropagator.Feeders.SharedKernel.csproj" />
+      <ProjectReference Include="..\..\SharedKernel\ThunderPropagator.Providers.DotNet.SharedKernel\ThunderPropagator.Providers.DotNet.SharedKernel.csproj" />
+    </ItemGroup>
+
+</Project>

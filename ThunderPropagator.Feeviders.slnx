@@ -74,6 +74,23 @@
       <Platform Solution="*|x86" Project="x86" />
     </Project>
   </Folder>
+  <Folder Name="/Feeviders/Grpc/">
+    <Project Path="Feeviders/Grpc/ThunderPropagator.Feeders.Grpc/ThunderPropagator.Feeders.Grpc.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/Grpc/ThunderPropagator.Feeviders.Grpc.SharedKernel/ThunderPropagator.Feeviders.Grpc.SharedKernel.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/Grpc/ThunderPropagator.Providers.DotNet.Grpc/ThunderPropagator.Providers.DotNet.Grpc.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
   <Folder Name="/Feeviders/Kafka/">
     <Project Path="Feeviders/Kafka/ThunderPropagator.Feeders.Kafka/ThunderPropagator.Feeders.Kafka.csproj">
       <Platform Solution="*|ARM64" Project="ARM64" />
