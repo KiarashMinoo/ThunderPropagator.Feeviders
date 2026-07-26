@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.43] — 2026-07-26
+
+### 🏠 Chores
+
+- Add ZeroMQ transport: Feeders.ZeroMQ + Providers.DotNet.ZeroMQ `(cfa1b23)` — Kiarash Minoo
+
 ## [1.0.1-beta.42] — 2026-07-25
 
 ### 🏠 Chores
