@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="$(BuildingBlocksPackageId)"/>
+        <PackageReference Include="JetBrains.Annotations" />
+        <PackageReference Include="NetMQ"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\SharedKernel\ThunderPropagator.Feeders.SharedKernel\ThunderPropagator.Feeders.SharedKernel.csproj" />
+      <ProjectReference Include="..\..\SharedKernel\ThunderPropagator.Providers.DotNet.SharedKernel\ThunderPropagator.Providers.DotNet.SharedKernel.csproj" />
+    </ItemGroup>
+
+</Project>

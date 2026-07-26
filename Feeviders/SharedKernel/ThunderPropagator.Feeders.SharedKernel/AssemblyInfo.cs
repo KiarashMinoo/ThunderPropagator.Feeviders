@@ -18,4 +18,5 @@ using System.Runtime.Versioning;
 [assembly: InternalsVisibleTo("ThunderPropagator.Feeders.AzureServiceBus")]
 [assembly: InternalsVisibleTo("ThunderPropagator.Feeders.GcpPubSub")]
 [assembly: InternalsVisibleTo("ThunderPropagator.Feeders.Grpc")]
+[assembly: InternalsVisibleTo("ThunderPropagator.Feeders.ZeroMQ")]
 [assembly: InternalsVisibleTo("ThunderPropagator.UnitTests")]

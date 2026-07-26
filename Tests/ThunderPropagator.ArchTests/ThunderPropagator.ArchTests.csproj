@@ -41,6 +41,9 @@
         <ProjectReference Include="..\..\Feeviders\Grpc\ThunderPropagator.Feeders.Grpc\ThunderPropagator.Feeders.Grpc.csproj" />
         <ProjectReference Include="..\..\Feeviders\Grpc\ThunderPropagator.Providers.DotNet.Grpc\ThunderPropagator.Providers.DotNet.Grpc.csproj" />
         <ProjectReference Include="..\..\Feeviders\Grpc\ThunderPropagator.Feeviders.Grpc.SharedKernel\ThunderPropagator.Feeviders.Grpc.SharedKernel.csproj" />
+        <ProjectReference Include="..\..\Feeviders\ZeroMQ\ThunderPropagator.Feeders.ZeroMQ\ThunderPropagator.Feeders.ZeroMQ.csproj" />
+        <ProjectReference Include="..\..\Feeviders\ZeroMQ\ThunderPropagator.Providers.DotNet.ZeroMQ\ThunderPropagator.Providers.DotNet.ZeroMQ.csproj" />
+        <ProjectReference Include="..\..\Feeviders\ZeroMQ\ThunderPropagator.Feeviders.ZeroMQ.SharedKernel\ThunderPropagator.Feeviders.ZeroMQ.SharedKernel.csproj" />
     </ItemGroup>
 
 </Project>
