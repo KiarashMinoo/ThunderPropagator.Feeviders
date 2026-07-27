@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.44] — 2026-07-27
+
+### 📦 Dependencies
+
+| Package | Old | New |
+|---------|-----|-----|
+| AWSSDK.SimpleNotificationService | 4.0.100.5 | 4.0.100.6 |
+
+- Bump AWSSDK.SimpleNotificationService from 4.0.100.5 to 4.0.100.6 `(b0e60dc)` — dependabot[bot]
+
 ## [1.0.1-beta.43] — 2026-07-26
 
 ### 🏠 Chores
