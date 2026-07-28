@@ -1,102 +1,44 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for working in this repository.
 
 ## Commands
 
 ```bash
-# Restore (also downloads shared build props from ThunderPropagator.SharedBuild on GitHub)
-dotnet restore
-
-# Build
+dotnet restore    # fetches shared build configuration on first use
 dotnet build
 dotnet build -c Release
-
-# Test (all test projects)
 dotnet test
-
-# Run a single test project
-dotnet test Tests/UnitTests/ThunderPropagator.UnitTests/ThunderPropagator.UnitTests.csproj
-dotnet test Tests/ThunderPropagator.ArchTests/ThunderPropagator.ArchTests.csproj
-
-# Run a single test by name
-dotnet test --filter "FullyQualifiedName~MyTestMethod"
-
-# Clean (also removes .shared-props/ so next restore fetches fresh copies)
-dotnet clean
+dotnet test <TestProject>
+dotnet test --filter "FullyQualifiedName~<Name>"
+dotnet clean      # also clears the downloaded shared build cache
 ```
-
-## Shared Build Infrastructure
-
-`Directory.Build.props` automatically downloads `Shared.Build.props` and `Shared.Nuget.props` from the [`ThunderPropagator.SharedBuild`](https://github.com/KiarashMinoo/ThunderPropagator.SharedBuild) repo on every `dotnet restore` or `dotnet build`. These files live in `.shared-props/` (gitignored). If the download fails (3 retries, 3s apart), the build errors with a clear message. `dotnet clean` removes `.shared-props/` entirely.
-
-Package versions are managed centrally in `Directory.Packages.props` with `ManagePackageVersionsCentrally=true`. `Microsoft.Extensions.*` versions float per target framework (`8.*`, `9.*`, `10.*`). Never specify `Version=` on individual `<PackageReference>` items.
 
 ## Architecture
 
-**Feeviders** = **Feed**ers + Prov**iders** — reusable .NET libraries for real-time data streaming across 14 messaging systems.
+Reusable libraries for real-time data streaming: message consumption ("feeders") and message publishing ("providers") across many external messaging systems, each behind the same pair of abstractions.
 
-### Naming Convention
+- A shared-kernel area defines the cross-transport abstractions: a feeder interface, a provider interface, a channel interface, and a dictionary-backed message base.
+- Every transport is a sibling area with its own feeder project, provider project, and (where the client library needs shared plumbing) its own transport-scoped shared kernel building on the top-level one.
 
-- `ThunderPropagator.Feeders.*` — message consumption (subscribe/receive side)
-- `ThunderPropagator.Providers.DotNet.*` — message publishing (send side)
-- `ThunderPropagator.Feeviders.*.SharedKernel` — shared base implementations for that transport
+Consumption-side and publish-side projects are named to make the direction obvious at a glance; a transport's own shared kernel is named after that transport plus a shared-kernel suffix.
 
-### Project Layout
+## Conventions
 
-```
-Feeviders/
-  SharedKernel/           # Cross-transport abstractions (IFeeder, IProvider, IChannel, FeederMessage)
-  Kafka/                  # Feeders + Providers (Confluent.Kafka, Schema Registry, Avro/JSON serdes)
-  RabbitMQ/               # Feeders + Providers + SharedKernel (AMQP)
-  NATS/                   # Feeders + Providers + SharedKernel (JetStream)
-  Pulsar/                 # Feeders + Providers + SharedKernel (DotPulsar)
-  Mqtt/                   # Feeders + Providers + SharedKernel (MQTTnet v5)
-  ActiveMQ/               # Feeders + Providers + SharedKernel (Apache.NMS)
-  RedisPubSub/            # Feeders + Providers + SharedKernel (StackExchange.Redis)
-  WebSocket/              # Feeders + Providers
-  WebApi/                 # Feeders + Providers (HTTP/REST)
-  TcpSocket/              # Feeders + Providers + SharedKernel
-  UdpClient/              # Feeders + Providers + SharedKernel
-  AwsSqs/                 # Feeders + Providers + SharedKernel (Amazon SQS + SNS)
-  AzureServiceBus/        # Feeders + Providers + SharedKernel
-  GcpPubSub/              # Feeders + Providers + SharedKernel (Google Cloud Pub/Sub)
-Tests/
-  ThunderPropagator.UnitTests/     # xunit + NSubstitute + Bogus; references all Feeviders projects
-  ThunderPropagator.ArchTests/     # NetArchTest.Rules — enforces namespace/layer rules
-  ThunderPropagator.Web.LoadTests/ # Load/performance tests
-  DotNetClientTests/               # net10.0 console integration tests
-```
+- All library projects multi-target the same three frameworks; solution configurations cover both architecture-neutral and architecture-specific platforms.
+- Package versions are centrally managed; `Microsoft.Extensions.*` versions float per target framework — never pin a version on an individual package reference.
+- Private fields `_camelCase`; telemetry activity names `{ClassName}_{MethodName}`; 4-space indent (2 for structured-data formats), LF endings, UTF-8, braces required.
 
-### Core Abstractions (in `Feeviders.SharedKernel`)
+## Adding a transport
 
-- `IFeeder<TChannel>` — consumer abstraction
-- `IProvider<T>` — publisher abstraction
-- `IChannel` — channel abstraction
-- `FeederMessage` — base message type
+New area under the transport root → its own feeder project implementing the feeder interface → its own provider project implementing the provider interface → a transport-scoped shared kernel only if the client library needs shared connection/serialization plumbing → unit tests referencing the new projects → an architecture-test row asserting the new transport's namespace stays isolated from every sibling transport.
 
-Each transport's SharedKernel builds on these; the Feeder/Provider projects in each transport folder depend on their SharedKernel.
+## Testing
 
-### Multi-targeting
+xUnit + NSubstitute + a fake-data generator library for test data. A separate architecture-test project enforces namespace/layer isolation between transports and between the shared kernel and any one transport. A load-test project and a small integration-test console project also exist; the unit-test project is the one referenced by every transport.
 
-All library projects target `net8.0;net9.0;net10.0`. Solution configurations include `AnyCPU`, `ARM64`, `x64`, and `x86`.
+## Build & versioning
 
-## Testing Stack
+Version and target frameworks are centralized; CI bumps automatically. Restore fetches shared build configuration into a local, gitignored cache — a clean removes it, the next restore refetches it.
 
-- **xunit** v2.9.3 with `xunit.runner.visualstudio`
-- **NSubstitute** v5.3.0 for mocking
-- **Bogus** v35.6.5 for test data generation
-- **NetArchTest.Rules** v1.3.2 for architecture enforcement
-- **coverlet.collector** for coverage
-
-## CI/CD
-
-`.github/workflows/ci.yml` delegates to reusable workflows in `KiarashMinoo/.github`:
-- `develop` branch → `reusable-beta-ci.yml`
-- `release/**` branches → `reusable-release-ci.yml`
-
-Required secrets: `GH_TOKEN`, `NUGET_API_KEY`.
-
-## Code Style
-
-Enforced via `.editorconfig`: 4-space indentation (2 for XML/JSON/YAML), LF line endings, UTF-8, `var` for obvious types, braces required, private fields prefixed `_camelCase`.
+CI publishes on two branch patterns: a beta channel that bumps and publishes a prerelease on every push, and a release channel that finalizes the version and publishes a stable release.
