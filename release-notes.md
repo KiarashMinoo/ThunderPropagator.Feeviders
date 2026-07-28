@@ -1,5 +1,9 @@
-## [1.0.1-beta.49] — 2026-07-28
+## [1.0.1-beta.50] — 2026-07-28
 
-### 🐛 Bug Fixes
+### ⚙️ CI / Tooling
 
-- ensure fresh download of shared props file to avoid stale cache issues `(6584b7b)` — Kiarash Minoo
+- enable nuget-filter-enabled to stop publishing every platform/config package variant `(bfafd5b)` — Kiarash Minoo
+
+### 🏠 Chores
+
+- update package versions for BuildingBlocks and ThunderPropagator `(7ff6b35)` — Kiarash Minoo
