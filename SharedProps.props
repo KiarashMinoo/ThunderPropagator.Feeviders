@@ -147,8 +147,14 @@
          ContinueOnError="WarnAndContinue" on the download itself matters just as much: without
          it, a network hiccup here would fail the whole restore/build outright instead of
          degrading to the Warning below and letting a later restore/build pick the file up once
-         connectivity returns. -->
-    <DownloadFile SourceUrl="$(SharedBuildBaseUrl)/%(_SharedFile.Identity)"
+         connectivity returns.
+
+         ?cb=<ticks> busts raw.githubusercontent.com's CDN cache: a shared props file just
+         pushed upstream can otherwise still serve a stale cached copy here for a few minutes
+         (bitten by this directly — a real NU5050 fix landed in Shared.NugetReadme.props and
+         was live on origin/main minutes before a CI run still hit the pre-fix behavior). Each
+         restore/build gets a fresh timestamp, forcing a real origin fetch every time. -->
+    <DownloadFile SourceUrl="$(SharedBuildBaseUrl)/%(_SharedFile.Identity)?cb=$([System.DateTime]::UtcNow.Ticks)"
                   DestinationFolder="%(_SharedFile.DestPath)"
                   DestinationFileName="%(_SharedFile.Identity).$(MSBuildProjectName)$(TargetFramework).tmp"
                   Condition="'%(_SharedFile.WasPresent)' != 'true'"
