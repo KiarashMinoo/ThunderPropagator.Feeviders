@@ -23,9 +23,18 @@ jobs:
   # defaults to nuget-auth-mode: 'classic', which pushes with a plain NuGet.org API key
   # (secrets.nuget-api-key) instead of OIDC Trusted Publishing -- OIDC doesn't work
   # through a reusable workflow hosted in a different repo (see reusable-ci.yml's
-  # nuget-auth-mode input description for the full explanation). Set a repo secret
-  # named NUGET_API_KEY (Settings > Secrets and variables > Actions > Secrets) with a
-  # classic API key from nuget.org > API Keys, scoped to this package/owner.
+  # nuget-auth-mode input description for the full explanation).
+  #
+  # This repo publishes three distinct package-ID families (ThunderPropagator.Feeders.*,
+  # ThunderPropagator.Providers.*, and everything else -- the per-transport
+  # ThunderPropagator.Feeviders.*.SharedKernel packages), so it uses three separate
+  # nuget.org API keys instead of one, each with its own independent 350/hour push quota
+  # (see reusable-ci.yml's nuget-api-key-2/3(-prefix) inputs). Set three repo secrets
+  # (Settings > Secrets and variables > Actions > Secrets), each a classic API key from
+  # nuget.org > API Keys scoped (by package ID glob) to just that family:
+  #   NUGET_API_KEY           -- fallback/default, scoped to ThunderPropagator.Feeviders.*
+  #   NUGET_API_KEY_FEEDERS   -- scoped to ThunderPropagator.Feeders.*
+  #   NUGET_API_KEY_PROVIDERS -- scoped to ThunderPropagator.Providers.*
   #
   # ADMIN_PUSH_TOKEN: develop has a classic "Require a pull request before merging"
   # branch protection rule with no usable bypass for the default GITHUB_TOKEN identity
@@ -69,10 +78,14 @@ jobs:
       nuget-target: 'nuget.org'
       nuget-auth-mode: 'classic'
       nuget-filter-enabled: true
+      nuget-api-key-2-prefix: 'ThunderPropagator.Feeders'
+      nuget-api-key-3-prefix: 'ThunderPropagator.Providers'
     secrets:
       gh-token: ${{ secrets.GITHUB_TOKEN }}
       push-token: ${{ secrets.ADMIN_PUSH_TOKEN }}
       nuget-api-key: ${{ secrets.NUGET_API_KEY }}
+      nuget-api-key-2: ${{ secrets.NUGET_API_KEY_FEEDERS }}
+      nuget-api-key-3: ${{ secrets.NUGET_API_KEY_PROVIDERS }}
 
   manual-ci:
     if: github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/'))
@@ -89,7 +102,11 @@ jobs:
       nuget-target: 'nuget.org'
       nuget-auth-mode: 'classic'
       nuget-filter-enabled: true
+      nuget-api-key-2-prefix: 'ThunderPropagator.Feeders'
+      nuget-api-key-3-prefix: 'ThunderPropagator.Providers'
     secrets:
       gh-token: ${{ secrets.GITHUB_TOKEN }}
       push-token: ${{ secrets.ADMIN_PUSH_TOKEN }}
       nuget-api-key: ${{ secrets.NUGET_API_KEY }}
+      nuget-api-key-2: ${{ secrets.NUGET_API_KEY_FEEDERS }}
+      nuget-api-key-3: ${{ secrets.NUGET_API_KEY_PROVIDERS }}
