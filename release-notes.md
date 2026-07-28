@@ -1,3 +1,5 @@
-## [1.0.1-beta.48] — 2026-07-28
+## [1.0.1-beta.49] — 2026-07-28
 
-_No user-facing changes in this release._
+### 🐛 Bug Fixes
+
+- ensure fresh download of shared props file to avoid stale cache issues `(6584b7b)` — Kiarash Minoo
