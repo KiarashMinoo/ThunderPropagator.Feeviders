@@ -1,5 +1,5 @@
-## [1.0.1-beta.46] — 2026-07-27
+## [1.0.1-beta.47] — 2026-07-28
 
-### 📝 Documentation
+### 🏠 Chores
 
-- rebuild repository documentation `(8a2d331)` — Codex
+- ThunderPropagator.Feeviders: Extract shared-props bootstrap and add dependency updater `(190f136)` — Kiarash Minoo
