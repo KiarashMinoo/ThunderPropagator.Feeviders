@@ -1,5 +1,5 @@
-## [1.0.1-beta.51] — 2026-07-28
+## [1.0.1-beta.52] — 2026-08-18
 
-### ⚙️ CI / Tooling
+### 🏠 Chores
 
-- split nuget.org publish across 3 API keys by package family `(24263ba)` — Kiarash Minoo
+- Add Rider MCP server config `(b0697a5)` — Kiarash Minoo
