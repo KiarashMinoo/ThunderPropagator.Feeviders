@@ -1,9 +1,9 @@
-## [1.0.1-beta.55] — 2026-09-03
+## [1.0.1-beta.56] — 2026-09-03
 
 ### 📦 Dependencies
 
 | Package | Old | New |
 |---------|-----|-----|
-| StackExchange.Redis | 3.0.17 | 3.1.31 |
+| AWSSDK.SQS | 4.0.100.6 | 4.0.100.7 |
 
-- Bump the redis-and-resilience group with 1 update `(820800b)` — dependabot[bot]
+- Bump AWSSDK.SQS from 4.0.100.6 to 4.0.100.7 `(5648053)` — dependabot[bot]
