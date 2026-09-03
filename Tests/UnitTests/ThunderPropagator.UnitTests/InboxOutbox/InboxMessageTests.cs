@@ -49,7 +49,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         public void TryTransitionTo_ShouldThrowOnlyForDisallowedTransitions(InboxMessageStatus from, InboxMessageStatus to, bool expectedAllowed)
         {
             var message = CreateInState(from);
-            var timeProvider = new TestTimeProvider(DateTimeOffset.UnixEpoch);
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
 
             if (expectedAllowed)
             {
@@ -67,7 +67,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         [Fact]
         public void TryTransitionTo_Processing_ShouldStampLeaseAndIncrementAttemptCountWhenRequested()
         {
-            var timeProvider = new TestTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+            var timeProvider = new ManualTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
             var received = CreateInState(InboxMessageStatus.Received);
             var leaseExpiresAtUtc = timeProvider.GetUtcNow().AddMinutes(5);
 
@@ -88,7 +88,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         [Fact]
         public void TryTransitionTo_Processed_ShouldClearLeaseAndStampProcessedAtUtc()
         {
-            var timeProvider = new TestTimeProvider(DateTimeOffset.UnixEpoch);
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
             var processing = CreateInState(InboxMessageStatus.Processing, leaseOwner: "worker-1");
 
             timeProvider.Advance(TimeSpan.FromSeconds(30));
@@ -103,7 +103,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         [Fact]
         public void TryTransitionTo_Failed_ShouldTruncateAnOverlongFailureReasonAndSetNextRetry()
         {
-            var timeProvider = new TestTimeProvider(DateTimeOffset.UnixEpoch);
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
             var processing = CreateInState(InboxMessageStatus.Processing, leaseOwner: "worker-1");
             var overlongReason = new string('x', InboxMessageLimits.MaxFailureReasonLength + 100);
             var nextRetryAtUtc = timeProvider.GetUtcNow().AddMinutes(1);
@@ -120,12 +120,26 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
             Assert.Null(failed.LeaseOwner);
         }
 
+        [Fact]
+        public void TryTransitionTo_DeadLettered_ShouldStampDeadLetteredAtUtcAndClearLease()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var processing = CreateInState(InboxMessageStatus.Processing, leaseOwner: "worker-1");
+
+            timeProvider.Advance(TimeSpan.FromMinutes(1));
+            var deadLettered = processing.TryTransitionTo(InboxMessageStatus.DeadLettered, timeProvider, failureReason: "unrecoverable");
+
+            Assert.Equal(InboxMessageStatus.DeadLettered, deadLettered.Status);
+            Assert.Equal(timeProvider.GetUtcNow(), deadLettered.DeadLetteredAtUtc);
+            Assert.Null(deadLettered.LeaseOwner);
+        }
+
         [Theory]
         [InlineData(InboxMessageStatus.Processed)]
         [InlineData(InboxMessageStatus.DeadLettered)]
         public void Replay_ShouldResetTerminalEntriesToReceived(InboxMessageStatus terminalStatus)
         {
-            var timeProvider = new TestTimeProvider(DateTimeOffset.UnixEpoch);
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
             var terminal = CreateInState(terminalStatus, leaseOwner: null) with
             {
                 AttemptCount = 3,
@@ -149,7 +163,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         public void Replay_ShouldRejectNonTerminalEntries(InboxMessageStatus nonTerminalStatus)
         {
             var message = CreateInState(nonTerminalStatus);
-            var timeProvider = new TestTimeProvider(DateTimeOffset.UnixEpoch);
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
 
             var exception = Assert.Throws<InboxMessageTransitionException>(() => message.Replay(timeProvider));
 
@@ -160,7 +174,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         [Fact]
         public void Replay_ShouldNeverProduceAProcessingStatusDirectly()
         {
-            var timeProvider = new TestTimeProvider(DateTimeOffset.UnixEpoch);
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
             var replayed = CreateInState(InboxMessageStatus.Processed).Replay(timeProvider);
 
             Assert.NotEqual(InboxMessageStatus.Processing, replayed.Status);
@@ -174,7 +188,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
             var message = InboxMessage.CreateReceived(
                 Guid.NewGuid(), "message-1", Guid.NewGuid(), Guid.NewGuid(),
                 schemaVersion: 1, payloadContentType: "application/json", payload: [],
-                headers: null, partitionKey: null, timeProvider: new TestTimeProvider(DateTimeOffset.UnixEpoch));
+                headers: null, partitionKey: null, timeProvider: new ManualTimeProvider(DateTimeOffset.UnixEpoch));
 
             Assert.Empty(message.Headers);
         }
@@ -186,21 +200,58 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
                 Guid.NewGuid(), "message-1", Guid.NewGuid(), Guid.NewGuid(),
                 schemaVersion: 1, payloadContentType: "application/json", payload: [],
                 headers: new Dictionary<string, string> { ["zeta"] = "1", ["alpha"] = "2", ["mid"] = "3" },
-                partitionKey: null, timeProvider: new TestTimeProvider(DateTimeOffset.UnixEpoch));
+                partitionKey: null, timeProvider: new ManualTimeProvider(DateTimeOffset.UnixEpoch));
 
             var second = InboxMessage.CreateReceived(
                 Guid.NewGuid(), "message-1", Guid.NewGuid(), Guid.NewGuid(),
                 schemaVersion: 1, payloadContentType: "application/json", payload: [],
                 headers: new Dictionary<string, string> { ["mid"] = "3", ["zeta"] = "1", ["alpha"] = "2" },
-                partitionKey: null, timeProvider: new TestTimeProvider(DateTimeOffset.UnixEpoch));
+                partitionKey: null, timeProvider: new ManualTimeProvider(DateTimeOffset.UnixEpoch));
 
             Assert.Equal(["alpha", "mid", "zeta"], first.Headers.Keys);
             Assert.Equal(JsonSerializer.Serialize(first.Headers), JsonSerializer.Serialize(second.Headers));
         }
 
+        [Fact]
+        public void RenewLease_ShouldExtendExpiryForTheCurrentLeaseOwner()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var processing = CreateInState(InboxMessageStatus.Processing, leaseOwner: "worker-1") with { LeaseExpiresAtUtc = timeProvider.GetUtcNow().AddMinutes(1) };
+
+            timeProvider.Advance(TimeSpan.FromSeconds(50));
+            var renewed = processing.RenewLease(timeProvider, "worker-1", TimeSpan.FromMinutes(1));
+
+            Assert.NotNull(renewed);
+            Assert.Equal(InboxMessageStatus.Processing, renewed!.Status);
+            Assert.Equal("worker-1", renewed.LeaseOwner);
+            Assert.Equal(timeProvider.GetUtcNow().AddMinutes(1), renewed.LeaseExpiresAtUtc);
+        }
+
+        [Fact]
+        public void RenewLease_ShouldRejectAMismatchedLeaseOwner()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var processing = CreateInState(InboxMessageStatus.Processing, leaseOwner: "worker-1");
+
+            Assert.Null(processing.RenewLease(timeProvider, "worker-2", TimeSpan.FromMinutes(1)));
+        }
+
+        [Theory]
+        [InlineData(InboxMessageStatus.Received)]
+        [InlineData(InboxMessageStatus.Processed)]
+        [InlineData(InboxMessageStatus.Failed)]
+        [InlineData(InboxMessageStatus.DeadLettered)]
+        public void RenewLease_ShouldRejectNonProcessingEntries(InboxMessageStatus status)
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var message = CreateInState(status, leaseOwner: null);
+
+            Assert.Null(message.RenewLease(timeProvider, "worker-1", TimeSpan.FromMinutes(1)));
+        }
+
         private static InboxMessage CreateInState(InboxMessageStatus status, string? leaseOwner = "worker-1")
         {
-            var timeProvider = new TestTimeProvider(DateTimeOffset.UnixEpoch);
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
             var received = InboxMessage.CreateReceived(
                 Guid.NewGuid(), "message-1", Guid.NewGuid(), Guid.NewGuid(),
                 schemaVersion: 1, payloadContentType: "application/json", payload: [1, 2, 3],
@@ -223,7 +274,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
             };
         }
 
-        private sealed class TestTimeProvider(DateTimeOffset now) : TimeProvider
+        private sealed class ManualTimeProvider(DateTimeOffset now) : TimeProvider
         {
             private DateTimeOffset _now = now;
 
