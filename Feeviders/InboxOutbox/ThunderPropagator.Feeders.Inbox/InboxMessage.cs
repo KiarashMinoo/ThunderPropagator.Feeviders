@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 
 namespace ThunderPropagator.Feeders.Inbox
@@ -46,7 +47,14 @@ namespace ThunderPropagator.Feeders.Inbox
         /// <summary>Optional additional dedup/ordering scope beneath channel+feeder.</summary>
         public string? PartitionKey { get; init; }
 
-        /// <summary>Schema version of <see cref="Payload"/>, for forward/backward compatibility.</summary>
+        /// <summary>
+        /// Schema version of <see cref="Payload"/>. Compatibility contract: a given <see cref="SchemaVersion"/>
+        /// value must always describe the same wire shape for <see cref="PayloadContentType"/> - once
+        /// published, a version number is immutable and is never reused for an incompatible shape. Producers
+        /// increment it on any breaking change; consumers that do not recognize a <see cref="SchemaVersion"/>
+        /// must treat the message as undecodable (typically routing it to <see cref="InboxMessageStatus.DeadLettered"/>
+        /// via <see cref="IInboxStore.DeadLetterAsync"/>) rather than guessing at the shape.
+        /// </summary>
         public required int SchemaVersion { get; init; }
 
         /// <summary>Content type of <see cref="Payload"/> (e.g. "application/json").</summary>
@@ -55,8 +63,12 @@ namespace ThunderPropagator.Feeders.Inbox
         /// <summary>The raw, serialized message payload. Bounded by <see cref="InboxMessageLimits.MaxPayloadSizeBytes"/>.</summary>
         public required byte[] Payload { get; init; }
 
-        /// <summary>Bounded header set. Never null - empty when there are no headers.</summary>
-        public IReadOnlyDictionary<string, string> Headers { get; init; } = new Dictionary<string, string>();
+        /// <summary>
+        /// Bounded header set. Never null - empty when there are no headers. Always enumerates in
+        /// ascending ordinal key order (see <see cref="NormalizeHeaders"/>) regardless of the order headers
+        /// were supplied in, so two messages with the same logical headers serialize identically.
+        /// </summary>
+        public IReadOnlyDictionary<string, string> Headers { get; init; } = NormalizeHeaders(null);
 
         /// <summary>Current lifecycle state.</summary>
         public required InboxMessageStatus Status { get; init; }
@@ -138,7 +150,7 @@ namespace ThunderPropagator.Feeders.Inbox
                 SchemaVersion = schemaVersion,
                 PayloadContentType = payloadContentType,
                 Payload = payload,
-                Headers = headers ?? new Dictionary<string, string>(),
+                Headers = NormalizeHeaders(headers),
                 Status = InboxMessageStatus.Received,
                 AttemptCount = 0,
                 ReceivedAtUtc = timeProvider.GetUtcNow(),
@@ -238,5 +250,18 @@ namespace ThunderPropagator.Feeders.Inbox
             failureReason is { Length: > InboxMessageLimits.MaxFailureReasonLength }
                 ? failureReason[..InboxMessageLimits.MaxFailureReasonLength]
                 : failureReason;
+
+        private static readonly IReadOnlyDictionary<string, string> EmptyHeaders =
+            new ReadOnlyDictionary<string, string>(new Dictionary<string, string>());
+
+        /// <summary>
+        /// Copies <paramref name="headers"/> into a key-sorted (ordinal), read-only dictionary so
+        /// <see cref="Headers"/> always enumerates - and therefore serializes - in the same order
+        /// regardless of the order the caller supplied entries in.
+        /// </summary>
+        private static IReadOnlyDictionary<string, string> NormalizeHeaders(IReadOnlyDictionary<string, string>? headers) =>
+            headers is null or { Count: 0 }
+                ? EmptyHeaders
+                : new ReadOnlyDictionary<string, string>(new SortedDictionary<string, string>(new Dictionary<string, string>(headers), StringComparer.Ordinal));
     }
 }
