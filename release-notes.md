@@ -1,5 +1,9 @@
-## [1.0.1-beta.52] — 2026-08-18
+## [1.0.1-beta.53] — 2026-09-03
 
-### 🏠 Chores
+### 📦 Dependencies
 
-- Add Rider MCP server config `(b0697a5)` — Kiarash Minoo
+| Package | Old | New |
+|---------|-----|-----|
+| AWSSDK.SimpleNotificationService | 4.0.100.6 | 4.0.100.7 |
+
+- Bump AWSSDK.SimpleNotificationService from 4.0.100.6 to 4.0.100.7 `(8d3b81b)` — dependabot[bot]
