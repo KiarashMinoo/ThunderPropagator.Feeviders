@@ -22,6 +22,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Feeders.Inbox\ThunderPropagator.Feeders.Inbox.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\RabbitMQ\ThunderPropagator.Feeders.RabbitMQ\ThunderPropagator.Feeders.RabbitMQ.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\WebApi\ThunderPropagator.Feeders.WebApi\ThunderPropagator.Feeders.WebApi.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\WebApi\ThunderPropagator.Providers.DotNet.WebApi\ThunderPropagator.Providers.DotNet.WebApi.csproj" />
