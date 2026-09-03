@@ -91,6 +91,40 @@
       <Platform Solution="*|x86" Project="x86" />
     </Project>
   </Folder>
+  <Folder Name="/Feeviders/InboxOutbox/">
+    <Project Path="Feeviders/InboxOutbox/ThunderPropagator.Feeders.Inbox/ThunderPropagator.Feeders.Inbox.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/InboxOutbox/ThunderPropagator.Providers.DotNet.Outbox/ThunderPropagator.Providers.DotNet.Outbox.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
+  <Folder Name="/Feeviders/InboxOutbox/Stores/">
+    <Project Path="Feeviders/InboxOutbox/Stores/InMemory/ThunderPropagator.InboxOutbox.InMemory/ThunderPropagator.InboxOutbox.InMemory.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/InboxOutbox/Stores/Redis/ThunderPropagator.InboxOutbox.Redis/ThunderPropagator.InboxOutbox.Redis.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/InboxOutbox/Stores/EFCore/ThunderPropagator.InboxOutbox.EFCore/ThunderPropagator.InboxOutbox.EFCore.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/InboxOutbox/Stores/MongoDB/ThunderPropagator.InboxOutbox.MongoDB/ThunderPropagator.InboxOutbox.MongoDB.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+  </Folder>
   <Folder Name="/Feeviders/Kafka/">
     <Project Path="Feeviders/Kafka/ThunderPropagator.Feeders.Kafka/ThunderPropagator.Feeders.Kafka.csproj">
       <Platform Solution="*|ARM64" Project="ARM64" />

@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- Scope: issue #177 ("[Inbox/Outbox Store] Implement MongoDB backend packages with atomic claims").
+         Intentionally empty beyond the project/reference scaffolding until that issue is picked
+         up - see the parent epic, https://github.com/KiarashMinoo/ThunderPropagator.Web/issues/74. -->
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\ThunderPropagator.Feeders.Inbox\ThunderPropagator.Feeders.Inbox.csproj" />
+        <ProjectReference Include="..\..\..\ThunderPropagator.Providers.DotNet.Outbox\ThunderPropagator.Providers.DotNet.Outbox.csproj" />
+    </ItemGroup>
+
+</Project>
