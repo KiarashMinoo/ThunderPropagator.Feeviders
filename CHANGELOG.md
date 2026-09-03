@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.59] — 2026-09-03
+
+### ⚙️ CI / Tooling
+
+- ThunderPropagator.Feeviders: add NuGet publish key for InboxOutbox packages `(f83f750)` — Kiarash Minoo
+
+### 🏠 Chores
+
+- Close out versioned inbox message and status contracts `(3bab2a1)` — Kiarash Minoo
+
 ## [1.0.1-beta.58] — 2026-09-03
 
 ### 📦 Dependencies
