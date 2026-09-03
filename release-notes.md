@@ -1,5 +1,9 @@
-## [1.0.1-beta.51] — 2026-07-28
+## [1.0.1-beta.55] — 2026-09-03
 
-### ⚙️ CI / Tooling
+### 📦 Dependencies
 
-- split nuget.org publish across 3 API keys by package family `(24263ba)` — Kiarash Minoo
+| Package | Old | New |
+|---------|-----|-----|
+| StackExchange.Redis | 3.0.17 | 3.1.31 |
+
+- Bump the redis-and-resilience group with 1 update `(820800b)` — dependabot[bot]

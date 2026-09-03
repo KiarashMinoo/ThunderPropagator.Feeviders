@@ -3,6 +3,44 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.55] — 2026-09-03
+
+### 📦 Dependencies
+
+| Package | Old | New |
+|---------|-----|-----|
+| StackExchange.Redis | 3.0.17 | 3.1.31 |
+
+- Bump the redis-and-resilience group with 1 update `(820800b)` — dependabot[bot]
+
+## [1.0.1-beta.54] — 2026-09-03
+
+### 📦 Dependencies
+
+| Package | Old | New |
+|---------|-----|-----|
+| Grpc.Net.Client | 2.80.0 | 2.83.0 |
+| NetMQ | 4.0.4.2 | 4.0.4.3 |
+
+- Bump Grpc.Net.Client from 2.80.0 to 2.83.0 `(f5fd180)` — dependabot[bot]
+- Bump NetMQ from 4.0.4.2 to 4.0.4.3 `(6f413e9)` — dependabot[bot]
+
+## [1.0.1-beta.53] — 2026-09-03
+
+### 📦 Dependencies
+
+| Package | Old | New |
+|---------|-----|-----|
+| AWSSDK.SimpleNotificationService | 4.0.100.6 | 4.0.100.7 |
+
+- Bump AWSSDK.SimpleNotificationService from 4.0.100.6 to 4.0.100.7 `(8d3b81b)` — dependabot[bot]
+
+## [1.0.1-beta.52] — 2026-08-18
+
+### 🏠 Chores
+
+- Add Rider MCP server config `(b0697a5)` — Kiarash Minoo
+
 ## [1.0.1-beta.51] — 2026-07-28
 
 ### ⚙️ CI / Tooling
