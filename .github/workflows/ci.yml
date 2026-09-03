@@ -80,12 +80,14 @@ jobs:
       nuget-filter-enabled: true
       nuget-api-key-2-prefix: 'ThunderPropagator.Feeders'
       nuget-api-key-3-prefix: 'ThunderPropagator.Providers'
+      nuget-api-key-4-prefix: 'ThunderPropagator.InboxOutbox'
     secrets:
       gh-token: ${{ secrets.GITHUB_TOKEN }}
       push-token: ${{ secrets.ADMIN_PUSH_TOKEN }}
       nuget-api-key: ${{ secrets.NUGET_API_KEY }}
       nuget-api-key-2: ${{ secrets.NUGET_API_KEY_FEEDERS }}
       nuget-api-key-3: ${{ secrets.NUGET_API_KEY_PROVIDERS }}
+      nuget-api-key-4: ${{ secrets.NUGET_API_KEY_INOUTBOX }}
 
   manual-ci:
     if: github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/'))
@@ -104,9 +106,11 @@ jobs:
       nuget-filter-enabled: true
       nuget-api-key-2-prefix: 'ThunderPropagator.Feeders'
       nuget-api-key-3-prefix: 'ThunderPropagator.Providers'
+      nuget-api-key-4-prefix: 'ThunderPropagator.InboxOutbox'
     secrets:
       gh-token: ${{ secrets.GITHUB_TOKEN }}
       push-token: ${{ secrets.ADMIN_PUSH_TOKEN }}
       nuget-api-key: ${{ secrets.NUGET_API_KEY }}
       nuget-api-key-2: ${{ secrets.NUGET_API_KEY_FEEDERS }}
       nuget-api-key-3: ${{ secrets.NUGET_API_KEY_PROVIDERS }}
+      nuget-api-key-4: ${{ secrets.NUGET_API_KEY_INOUTBOX }}
