@@ -18,23 +18,32 @@ concurrency:
   cancel-in-progress: ${{ github.ref == 'refs/heads/develop' }}
 
 jobs:
-  # NuGet.org Trusted Publishing (OIDC) is built directly into reusable-ci.yml (it has
-  # its own inline publish-nuget job) — this repo doesn't need its own. reusable-ci.yml
-  # defaults to nuget-auth-mode: 'classic', which pushes with a plain NuGet.org API key
-  # (secrets.nuget-api-key) instead of OIDC Trusted Publishing -- OIDC doesn't work
-  # through a reusable workflow hosted in a different repo (see reusable-ci.yml's
-  # nuget-auth-mode input description for the full explanation).
+  # NuGet.org Trusted Publishing (OIDC) can't run inside reusable-ci.yml itself: a
+  # reusable workflow's OIDC token always names ITS OWN hosting repo/file in the
+  # job_workflow_ref claim, never the caller's, no matter how the nuget.org trust
+  # policy is configured (see reusable-ci.yml's nuget-auth-mode input for the full
+  # explanation, and github.com/NuGet/login issues #6 and #24). So reusable-ci.yml is
+  # called here with publish-to-nuget: false -- it still bumps the version, writes the
+  # changelog, tags, creates the GitHub Release, builds/tests/packs, and uploads
+  # pkg-*/symbols-* artifacts; it just skips its own internal NuGet publish step.
+  # publish-nuget-oidc below does the actual push, as steps running directly in THIS
+  # file via the KiarashMinoo/.github/.github/actions/nuget-oidc-publish composite
+  # action -- because that action's steps execute inline in this job (not inside a
+  # called reusable workflow), the OIDC token's job_workflow_ref names this repo +
+  # this file, matching a Trusted Publishing policy configured with Repository
+  # Owner=KiarashMinoo, Repository=ThunderPropagator.Feeviders, Workflow File=ci.yml.
+  # Requires a NUGET_USER repo secret (the nuget.org username the policy is attached
+  # to) -- Settings > Secrets and variables > Actions > Secrets.
   #
-  # This repo publishes three distinct package-ID families (ThunderPropagator.Feeders.*,
-  # ThunderPropagator.Providers.*, and everything else -- the per-transport
-  # ThunderPropagator.Feeviders.*.SharedKernel packages), so it uses three separate
-  # nuget.org API keys instead of one, each with its own independent 350/hour push quota
-  # (see reusable-ci.yml's nuget-api-key-2/3(-prefix) inputs). Set three repo secrets
-  # (Settings > Secrets and variables > Actions > Secrets), each a classic API key from
-  # nuget.org > API Keys scoped (by package ID glob) to just that family:
-  #   NUGET_API_KEY           -- fallback/default, scoped to ThunderPropagator.Feeviders.*
-  #   NUGET_API_KEY_FEEDERS   -- scoped to ThunderPropagator.Feeders.*
-  #   NUGET_API_KEY_PROVIDERS -- scoped to ThunderPropagator.Providers.*
+  # This repo used to split pushes across three classic nuget.org API keys by
+  # package-ID-family prefix (ThunderPropagator.Feeders.*, ThunderPropagator.Providers.*,
+  # everything else) to spread load across nuget.org's 350-pushes/hour-per-key quota.
+  # That routing is dropped under OIDC: NuGet/login mints exactly one short-lived
+  # temporary key per workflow run regardless of how many distinct package-ID families
+  # it pushes, and a Trusted Publishing policy is per-repo, not per-package-family, so
+  # there's nothing left to route between. If this repo's push volume ever runs into
+  # nuget.org's per-key quota again, the fix is a shorter time window or fewer packages
+  # per run, not multiple keys -- OIDC only ever gives you the one.
   #
   # ADMIN_PUSH_TOKEN: develop has a classic "Require a pull request before merging"
   # branch protection rule with no usable bypass for the default GITHUB_TOKEN identity
@@ -49,11 +58,15 @@ jobs:
   #
   # IMPORTANT: a job-level `permissions:` block is exhaustive, not additive -- any
   # scope not listed here is implicitly set to "none" for every nested job the called
-  # reusable workflow runs, regardless of what that nested job requests for itself.
-  # This must list every scope ANY job in reusable-ci.yml needs across the whole run:
-  # contents:write (version/changelog commit, tag, GitHub Release), packages:write +
-  # id-token:write (publish-nuget, for GitHub Packages / OIDC respectively, if ever
-  # switched on), actions:write (cleanup-nuget-artifacts, to delete run artifacts).
+  # reusable workflow runs, regardless of what that nested job requests for itself --
+  # and GitHub validates this statically against every job reusable-ci.yml DECLARES,
+  # not just the ones that will actually execute once `if:` conditions are evaluated.
+  # So even with publish-to-nuget: false (which only skips publish-nuget/
+  # cleanup-nuget-artifacts at runtime), this must still list every scope those two
+  # jobs declare needing: contents:write (version/changelog commit, tag, GitHub
+  # Release), packages:write + id-token:write (publish-nuget's GitHub Packages / OIDC
+  # paths), actions:write (cleanup-nuget-artifacts, to delete run artifacts) -- or the
+  # run fails at startup with "requesting X, but is only allowed none".
   #
   # beta-ci and manual-ci are gated by BOTH github.event_name and github.ref (not ref
   # alone) so a manual workflow_dispatch run from develop can't accidentally trigger
@@ -74,20 +87,11 @@ jobs:
     with:
       channel: beta
       solution-path: 'ThunderPropagator.Feeviders.slnx'
-      publish-to-nuget: true
-      nuget-target: 'nuget.org'
-      nuget-auth-mode: 'classic'
+      publish-to-nuget: false
       nuget-filter-enabled: true
-      nuget-api-key-2-prefix: 'ThunderPropagator.Feeders'
-      nuget-api-key-3-prefix: 'ThunderPropagator.Providers'
-      nuget-api-key-4-prefix: 'ThunderPropagator.InboxOutbox'
     secrets:
       gh-token: ${{ secrets.GITHUB_TOKEN }}
       push-token: ${{ secrets.ADMIN_PUSH_TOKEN }}
-      nuget-api-key: ${{ secrets.NUGET_API_KEY }}
-      nuget-api-key-2: ${{ secrets.NUGET_API_KEY_FEEDERS }}
-      nuget-api-key-3: ${{ secrets.NUGET_API_KEY_PROVIDERS }}
-      nuget-api-key-4: ${{ secrets.NUGET_API_KEY_INOUTBOX }}
 
   manual-ci:
     if: github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/heads/release/'))
@@ -100,17 +104,22 @@ jobs:
     with:
       channel: ${{ inputs.release-mode }}
       solution-path: 'ThunderPropagator.Feeviders.slnx'
-      publish-to-nuget: true
-      nuget-target: 'nuget.org'
-      nuget-auth-mode: 'classic'
+      publish-to-nuget: false
       nuget-filter-enabled: true
-      nuget-api-key-2-prefix: 'ThunderPropagator.Feeders'
-      nuget-api-key-3-prefix: 'ThunderPropagator.Providers'
-      nuget-api-key-4-prefix: 'ThunderPropagator.InboxOutbox'
     secrets:
       gh-token: ${{ secrets.GITHUB_TOKEN }}
       push-token: ${{ secrets.ADMIN_PUSH_TOKEN }}
-      nuget-api-key: ${{ secrets.NUGET_API_KEY }}
-      nuget-api-key-2: ${{ secrets.NUGET_API_KEY_FEEDERS }}
-      nuget-api-key-3: ${{ secrets.NUGET_API_KEY_PROVIDERS }}
-      nuget-api-key-4: ${{ secrets.NUGET_API_KEY_INOUTBOX }}
+
+  publish-nuget-oidc:
+    name: Publish packages (OIDC Trusted Publishing)
+    needs: [beta-ci, manual-ci]
+    if: always() && (needs.beta-ci.result == 'success' || needs.manual-ci.result == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: KiarashMinoo/.github/.github/actions/nuget-oidc-publish@main
+        with:
+          nuget-user: ${{ secrets.NUGET_USER }}
