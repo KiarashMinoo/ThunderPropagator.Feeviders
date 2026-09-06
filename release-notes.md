@@ -1,5 +1,5 @@
-## [1.0.1-beta.65] — 2026-09-06
+## [1.0.1-beta.66] — 2026-09-06
 
 ### 🏠 Chores
 
-- Implement store factory and DI registration by named configuration `(4cd7f61)` — Kiarash Minoo
+- Integrate atomic inbox processing into every Feevider `(4cbcd4b)` — Kiarash Minoo
