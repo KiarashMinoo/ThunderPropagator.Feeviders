@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.65] — 2026-09-06
+
+### 🏠 Chores
+
+- Implement store factory and DI registration by named configuration `(4cd7f61)` — Kiarash Minoo
+
 ## [1.0.1-beta.64] — 2026-09-06
 
 ### 🏠 Chores
