@@ -1,9 +1,5 @@
-## [1.0.1-beta.62] — 2026-09-06
+## [1.0.1-beta.63] — 2026-09-06
 
 ### ⚙️ CI / Tooling
 
-- ThunderPropagator.Feeviders: enable nuget-filter-enabled on the release publish job `(81c794d)` — Kiarash Minoo
-
-### 🏠 Chores
-
-- Implement stable configurable message-ID resolution `(d29c23d)` — Kiarash Minoo
+- ThunderPropagator.Feeviders: split NuGet OIDC publish into per-family jobs `(30dc820)` — Kiarash Minoo
