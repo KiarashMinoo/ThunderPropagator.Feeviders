@@ -14,7 +14,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         public void Kafka_NoBrokerMessageIdHeader_ShouldFallBackToTopicPartitionOffsetScope()
         {
             // Kafka has no built-in per-record message ID: the stable identity is (topic, partition, offset).
-            var resolver = new MessageIdResolver(new MessageIdResolverOptions { Strategy = InboxMessageIdStrategy.FeederField });
+            var resolver = new MessageIdResolver(new MessageIdResolverOptions { Strategy = InboxMessageIdStrategy.FeederField, FieldName = "Offset" });
             var feederExtractedOffset = "784512";
 
             var first = resolver.Resolve(new MessageIdResolutionRequest
