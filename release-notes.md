@@ -1,5 +1,5 @@
-## [1.0.1-beta.63] — 2026-09-06
+## [1.0.1-beta.64] — 2026-09-06
 
-### ⚙️ CI / Tooling
+### 🏠 Chores
 
-- ThunderPropagator.Feeviders: split NuGet OIDC publish into per-family jobs `(30dc820)` — Kiarash Minoo
+- Add and validate per-Feevider inbox configuration `(5a2f779)` — Kiarash Minoo
