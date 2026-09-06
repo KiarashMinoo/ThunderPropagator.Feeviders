@@ -1,4 +1,5 @@
 ﻿using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.Inbox;
 using StackExchange.Redis;
 
 namespace ThunderPropagator.Feeders.RedisPubSub
@@ -33,6 +34,13 @@ namespace ThunderPropagator.Feeders.RedisPubSub
 
                 return channel;
             }
+            set => Set(value);
+        }
+
+        /// <summary>Opt-in transactional Inbox configuration for this Feevider. Disabled by default.</summary>
+        public InboxOptions Inbox
+        {
+            get => Get(new InboxOptions());
             set => Set(value);
         }
 

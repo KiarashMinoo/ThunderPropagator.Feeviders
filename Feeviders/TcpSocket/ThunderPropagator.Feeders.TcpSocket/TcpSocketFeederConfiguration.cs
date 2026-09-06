@@ -1,4 +1,5 @@
 ﻿using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.Inbox;
 using ThunderPropagator.Feeviders.TcpSocket.SharedKernel;
 using System.Security.Authentication;
 using ThunderPropagator.BuildingBlocks.Application.Certificate;
@@ -77,6 +78,13 @@ namespace ThunderPropagator.Feeders.TcpSocket
         public string[]? AllowedAddresses
         {
             get => Get<string[]>();
+            set => Set(value);
+        }
+
+        /// <summary>Opt-in transactional Inbox configuration for this Feevider. Disabled by default.</summary>
+        public InboxOptions Inbox
+        {
+            get => Get(new InboxOptions());
             set => Set(value);
         }
     }

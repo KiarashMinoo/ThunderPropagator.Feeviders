@@ -6,4 +6,8 @@
         <PackageReference Include="OpenTelemetry.Api"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\..\InboxOutbox\ThunderPropagator.Feeders.Inbox\ThunderPropagator.Feeders.Inbox.csproj" />
+    </ItemGroup>
+
 </Project>
