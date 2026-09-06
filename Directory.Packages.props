@@ -4,8 +4,8 @@
     <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="$(BuildingBlocksPackageId)" Version="1.0.1-beta.127" />
-    <PackageVersion Include="$(ThunderPropagatorPackageId)" Version="1.0.1-beta.215" />
+    <PackageVersion Include="$(BuildingBlocksPackageId)" Version="1.0.1-beta.130" />
+    <PackageVersion Include="$(ThunderPropagatorPackageId)" Version="1.0.1-beta.216" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'" Label="Microsoft.Extensions">
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="8.*" />
