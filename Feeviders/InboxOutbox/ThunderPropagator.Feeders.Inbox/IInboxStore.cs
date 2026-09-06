@@ -37,8 +37,13 @@ namespace ThunderPropagator.Feeders.Inbox
 
         /// <summary>
         /// Marks a leased entry <see cref="InboxMessageStatus.Failed"/> and releases the lease, so a
-        /// retry worker can claim it again at/after <paramref name="nextRetryAtUtc"/>. Returns
-        /// <see langword="null"/> if <paramref name="leaseOwner"/> no longer matches the current lease.
+        /// retry worker can claim it again at/after <paramref name="nextRetryAtUtc"/> - or immediately,
+        /// if <paramref name="nextRetryAtUtc"/> is <see langword="null"/> (no backoff delay). Every
+        /// implementation must treat a <see langword="null"/> <see cref="InboxMessage.NextRetryAtUtc"/>
+        /// as already elapsed for both <see cref="TryClaimAsync"/>'s reclaim check and
+        /// <see cref="QueryRetryableAsync"/>, so retry eligibility is consistent across backends.
+        /// Returns <see langword="null"/> if <paramref name="leaseOwner"/> no longer matches the
+        /// current lease.
         /// </summary>
         Task<InboxMessage?> FailAsync(Guid id, string leaseOwner, string failureReason, DateTimeOffset? nextRetryAtUtc, CancellationToken cancellationToken = default);
 
@@ -50,8 +55,10 @@ namespace ThunderPropagator.Feeders.Inbox
         Task<InboxMessage?> DeadLetterAsync(Guid id, string leaseOwner, string failureReason, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Extends an active lease's expiry, for long-running handlers. Returns
-        /// <see langword="null"/> if <paramref name="leaseOwner"/> no longer matches the current lease.
+        /// Extends an active lease's expiry, for long-running handlers - typically implemented via
+        /// <see cref="InboxMessage.RenewLease"/>, which performs the same compare-and-swap check.
+        /// Returns <see langword="null"/> if <paramref name="leaseOwner"/> no longer matches the
+        /// current lease.
         /// </summary>
         Task<InboxMessage?> RenewLeaseAsync(Guid id, string leaseOwner, TimeSpan leaseExtension, CancellationToken cancellationToken = default);
 
