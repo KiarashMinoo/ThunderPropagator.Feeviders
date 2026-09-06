@@ -123,3 +123,4 @@ jobs:
       - uses: KiarashMinoo/.github/.github/actions/nuget-oidc-publish@main
         with:
           nuget-user: ${{ secrets.NUGET_USER }}
+          nuget-filter-enabled: true
