@@ -34,5 +34,8 @@ namespace ThunderPropagator.Feeders.Inbox
 
         /// <summary>Maximum length of a lease owner token.</summary>
         public const int MaxLeaseOwnerLength = 256;
+
+        /// <summary>Maximum entries a single <see cref="IInboxStore.QueryRetryableAsync"/> call may return, bounding retry-worker batch size.</summary>
+        public const int MaxRetryBatchSize = 1000;
     }
 }

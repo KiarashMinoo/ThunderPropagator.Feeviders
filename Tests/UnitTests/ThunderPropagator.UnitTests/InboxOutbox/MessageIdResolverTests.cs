@@ -60,9 +60,13 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
             Assert.Throws<ArgumentException>(() => new MessageIdResolver(new MessageIdResolverOptions { Strategy = InboxMessageIdStrategy.BrokerHeader }));
 
         [Fact]
+        public void Constructing_FeederFieldWithoutFieldName_ShouldThrow() =>
+            Assert.Throws<ArgumentException>(() => new MessageIdResolver(new MessageIdResolverOptions { Strategy = InboxMessageIdStrategy.FeederField }));
+
+        [Fact]
         public void Resolve_FeederField_ShouldUseTheSuppliedValue()
         {
-            var resolver = new MessageIdResolver(new MessageIdResolverOptions { Strategy = InboxMessageIdStrategy.FeederField });
+            var resolver = new MessageIdResolver(new MessageIdResolverOptions { Strategy = InboxMessageIdStrategy.FeederField, FieldName = "OrderId" });
 
             var result = resolver.Resolve(new MessageIdResolutionRequest { FeederFieldValue = "order-42" });
 
@@ -72,7 +76,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         [Fact]
         public void Resolve_FeederField_MissingValue_ShouldThrowByDefault()
         {
-            var resolver = new MessageIdResolver(new MessageIdResolverOptions { Strategy = InboxMessageIdStrategy.FeederField });
+            var resolver = new MessageIdResolver(new MessageIdResolverOptions { Strategy = InboxMessageIdStrategy.FeederField, FieldName = "OrderId" });
 
             Assert.Throws<MessageIdResolutionException>(() => resolver.Resolve(new MessageIdResolutionRequest()));
         }
@@ -167,7 +171,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         {
             // Without a separator unlikely to appear in a segment, (scope=["a"], value="b/c") and
             // (scope=["a/b"], value="c") could join into the same string under naive concatenation.
-            var resolver = new MessageIdResolver(new MessageIdResolverOptions { Strategy = InboxMessageIdStrategy.FeederField });
+            var resolver = new MessageIdResolver(new MessageIdResolverOptions { Strategy = InboxMessageIdStrategy.FeederField, FieldName = "OrderId" });
 
             var first = resolver.Resolve(new MessageIdResolutionRequest { FeederFieldValue = "b/c", ScopeSegments = ["a"] });
             var second = resolver.Resolve(new MessageIdResolutionRequest { FeederFieldValue = "c", ScopeSegments = ["a/b"] });
@@ -178,7 +182,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         [Fact]
         public void Resolve_ResolvedIdExceedingTheMaxLength_ShouldThrow()
         {
-            var resolver = new MessageIdResolver(new MessageIdResolverOptions { Strategy = InboxMessageIdStrategy.FeederField });
+            var resolver = new MessageIdResolver(new MessageIdResolverOptions { Strategy = InboxMessageIdStrategy.FeederField, FieldName = "OrderId" });
             var request = new MessageIdResolutionRequest { FeederFieldValue = new string('x', InboxMessageLimits.MaxMessageIdLength + 1) };
 
             Assert.Throws<MessageIdResolutionException>(() => resolver.Resolve(request));

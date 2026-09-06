@@ -12,6 +12,15 @@ namespace ThunderPropagator.Feeders.Inbox
         /// </summary>
         public string? HeaderName { get; init; }
 
+        /// <summary>
+        /// Name of the domain/business field <see cref="MessageIdResolutionRequest.FeederFieldValue"/>
+        /// is extracted from. Required when <see cref="Strategy"/> is <see cref="InboxMessageIdStrategy.FeederField"/>;
+        /// ignored otherwise. Not read by <see cref="IMessageIdResolver.Resolve"/> itself - the feeder
+        /// already extracted the value by the time it builds a <see cref="MessageIdResolutionRequest"/> -
+        /// this only documents, and lets startup validation confirm, which field that extraction targets.
+        /// </summary>
+        public string? FieldName { get; init; }
+
         /// <summary>What to do when the value <see cref="Strategy"/> depends on is missing.</summary>
         public MessageIdMissingValueBehavior MissingValueBehavior { get; init; } = MessageIdMissingValueBehavior.Throw;
 
@@ -26,13 +35,17 @@ namespace ThunderPropagator.Feeders.Inbox
 
         /// <summary>
         /// Throws <see cref="ArgumentException"/> if <see cref="Strategy"/> is
-        /// <see cref="InboxMessageIdStrategy.BrokerHeader"/> without a configured <see cref="HeaderName"/> -
+        /// <see cref="InboxMessageIdStrategy.BrokerHeader"/> without a configured <see cref="HeaderName"/>,
+        /// or <see cref="InboxMessageIdStrategy.FeederField"/> without a configured <see cref="FieldName"/> -
         /// a misconfiguration that should fail at startup, not on the first message that hits it.
         /// </summary>
         public void Validate()
         {
             if (Strategy == InboxMessageIdStrategy.BrokerHeader && string.IsNullOrWhiteSpace(HeaderName))
                 throw new ArgumentException($"{nameof(HeaderName)} is required when {nameof(Strategy)} is {InboxMessageIdStrategy.BrokerHeader}.", nameof(HeaderName));
+
+            if (Strategy == InboxMessageIdStrategy.FeederField && string.IsNullOrWhiteSpace(FieldName))
+                throw new ArgumentException($"{nameof(FieldName)} is required when {nameof(Strategy)} is {InboxMessageIdStrategy.FeederField}.", nameof(FieldName));
         }
     }
 }
