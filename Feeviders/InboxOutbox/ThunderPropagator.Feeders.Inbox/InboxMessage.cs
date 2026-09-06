@@ -11,11 +11,16 @@ namespace ThunderPropagator.Feeders.Inbox
     /// store can persist/return a snapshot without also handing out a live, mutable reference.
     /// </summary>
     /// <remarks>
-    /// The copy constructor backing the compiler-generated <c>with</c> expression is deliberately
-    /// <c>private</c>: every field change must go through <see cref="TryTransitionTo"/> or
-    /// <see cref="Replay"/> so the transition table below is the single place transitions are
-    /// validated. Constructing the very first snapshot for a newly-received message goes through
-    /// the explicit <see cref="CreateReceived"/> factory instead of a public constructor.
+    /// The explicit copy constructor is <c>private</c> so <c>new InboxMessage(otherMessage)</c> cannot
+    /// be called from outside this file - but this does not lock down <c>with</c> itself: a record's
+    /// compiler-synthesized clone method that backs <c>with</c> remains public regardless of the copy
+    /// constructor's declared accessibility, so <c>with</c> still compiles for any caller. There is no
+    /// compiler-enforced guarantee here, only a convention: callers outside this file should treat
+    /// every field change as going through <see cref="TryTransitionTo"/>, <see cref="Replay"/>, or
+    /// <see cref="RenewLease"/> - the only members that validate the transition table below (or, for
+    /// <see cref="RenewLease"/>, the one documented exception to it) - rather than an ad hoc <c>with</c>.
+    /// Constructing the very first snapshot for a newly-received message goes through the explicit
+    /// <see cref="CreateReceived"/> factory instead of a public constructor.
     /// </remarks>
     public sealed record InboxMessage
     {
@@ -85,6 +90,13 @@ namespace ThunderPropagator.Feeders.Inbox
         /// <summary>When the message reached <see cref="InboxMessageStatus.Processed"/>.</summary>
         public DateTimeOffset? ProcessedAtUtc { get; init; }
 
+        /// <summary>
+        /// When the message reached <see cref="InboxMessageStatus.DeadLettered"/>. Purge operations
+        /// (<see cref="IInboxStore.PurgeAsync"/>) age a dead-lettered entry off this timestamp, the
+        /// same way they age a <see cref="InboxMessageStatus.Processed"/> entry off <see cref="ProcessedAtUtc"/>.
+        /// </summary>
+        public DateTimeOffset? DeadLetteredAtUtc { get; init; }
+
         /// <summary>Earliest time a retry claim may succeed, when <see cref="Status"/> is <see cref="InboxMessageStatus.Failed"/>.</summary>
         public DateTimeOffset? NextRetryAtUtc { get; init; }
 
@@ -100,7 +112,10 @@ namespace ThunderPropagator.Feeders.Inbox
         /// </summary>
         public string? FailureReason { get; init; }
 
-        /// <summary>Private copy constructor - disables the public <c>with</c> expression outside this file.</summary>
+        /// <summary>
+        /// Private copy constructor - blocks <c>new InboxMessage(otherMessage)</c> from outside this
+        /// file. Does not block <c>with</c>; see the class remarks.
+        /// </summary>
         [SetsRequiredMembers]
         private InboxMessage(InboxMessage original)
         {
@@ -118,6 +133,7 @@ namespace ThunderPropagator.Feeders.Inbox
             ReceivedAtUtc = original.ReceivedAtUtc;
             ProcessingStartedAtUtc = original.ProcessingStartedAtUtc;
             ProcessedAtUtc = original.ProcessedAtUtc;
+            DeadLetteredAtUtc = original.DeadLetteredAtUtc;
             NextRetryAtUtc = original.NextRetryAtUtc;
             LeaseOwner = original.LeaseOwner;
             LeaseExpiresAtUtc = original.LeaseExpiresAtUtc;
@@ -212,6 +228,7 @@ namespace ThunderPropagator.Feeders.Inbox
                 InboxMessageStatus.DeadLettered => this with
                 {
                     Status = target,
+                    DeadLetteredAtUtc = now,
                     LeaseOwner = null,
                     LeaseExpiresAtUtc = null,
                     NextRetryAtUtc = null,
@@ -238,12 +255,32 @@ namespace ThunderPropagator.Feeders.Inbox
                 AttemptCount = 0,
                 ProcessingStartedAtUtc = null,
                 ProcessedAtUtc = null,
+                DeadLetteredAtUtc = null,
                 NextRetryAtUtc = null,
                 LeaseOwner = null,
                 LeaseExpiresAtUtc = null,
                 FailureReason = null,
                 ReceivedAtUtc = timeProvider.GetUtcNow(),
             };
+        }
+
+        /// <summary>
+        /// Extends an active processing lease's expiry without otherwise changing this snapshot - the
+        /// one sanctioned mutation outside <see cref="TryTransitionTo"/>'s transition table, since a
+        /// heartbeat renewal is not itself a lifecycle transition. Backs <see cref="IInboxStore.RenewLeaseAsync"/>.
+        /// </summary>
+        /// <returns>
+        /// The renewed snapshot, or <see langword="null"/> if <see cref="Status"/> is not
+        /// <see cref="InboxMessageStatus.Processing"/> or <paramref name="leaseOwner"/> does not match
+        /// <see cref="LeaseOwner"/> - the same compare-and-swap check every other lease-scoped operation
+        /// performs, so a worker that lost its lease can never renew it either.
+        /// </returns>
+        public InboxMessage? RenewLease(TimeProvider timeProvider, string leaseOwner, TimeSpan leaseExtension)
+        {
+            if (Status != InboxMessageStatus.Processing || LeaseOwner != leaseOwner)
+                return null;
+
+            return this with { LeaseExpiresAtUtc = timeProvider.GetUtcNow() + leaseExtension };
         }
 
         private static string? Truncate(string? failureReason) =>

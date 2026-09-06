@@ -1,9 +1,16 @@
-## [1.0.1-beta.59] — 2026-09-03
+## [1.0.1-beta.60] — 2026-09-06
 
-### ⚙️ CI / Tooling
+### 📦 Dependencies
 
-- ThunderPropagator.Feeviders: add NuGet publish key for InboxOutbox packages `(f83f750)` — Kiarash Minoo
+| Package | Old | New |
+|---------|-----|-----|
+| $(BuildingBlocksPackageId) | 1.0.1-beta.124 | 1.0.1-beta.127 |
+| $(ThunderPropagatorPackageId) | 1.0.1-beta.205 | 1.0.1-beta.215 |
+| AWSSDK.SQS | 4.0.100.11 | 4.0.100.12 |
+| AWSSDK.SimpleNotificationService | 4.0.100.11 | 4.0.100.12 |
+
+- ThunderPropagator.Feeviders: bump BuildingBlocks, ThunderPropagator, and AWSSDK package versions `(a0ef0d3)` — Kiarash Minoo
 
 ### 🏠 Chores
 
-- Close out versioned inbox message and status contracts `(3bab2a1)` — Kiarash Minoo
+- Design an atomic IInboxStore claim and retry contract `(ddcdd84)` — Kiarash Minoo

@@ -4,8 +4,8 @@
     <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="$(BuildingBlocksPackageId)" Version="1.0.1-beta.124" />
-    <PackageVersion Include="$(ThunderPropagatorPackageId)" Version="1.0.1-beta.205" />
+    <PackageVersion Include="$(BuildingBlocksPackageId)" Version="1.0.1-beta.127" />
+    <PackageVersion Include="$(ThunderPropagatorPackageId)" Version="1.0.1-beta.215" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'" Label="Microsoft.Extensions">
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="8.*" />
@@ -43,8 +43,8 @@
     <PackageVersion Include="OpenTelemetry.Api" Version="1.18.0" />
     <PackageVersion Include="Apache.NMS" Version="2.2.0" />
     <PackageVersion Include="Apache.NMS.ActiveMQ" Version="2.2.0" />
-    <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.11" />
-    <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.100.11" />
+    <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.12" />
+    <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.100.12" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.20.2" />
     <PackageVersion Include="Confluent.Kafka" Version="2.15.0" />
