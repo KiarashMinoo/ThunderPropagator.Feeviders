@@ -1,5 +1,6 @@
 ﻿using Apache.NMS;
 using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.Inbox;
 using ThunderPropagator.Feeviders.ActiveMQ.SharedKernel;
 
 namespace ThunderPropagator.Feeders.ActiveMQ
@@ -178,6 +179,13 @@ namespace ThunderPropagator.Feeders.ActiveMQ
         public int? AuditDepth
         {
             get => Get<int>();
+            set => Set(value);
+        }
+
+        /// <summary>Opt-in transactional Inbox configuration for this Feevider. Disabled by default.</summary>
+        public InboxOptions Inbox
+        {
+            get => Get(new InboxOptions());
             set => Set(value);
         }
     }

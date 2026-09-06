@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
@@ -8,6 +9,7 @@ using OpenTelemetry.Context.Propagation;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.Inbox;
 using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.RabbitMQ.SharedKernel;
 
@@ -62,6 +64,9 @@ namespace ThunderPropagator.Feeders.RabbitMQ
 
             [LoggerMessage(EventId = 4112, Level = LogLevel.Debug, Message = "Failed to dispose RabbitMQ connection for Queue {Queue}.")]
             public static partial void ConnectionDisposeFailed(ILogger logger, Exception exception, string queue);
+
+            [LoggerMessage(EventId = 4113, Level = LogLevel.Error, Message = "Inbox processing on Queue {Queue} ended as {Outcome}.")]
+            public static partial void InboxProcessingFailed(ILogger logger, string queue, string outcome);
         }
 
         private IChannel? _channel;
@@ -71,6 +76,7 @@ namespace ThunderPropagator.Feeders.RabbitMQ
         private readonly CancellationTokenSource _receiveCancellation = new();
         private readonly CancellationTokenSource _lifetimeCancellation = new();
         private readonly SemaphoreSlim _reconnectLock = new(1, 1);
+        private readonly InboxReceiveCoordinator _inboxCoordinator;
         private int _stopping;
 
         private readonly TextMapPropagator _propagator = Propagators.DefaultTextMapPropagator;
@@ -83,6 +89,8 @@ namespace ThunderPropagator.Feeders.RabbitMQ
         {
             HealthName = $"feeder_{nameof(RabbitMQ)}_{rabbitMqFeederConfiguration.Queue}";
             HealthTags = [.. HealthTags, nameof(RabbitMQ), rabbitMqFeederConfiguration.Queue];
+            _inboxCoordinator = new InboxReceiveCoordinator(
+                rabbitMqFeederConfiguration.Inbox, ChannelKey, Id, serviceProvider.GetService<IInboxStoreFactory>());
         }
 
         protected override async Task StartAsync(CancellationToken cancellationToken = default)
@@ -174,26 +182,64 @@ namespace ThunderPropagator.Feeders.RabbitMQ
                 activity?.SetTag("messaging.destination.name", FeederConfiguration.Queue);
                 activity?.SetTag("messaging.operation", "receive");
 
-                await ReceiveAsync(eventArgs.Body.ToArray(),
-                    activityContext,
-                    baggage,
-                    new Dictionary<string, object?>
-                    {
-                        { nameof(eventArgs.Exchange), eventArgs.Exchange },
-                        { nameof(eventArgs.ConsumerTag), eventArgs.ConsumerTag },
-                        { nameof(eventArgs.DeliveryTag), eventArgs.DeliveryTag },
-                        { nameof(eventArgs.RoutingKey), eventArgs.RoutingKey },
-                    },
+                var body = eventArgs.Body.ToArray();
+                var outcome = await _inboxCoordinator.ReceiveAsync(
+                    body,
+                    eventArgs.BasicProperties.ContentType ?? "application/octet-stream",
+                    ExtractHeaders(eventArgs.BasicProperties),
+                    partitionKey: null,
+                    invokeHandlerAsync: token => ReceiveAsync(body,
+                        activityContext,
+                        baggage,
+                        new Dictionary<string, object?>
+                        {
+                            { nameof(eventArgs.Exchange), eventArgs.Exchange },
+                            { nameof(eventArgs.ConsumerTag), eventArgs.ConsumerTag },
+                            { nameof(eventArgs.DeliveryTag), eventArgs.DeliveryTag },
+                            { nameof(eventArgs.RoutingKey), eventArgs.RoutingKey },
+                        },
+                        token),
+                    acknowledgeAsync: token => RabbitMQDeliveryAcknowledger.AcknowledgeAsync(
+                        deliveryChannel, eventArgs.DeliveryTag, FeederConfiguration.AutoAck, token),
                     _receiveCancellation.Token).ConfigureAwait(false);
 
-                await RabbitMQDeliveryAcknowledger.AcknowledgeAsync(
-                    deliveryChannel,
-                    eventArgs.DeliveryTag,
-                    FeederConfiguration.AutoAck,
-                    _receiveCancellation.Token).ConfigureAwait(false);
+                switch (outcome)
+                {
+                    case InboxReceiveOutcome.Disabled:
+                        await RabbitMQDeliveryAcknowledger.AcknowledgeAsync(
+                            deliveryChannel, eventArgs.DeliveryTag, FeederConfiguration.AutoAck, _receiveCancellation.Token).ConfigureAwait(false);
+                        ReportHealth(HealthStatus.Healthy);
+                        RabbitMQFeederExtensions.MessagesReceived.Add(1);
+                        break;
 
-                ReportHealth(HealthStatus.Healthy);
-                RabbitMQFeederExtensions.MessagesReceived.Add(1);
+                    case InboxReceiveOutcome.Processed:
+                        ReportHealth(HealthStatus.Healthy);
+                        RabbitMQFeederExtensions.MessagesReceived.Add(1);
+                        break;
+
+                    case InboxReceiveOutcome.Duplicate:
+                    case InboxReceiveOutcome.AlreadyDeadLettered:
+                        // Already acknowledged by the coordinator - a duplicate/dead-lettered delivery
+                        // is not a fault, just nothing new to do.
+                        ReportHealth(HealthStatus.Healthy);
+                        break;
+
+                    case InboxReceiveOutcome.InProgress:
+                        // Not acknowledged by the coordinator - requeue so the broker redelivers once
+                        // whichever worker currently holds the claim has finished with it.
+                        await RabbitMQDeliveryAcknowledger.NegativeAcknowledgeAsync(
+                            deliveryChannel, eventArgs.DeliveryTag, FeederConfiguration.AutoAck, true, CancellationToken.None).ConfigureAwait(false);
+                        break;
+
+                    case InboxReceiveOutcome.Failed:
+                    case InboxReceiveOutcome.DeadLettered:
+                        // Already acknowledged by the coordinator immediately after the durable claim -
+                        // the Inbox retry worker owns recovery from here, not broker redelivery.
+                        RabbitMQFeederExtensions.MessagesReceiveFailed.Add(1);
+                        ReportHealth(HealthStatus.Degraded);
+                        Log.InboxProcessingFailed(Logger, FeederConfiguration.Queue, outcome.ToString());
+                        break;
+                }
             }
             catch (Exception exception)
             {
@@ -312,6 +358,28 @@ namespace ThunderPropagator.Feeders.RabbitMQ
             {
                 _reconnectLock.Release();
             }
+        }
+
+        private static IReadOnlyDictionary<string, string>? ExtractHeaders(IReadOnlyBasicProperties props)
+        {
+            if (props.Headers is not { Count: > 0 } headers)
+                return null;
+
+            var result = new Dictionary<string, string>(headers.Count);
+            foreach (var (key, value) in headers)
+            {
+                var text = value switch
+                {
+                    byte[] bytes => Encoding.UTF8.GetString(bytes),
+                    null => null,
+                    _ => value.ToString(),
+                };
+
+                if (text is not null)
+                    result[key] = text;
+            }
+
+            return result;
         }
 
         private IEnumerable<string> ExtractTraceContextFromBasicProperties(IReadOnlyBasicProperties props, string key)

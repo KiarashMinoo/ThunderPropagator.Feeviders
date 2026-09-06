@@ -12,6 +12,7 @@ using ThunderPropagator.Application;
 using ThunderPropagator.Application.Features;
 using System.Buffers;
 using System.Collections.Generic;
+using ThunderPropagator.Feeders.Inbox;
 using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.UdpClient.SharedKernel;
 
@@ -42,6 +43,9 @@ namespace ThunderPropagator.Feeders.UdpClient
 
             [LoggerMessage(EventId = 5004, Level = LogLevel.Warning, Message = "Exception while disposing UDP socket.")]
             public static partial void SocketDisposeException(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 5005, Level = LogLevel.Error, Message = "Inbox processing on port {Port} ended as {Outcome}.")]
+            public static partial void InboxProcessingFailed(ILogger logger, string port, string outcome);
         }
 
         private readonly TUdpClientFeederConfiguration _udpClientFeederConfiguration;
@@ -51,6 +55,7 @@ namespace ThunderPropagator.Feeders.UdpClient
         private readonly InFlightMessageTracker _inFlightMessages = new();
         private readonly CancellationTokenSource _receiveCancellation = new();
         private Task _backgroundTask = Task.CompletedTask;
+        private readonly InboxReceiveCoordinator _inboxCoordinator;
 
         private readonly UdpMessageProtector? _messageProtector;
 
@@ -74,6 +79,8 @@ namespace ThunderPropagator.Feeders.UdpClient
 
             HealthName = $"feeder_{nameof(UdpClient)}_{udpClientFeederConfiguration.Port.ToString()}";
             HealthTags = [.. HealthTags, nameof(UdpClient), udpClientFeederConfiguration.Port.ToString()];
+            _inboxCoordinator = new InboxReceiveCoordinator(
+                udpClientFeederConfiguration.Inbox, ChannelKey, Id, serviceProvider.GetService<IInboxStoreFactory>());
         }
 
         protected override Task StartAsync(CancellationToken cancellationToken = default)
@@ -136,10 +143,37 @@ namespace ThunderPropagator.Feeders.UdpClient
 
                             try
                             {
-                                await ReceiveAsync(udpClientFeederMessage, activityContext, baggage, cancellationToken: _receiveCancellation.Token).ConfigureAwait(false);
+                                var outcome = await _inboxCoordinator.ReceiveAsync(
+                                    messageBytes,
+                                    "application/octet-stream",
+                                    headers: null,
+                                    partitionKey: null,
+                                    invokeHandlerAsync: token => ReceiveAsync(udpClientFeederMessage, activityContext, baggage, cancellationToken: token),
+                                    acknowledgeAsync: _ => ValueTask.CompletedTask,
+                                    cancellationToken: _receiveCancellation.Token).ConfigureAwait(false);
 
-                                ReportHealth(HealthStatus.Healthy);
-                                UdpClientTelemetry.MessagesReceived.Add(1);
+                                switch (outcome)
+                                {
+                                    case InboxReceiveOutcome.Disabled:
+                                    case InboxReceiveOutcome.Processed:
+                                        ReportHealth(HealthStatus.Healthy);
+                                        UdpClientTelemetry.MessagesReceived.Add(1);
+                                        break;
+
+                                    case InboxReceiveOutcome.Duplicate:
+                                    case InboxReceiveOutcome.AlreadyDeadLettered:
+                                    case InboxReceiveOutcome.InProgress:
+                                        // No broker/redelivery concept over a raw socket - nothing more to do.
+                                        ReportHealth(HealthStatus.Healthy);
+                                        break;
+
+                                    case InboxReceiveOutcome.Failed:
+                                    case InboxReceiveOutcome.DeadLettered:
+                                        UdpClientTelemetry.MessagesReceiveFailed.Add(1);
+                                        ReportHealth(HealthStatus.Degraded);
+                                        Log.InboxProcessingFailed(Logger, _udpClientFeederConfiguration.Port.ToString(), outcome.ToString());
+                                        break;
+                                }
                             }
                             catch (Exception ex)
                             {

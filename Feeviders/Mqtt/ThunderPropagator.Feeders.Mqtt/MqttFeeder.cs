@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
 using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
 using MQTTnet.Packets;
@@ -9,6 +10,7 @@ using ThunderPropagator.Application.Feeders;
 using OpenTelemetry;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using ThunderPropagator.Feeders.Inbox;
 using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.Mqtt.SharedKernel;
 
@@ -39,12 +41,16 @@ namespace ThunderPropagator.Feeders.Mqtt
 
             [LoggerMessage(EventId = 4204, Level = LogLevel.Warning, Message = "Exception while disposing MQTT client.")]
             public static partial void DisposeException(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4205, Level = LogLevel.Error, Message = "Inbox processing on Topic {Topic} ended as {Outcome}.")]
+            public static partial void InboxProcessingFailed(ILogger logger, string topic, string outcome);
         }
 
         private readonly TMqttFeederConfiguration _mqttFeederConfiguration;
         private IMqttClient? _mqttClient;
         private readonly InFlightMessageTracker _inFlightMessages = new();
         private readonly CancellationTokenSource _receiveCancellation = new();
+        private readonly InboxReceiveCoordinator _inboxCoordinator;
 
         public MqttFeeder(TChannel channel,
             TMqttFeederConfiguration mqttFeederConfiguration,
@@ -56,6 +62,8 @@ namespace ThunderPropagator.Feeders.Mqtt
 
             HealthName = $"feeder_{nameof(Mqtt)}_{_mqttFeederConfiguration.Topic}";
             HealthTags = [.. HealthTags, nameof(Mqtt), _mqttFeederConfiguration.Topic];
+            _inboxCoordinator = new InboxReceiveCoordinator(
+                mqttFeederConfiguration.Inbox, ChannelKey, Id, serviceProvider.GetService<IInboxStoreFactory>());
 
             Log.Subscribed(
                 Logger,
@@ -99,19 +107,49 @@ namespace ThunderPropagator.Feeders.Mqtt
 
                 try
                 {
-                    await ReceiveAsync(args.ApplicationMessage.Payload.ToArray(),
-                        activityContext,
-                        baggage,
-                        new Dictionary<string, object?>
-                        {
-                            { nameof(args.ClientId), args.ClientId },
-                            { nameof(args.Tag), args.Tag },
-                            { nameof(args.ApplicationMessage.Topic), args.ApplicationMessage.Topic },
-                        },
+                    var body = args.ApplicationMessage.Payload.ToArray();
+                    var outcome = await _inboxCoordinator.ReceiveAsync(
+                        body,
+                        args.ApplicationMessage.ContentType ?? "application/octet-stream",
+                        ExtractHeaders(args.ApplicationMessage.UserProperties),
+                        partitionKey: null,
+                        invokeHandlerAsync: token => ReceiveAsync(body,
+                            activityContext,
+                            baggage,
+                            new Dictionary<string, object?>
+                            {
+                                { nameof(args.ClientId), args.ClientId },
+                                { nameof(args.Tag), args.Tag },
+                                { nameof(args.ApplicationMessage.Topic), args.ApplicationMessage.Topic },
+                            },
+                            token),
+                        acknowledgeAsync: _ => ValueTask.CompletedTask,
                         _receiveCancellation.Token).ConfigureAwait(false);
 
-                    ReportHealth(HealthStatus.Healthy);
-                    MqttTelemetry.MessagesReceived.Add(1);
+                    switch (outcome)
+                    {
+                        case InboxReceiveOutcome.Disabled:
+                        case InboxReceiveOutcome.Processed:
+                            ReportHealth(HealthStatus.Healthy);
+                            MqttTelemetry.MessagesReceived.Add(1);
+                            break;
+
+                        case InboxReceiveOutcome.Duplicate:
+                        case InboxReceiveOutcome.AlreadyDeadLettered:
+                        case InboxReceiveOutcome.InProgress:
+                            // No broker-level acknowledgement/redelivery control is exposed here
+                            // (MQTTnet auto-PUBACKs internally) - nothing more to do than skip the
+                            // handler, which the coordinator already did.
+                            ReportHealth(HealthStatus.Healthy);
+                            break;
+
+                        case InboxReceiveOutcome.Failed:
+                        case InboxReceiveOutcome.DeadLettered:
+                            MqttTelemetry.MessagesReceiveFailed.Add(1);
+                            ReportHealth(HealthStatus.Degraded);
+                            Log.InboxProcessingFailed(Logger, FeederConfiguration.Topic, outcome.ToString());
+                            break;
+                    }
                 }
                 catch (Exception exception)
                 {
@@ -133,6 +171,18 @@ namespace ThunderPropagator.Feeders.Mqtt
             var mqttSubscribeOptions = MqttSubscriptionOptionsFactory.Create(mqttFactory, _mqttFeederConfiguration);
 
             await _mqttClient.SubscribeAsync(mqttSubscribeOptions, cancellationToken).ConfigureAwait(false);
+        }
+
+        private static IReadOnlyDictionary<string, string>? ExtractHeaders(List<MqttUserProperty>? userProperties)
+        {
+            if (userProperties is not { Count: > 0 })
+                return null;
+
+            var result = new Dictionary<string, string>(userProperties.Count);
+            foreach (var property in userProperties)
+                result[property.Name] = property.ReadValueAsString();
+
+            return result;
         }
 
         protected override async Task StopAsync(CancellationToken cancellationToken = default)

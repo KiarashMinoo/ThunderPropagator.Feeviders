@@ -1,10 +1,14 @@
 ﻿using OpenTelemetry;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using System.Diagnostics;
+using System.Text;
 using Apache.NMS;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.Inbox;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.ActiveMQ.SharedKernel;
 using System.Reflection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -41,12 +45,16 @@ namespace ThunderPropagator.Feeders.ActiveMQ
 
             [LoggerMessage(EventId = 4505, Level = LogLevel.Warning, Message = "Exception while disposing ActiveMQ connection.")]
             public static partial void ConnectionDisposeError(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4506, Level = LogLevel.Error, Message = "Inbox processing on Queue {Queue} ended as {Outcome}.")]
+            public static partial void InboxProcessingFailed(ILogger logger, string queue, string outcome);
         }
 
         private readonly IConnection _connection;
         private readonly IMessageConsumer _consumer;
         private readonly ISession _session;
         private readonly ActiveMQMessageProcessor<IMessage> _messageProcessor;
+        private readonly InboxReceiveCoordinator _inboxCoordinator;
 
         public ActiveMQFeeder(TChannel channel,
             TActiveMQFeederConfiguration activeMQFeederConfiguration,
@@ -69,6 +77,8 @@ namespace ThunderPropagator.Feeders.ActiveMQ
 
             _messageProcessor = new ActiveMQMessageProcessor<IMessage>(ProcessMessageAsync, HandleProcessingError);
             _consumer.Listener += HandleMessage;
+            _inboxCoordinator = new InboxReceiveCoordinator(
+                activeMQFeederConfiguration.Inbox, ChannelKey, Id, serviceProvider.GetService<IInboxStoreFactory>());
 
             Log.FeederConfigured(Logger, GetType().GetTypeInfo().Name, channel.Metadata.ChannelName,
                 activeMQFeederConfiguration.Queue);
@@ -102,17 +112,28 @@ namespace ThunderPropagator.Feeders.ActiveMQ
                 switch (message)
                 {
                     case IObjectMessage { Body: TActiveMQFeederMessage activeMQFeederMessage }:
+                        // An IObjectMessage arrives already deserialized - there is no cheap raw-bytes
+                        // form to persist as an Inbox claim's payload, so this path bypasses the Inbox
+                        // entirely and keeps the direct handler call, same as before this feature existed.
                         await ReceiveAsync(activeMQFeederMessage, activityContext, baggage).ConfigureAwait(false);
+                        ActiveMQTelemetry.MessagesReceived.Add(1);
                         break;
+
                     case ITextMessage textMessage:
-                        await ReceiveAsync(textMessage.Text, activityContext, baggage).ConfigureAwait(false);
+                        var text = textMessage.Text ?? string.Empty;
+                        await ProcessViaInboxAsync(
+                            Encoding.UTF8.GetBytes(text),
+                            "text/plain",
+                            token => ReceiveAsync(text, activityContext, baggage, cancellationToken: token)).ConfigureAwait(false);
                         break;
+
                     case IBytesMessage bytesMessage:
-                        await ReceiveAsync(bytesMessage.Content, activityContext, baggage).ConfigureAwait(false);
+                        await ProcessViaInboxAsync(
+                            bytesMessage.Content,
+                            "application/octet-stream",
+                            token => ReceiveAsync(bytesMessage.Content, activityContext, baggage, cancellationToken: token)).ConfigureAwait(false);
                         break;
                 }
-
-                ActiveMQTelemetry.MessagesReceived.Add(1);
             }
             catch (Exception ex)
             {
@@ -124,6 +145,39 @@ namespace ThunderPropagator.Feeders.ActiveMQ
             {
                 stopwatch.Stop();
                 ActiveMQTelemetry.ReceiveDuration.Record(stopwatch.Elapsed.TotalMilliseconds);
+            }
+        }
+
+        private async Task ProcessViaInboxAsync(byte[] payload, string payloadContentType, Func<CancellationToken, ValueTask> invokeHandlerAsync)
+        {
+            var outcome = await _inboxCoordinator.ReceiveAsync(
+                payload,
+                payloadContentType,
+                headers: null,
+                partitionKey: null,
+                invokeHandlerAsync: invokeHandlerAsync,
+                acknowledgeAsync: _ => ValueTask.CompletedTask).ConfigureAwait(false);
+
+            switch (outcome)
+            {
+                case InboxReceiveOutcome.Disabled:
+                case InboxReceiveOutcome.Processed:
+                    ActiveMQTelemetry.MessagesReceived.Add(1);
+                    break;
+
+                case InboxReceiveOutcome.Duplicate:
+                case InboxReceiveOutcome.AlreadyDeadLettered:
+                case InboxReceiveOutcome.InProgress:
+                    // No broker-level acknowledgement/redelivery control is exposed here (this consumer
+                    // uses the session's implicit ack mode) - nothing more to do than skip the handler,
+                    // which the coordinator already did.
+                    break;
+
+                case InboxReceiveOutcome.Failed:
+                case InboxReceiveOutcome.DeadLettered:
+                    ActiveMQTelemetry.MessagesReceiveFailed.Add(1);
+                    Log.InboxProcessingFailed(Logger, FeederConfiguration.Queue, outcome.ToString());
+                    break;
             }
         }
 

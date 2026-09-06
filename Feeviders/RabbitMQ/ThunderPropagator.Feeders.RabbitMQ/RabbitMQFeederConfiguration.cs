@@ -1,4 +1,5 @@
 ﻿using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.Inbox;
 using ThunderPropagator.Feeviders.RabbitMQ.SharedKernel;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
 using ThunderPropagator.BuildingBlocks.Application.Serializations.Json;
@@ -82,6 +83,13 @@ namespace ThunderPropagator.Feeders.RabbitMQ
         public TimeSpan MemoryPressurePollingInterval
         {
             get => Get(TimeSpan.FromSeconds(5));
+            set => Set(value);
+        }
+
+        /// <summary>Opt-in transactional Inbox configuration for this Feevider. Disabled by default.</summary>
+        public InboxOptions Inbox
+        {
+            get => Get(new InboxOptions());
             set => Set(value);
         }
     }

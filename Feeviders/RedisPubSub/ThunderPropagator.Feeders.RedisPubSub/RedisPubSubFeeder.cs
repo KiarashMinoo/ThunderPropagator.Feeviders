@@ -1,10 +1,14 @@
 ﻿using OpenTelemetry;
 using System.Diagnostics;
+using System.Text;
 using ThunderPropagator.Feeviders.RedisPubSub.SharedKernel;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeders.Inbox;
+using ThunderPropagator.Feeders.SharedKernel;
 using StackExchange.Redis;
 using System.Reflection;
 
@@ -29,12 +33,16 @@ namespace ThunderPropagator.Feeders.RedisPubSub
 
             [LoggerMessage(EventId = 4602, Level = LogLevel.Error, Message = "error has occured while consuming messages on Channel {Channel}.")]
             public static partial void ConsumeError(ILogger logger, Exception exception, string channel);
+
+            [LoggerMessage(EventId = 4603, Level = LogLevel.Error, Message = "Inbox processing on Channel {Channel} ended as {Outcome}.")]
+            public static partial void InboxProcessingFailed(ILogger logger, string channel, string outcome);
         }
 
         private readonly TRedisPubSubFeederConfiguration _redisPubSubFeederConfiguration;
         private IConnectionMultiplexer? _connectionMultiplexer;
         private readonly RedisChannel _redisChannel;
         private ChannelMessageQueue? _messageQueue;
+        private readonly InboxReceiveCoordinator _inboxCoordinator;
 
         public RedisPubSubFeeder(TChannel channel,
             TRedisPubSubFeederConfiguration redisPubSubFeederConfiguration,
@@ -47,6 +55,8 @@ namespace ThunderPropagator.Feeders.RedisPubSub
 
             HealthName = $"feeder_{nameof(RedisPubSub)}_{_redisPubSubFeederConfiguration.Channel}";
             HealthTags = [.. HealthTags, nameof(RedisPubSub), _redisPubSubFeederConfiguration.Channel];
+            _inboxCoordinator = new InboxReceiveCoordinator(
+                redisPubSubFeederConfiguration.Inbox, ChannelKey, Id, serviceProvider.GetService<IInboxStoreFactory>());
         }
 
         protected override async Task StartAsync(CancellationToken cancellationToken = default)
@@ -91,6 +101,7 @@ namespace ThunderPropagator.Feeders.RedisPubSub
 
             // Prefer binary path to avoid string allocations when the publisher sent raw bytes
             TRedisPubSubFeederMessage? redisPubSubFeederMessage = null;
+            byte[]? rawPayload = null;
 
             try
             {
@@ -99,6 +110,7 @@ namespace ThunderPropagator.Feeders.RedisPubSub
                 if (bytes is not null && bytes.Length > 0)
                 {
                     redisPubSubFeederMessage = Deserialize(bytes);
+                    rawPayload = bytes;
                 }
             }
             catch (InvalidCastException exception)
@@ -114,9 +126,10 @@ namespace ThunderPropagator.Feeders.RedisPubSub
                     return;
 
                 redisPubSubFeederMessage = Deserialize(strMessage);
+                rawPayload = Encoding.UTF8.GetBytes(strMessage);
             }
 
-            if (redisPubSubFeederMessage is null)
+            if (redisPubSubFeederMessage is null || rawPayload is null)
                 throw new NullReferenceException("Received message is null. Please ensure that a valid message is provided.");
 
             var activityContext = redisPubSubFeederMessage[nameof(ActivityContext)] is ActivityContext ac ? ac : default;
@@ -132,10 +145,37 @@ namespace ThunderPropagator.Feeders.RedisPubSub
             var stopwatch = Stopwatch.StartNew();
             try
             {
-                await ReceiveAsync(redisPubSubFeederMessage, activityContext, baggage).ConfigureAwait(false);
+                var outcome = await _inboxCoordinator.ReceiveAsync(
+                    rawPayload,
+                    "application/octet-stream",
+                    headers: null,
+                    partitionKey: null,
+                    invokeHandlerAsync: token => ReceiveAsync(redisPubSubFeederMessage, activityContext, baggage, cancellationToken: token),
+                    acknowledgeAsync: _ => ValueTask.CompletedTask).ConfigureAwait(false);
 
-                ReportHealth(HealthStatus.Healthy);
-                RedisPubSubTelemetry.MessagesReceived.Add(1);
+                switch (outcome)
+                {
+                    case InboxReceiveOutcome.Disabled:
+                    case InboxReceiveOutcome.Processed:
+                        ReportHealth(HealthStatus.Healthy);
+                        RedisPubSubTelemetry.MessagesReceived.Add(1);
+                        break;
+
+                    case InboxReceiveOutcome.Duplicate:
+                    case InboxReceiveOutcome.AlreadyDeadLettered:
+                    case InboxReceiveOutcome.InProgress:
+                        // Pub/sub has no redelivery/acknowledgement concept - nothing more to do than
+                        // skip the handler, which the coordinator already did.
+                        ReportHealth(HealthStatus.Healthy);
+                        break;
+
+                    case InboxReceiveOutcome.Failed:
+                    case InboxReceiveOutcome.DeadLettered:
+                        RedisPubSubTelemetry.MessagesReceiveFailed.Add(1);
+                        ReportHealth(HealthStatus.Degraded);
+                        Log.InboxProcessingFailed(Logger, _redisPubSubFeederConfiguration.Channel, outcome.ToString());
+                        break;
+                }
             }
             catch (Exception exception)
             {

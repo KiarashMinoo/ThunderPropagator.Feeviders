@@ -15,6 +15,7 @@ using System.Text;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application;
 using ThunderPropagator.Application.Features;
+using ThunderPropagator.Feeders.Inbox;
 using ThunderPropagator.Feeders.SharedKernel;
 
 namespace ThunderPropagator.Feeders.TcpSocket
@@ -41,6 +42,9 @@ namespace ThunderPropagator.Feeders.TcpSocket
 
             [LoggerMessage(EventId = 4903, Level = LogLevel.Error, Message = "Unhandled exception in TCP socket feeder background loop.")]
             public static partial void BackgroundLoopUnhandledException(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4904, Level = LogLevel.Error, Message = "Inbox processing on Port {Port} ended as {Outcome}.")]
+            public static partial void InboxProcessingFailed(ILogger logger, short port, string outcome);
         }
 
         private class FramedStreamReader(Stream stream, ReadOnlySpan<byte> eom)
@@ -93,6 +97,7 @@ namespace ThunderPropagator.Feeders.TcpSocket
         private readonly TcpListener _listener;
         private readonly InFlightMessageTracker _inFlightMessages = new();
         private readonly CancellationTokenSource _receiveCancellation = new();
+        private readonly InboxReceiveCoordinator _inboxCoordinator;
         private Task _backgroundTask = Task.CompletedTask;
         private readonly ReadOnlyMemory<byte> _eomBytes;
         private readonly ReadOnlyMemory<byte> _authenticationPrefixBytes;
@@ -121,6 +126,8 @@ namespace ThunderPropagator.Feeders.TcpSocket
 
             HealthName = $"feeder_{nameof(TcpSocket)}_{tcpSocketFeederConfiguration.Port}";
             HealthTags = [.. HealthTags, nameof(TcpSocket), tcpSocketFeederConfiguration.Port.ToString()];
+            _inboxCoordinator = new InboxReceiveCoordinator(
+                tcpSocketFeederConfiguration.Inbox, ChannelKey, Id, serviceProvider.GetService<IInboxStoreFactory>());
 
             _listener = new TcpListener(IPAddress.Any, tcpSocketFeederConfiguration.Port);
         }
@@ -213,10 +220,37 @@ namespace ThunderPropagator.Feeders.TcpSocket
                                 client.Client.RemoteEndPoint?.ToString() ?? $"0.0.0.0:{_tcpSocketFeederConfiguration.Port}");
                             receiveActivity?.SetTag("messaging.operation", "receive");
 
-                            await ReceiveAsync(tcpSocketFeederMessage, activityContext, baggage, cancellationToken: _receiveCancellation.Token).ConfigureAwait(false);
+                            var outcome = await _inboxCoordinator.ReceiveAsync(
+                                bytes,
+                                "application/octet-stream",
+                                headers: null,
+                                partitionKey: null,
+                                invokeHandlerAsync: token => ReceiveAsync(tcpSocketFeederMessage, activityContext, baggage, cancellationToken: token),
+                                acknowledgeAsync: _ => ValueTask.CompletedTask,
+                                cancellationToken: _receiveCancellation.Token).ConfigureAwait(false);
 
-                            ReportHealth(HealthStatus.Healthy);
-                            TcpSocketTelemetry.MessagesReceived.Add(1);
+                            switch (outcome)
+                            {
+                                case InboxReceiveOutcome.Disabled:
+                                case InboxReceiveOutcome.Processed:
+                                    ReportHealth(HealthStatus.Healthy);
+                                    TcpSocketTelemetry.MessagesReceived.Add(1);
+                                    break;
+
+                                case InboxReceiveOutcome.Duplicate:
+                                case InboxReceiveOutcome.AlreadyDeadLettered:
+                                case InboxReceiveOutcome.InProgress:
+                                    // No broker/redelivery concept over a raw socket - nothing more to do.
+                                    ReportHealth(HealthStatus.Healthy);
+                                    break;
+
+                                case InboxReceiveOutcome.Failed:
+                                case InboxReceiveOutcome.DeadLettered:
+                                    TcpSocketTelemetry.MessagesReceiveFailed.Add(1);
+                                    ReportHealth(HealthStatus.Degraded);
+                                    Log.InboxProcessingFailed(Logger, _tcpSocketFeederConfiguration.Port, outcome.ToString());
+                                    break;
+                            }
                         }
                         finally
                         {
