@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.62] — 2026-09-06
+
+### ⚙️ CI / Tooling
+
+- ThunderPropagator.Feeviders: enable nuget-filter-enabled on the release publish job `(81c794d)` — Kiarash Minoo
+
+### 🏠 Chores
+
+- Implement stable configurable message-ID resolution `(d29c23d)` — Kiarash Minoo
+
 ## [1.0.1-beta.61] — 2026-09-06
 
 ### ⚙️ CI / Tooling
