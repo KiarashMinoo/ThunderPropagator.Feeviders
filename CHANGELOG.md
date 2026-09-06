@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.61] — 2026-09-06
+
+### ⚙️ CI / Tooling
+
+- ThunderPropagator.Feeviders: switch NuGet publishing to OIDC trusted publishing `(6d80c55)` — Kiarash Minoo
+
 ## [1.0.1-beta.60] — 2026-09-06
 
 ### 📦 Dependencies
