@@ -1,5 +1,5 @@
-## [1.0.1-beta.78] — 2026-09-07
+## [1.0.1-beta.79] — 2026-09-07
 
 ### 🏠 Chores
 
-- Implement Redis backend packages with atomic scripts `(4610734)` — Kiarash Minoo
+- Implement EF Core backend packages for SQL providers `(3de6daa)` — Kiarash Minoo
