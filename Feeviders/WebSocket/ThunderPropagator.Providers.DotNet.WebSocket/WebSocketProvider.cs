@@ -31,7 +31,7 @@ namespace ThunderPropagator.Providers.DotNet.WebSocket
         private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
         private ClientWebSocket _clientWebSocket;
 
-        public WebSocketProvider(TWebSocketProviderConfiguration webSocketProviderConfiguration, IServiceProvider serviceProvider) : base(serviceProvider)
+        public WebSocketProvider(TWebSocketProviderConfiguration webSocketProviderConfiguration, IServiceProvider serviceProvider) : base(webSocketProviderConfiguration, serviceProvider)
         {
             _webSocketProviderConfiguration = webSocketProviderConfiguration;
             _clientWebSocket = new ClientWebSocket();

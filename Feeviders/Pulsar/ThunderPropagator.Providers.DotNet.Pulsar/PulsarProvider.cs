@@ -31,7 +31,7 @@ namespace ThunderPropagator.Providers.DotNet.Pulsar
         private readonly IProducer<TPulsarProviderMessage> _producer;
 
         public PulsarProvider(TPulsarProviderConfiguration pulsarProviderConfiguration, IServiceProvider serviceProvider)
-            : base(serviceProvider)
+            : base(pulsarProviderConfiguration, serviceProvider)
         {
             _pulsarProviderConfiguration = pulsarProviderConfiguration;
             _client = PulsarClientFactory.CreateClient(pulsarProviderConfiguration);

@@ -43,7 +43,7 @@ namespace ThunderPropagator.Providers.DotNet.TcpSocket
         private readonly byte[]? _authenticationBytes;
         private readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Shared;
 
-        public TcpSocketProvider(TTcpSocketProviderConfiguration tcpSocketProviderConfiguration, IServiceProvider serviceProvider) : base(serviceProvider)
+        public TcpSocketProvider(TTcpSocketProviderConfiguration tcpSocketProviderConfiguration, IServiceProvider serviceProvider) : base(tcpSocketProviderConfiguration, serviceProvider)
         {
             _tcpSocketProviderConfiguration = tcpSocketProviderConfiguration;
             _tcpClient = new TcpClient();

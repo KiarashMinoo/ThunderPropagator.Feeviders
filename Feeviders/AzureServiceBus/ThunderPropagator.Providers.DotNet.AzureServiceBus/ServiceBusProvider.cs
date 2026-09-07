@@ -36,7 +36,7 @@ internal
     }
 
     internal ServiceBusProvider(TConfiguration configuration, IServiceProvider serviceProvider, ServiceBusClient client)
-        : base(serviceProvider)
+        : base(configuration, serviceProvider)
     {
         _serializer = serviceProvider.GetRequiredService<IFeederMessageSerializer<TMessage, TConfiguration>>();
         _client = client;

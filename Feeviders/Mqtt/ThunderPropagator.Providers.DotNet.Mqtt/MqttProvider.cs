@@ -35,7 +35,7 @@ namespace ThunderPropagator.Providers.DotNet.Mqtt
         private readonly IMqttClient _mqttClient;
         private readonly FormatSerializerInvoker _formatSerializerInvoker;
 
-        public MqttProvider(TMqttProviderConfiguration mqttProviderConfiguration, IServiceProvider serviceProvider) : base(serviceProvider)
+        public MqttProvider(TMqttProviderConfiguration mqttProviderConfiguration, IServiceProvider serviceProvider) : base(mqttProviderConfiguration, serviceProvider)
         {
             _mqttProviderConfiguration = mqttProviderConfiguration;
 

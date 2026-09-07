@@ -31,7 +31,7 @@ internal
     }
 
     internal PubSubProvider(TConfiguration configuration, IServiceProvider serviceProvider, PublisherClient publisher)
-        : base(serviceProvider)
+        : base(configuration, serviceProvider)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(configuration.ProjectId);
         ArgumentException.ThrowIfNullOrWhiteSpace(configuration.TopicId);

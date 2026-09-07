@@ -1,6 +1,8 @@
 ﻿using Confluent.Kafka;
+using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
 using ThunderPropagator.BuildingBlocks.Application.Serializations.Json;
+using ThunderPropagator.Providers.DotNet.Outbox;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.Providers.DotNet.Kafka
@@ -24,6 +26,19 @@ namespace ThunderPropagator.Providers.DotNet.Kafka
         {
             get => GetInt("serializer.type") ?? JsonFormatSerializer.Json;
             set => SetObject("serializer.type", value);
+        }
+
+        public Guid Id
+        {
+            get => Get("id") is { } value ? Guid.Parse(value) : Guid.NewGuid();
+            set => Set("id", value.ToString());
+        }
+
+        /// <summary>Opt-in transactional Outbox configuration for this Provider. Disabled by default.</summary>
+        public OutboxOptions Outbox
+        {
+            get => Get("outbox") is { } json ? json.FromNJson<OutboxOptions?>() ?? new OutboxOptions() : new OutboxOptions();
+            set => Set("outbox", value.ToNJson());
         }
 
         protected KafkaProviderConfiguration()

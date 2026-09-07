@@ -35,7 +35,7 @@ namespace ThunderPropagator.Providers.DotNet.ZeroMQ
         private readonly IOutgoingSocket _outgoingSocket;
 
         public ZeroMqProvider(TZeroMqProviderConfiguration zeroMqProviderConfiguration, IServiceProvider serviceProvider)
-            : base(serviceProvider)
+            : base(zeroMqProviderConfiguration, serviceProvider)
         {
             _zeroMqProviderConfiguration = zeroMqProviderConfiguration;
             _socket = ZeroMqSocketFactory.CreateProviderSocket(zeroMqProviderConfiguration);
@@ -55,7 +55,7 @@ namespace ThunderPropagator.Providers.DotNet.ZeroMQ
         internal ZeroMqProvider(TZeroMqProviderConfiguration zeroMqProviderConfiguration,
             IServiceProvider serviceProvider,
             IOutgoingSocket outgoingSocket)
-            : base(serviceProvider)
+            : base(zeroMqProviderConfiguration, serviceProvider)
         {
             _zeroMqProviderConfiguration = zeroMqProviderConfiguration;
             _outgoingSocket = outgoingSocket;

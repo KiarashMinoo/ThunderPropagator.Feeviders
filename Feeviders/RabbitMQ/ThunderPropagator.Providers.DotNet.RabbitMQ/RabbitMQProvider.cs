@@ -35,7 +35,7 @@ namespace ThunderPropagator.Providers.DotNet.RabbitMQ
         private IChannel? _channel;
 
         public RabbitMQProvider(TRabbitMQProviderConfiguration rabbitMQProviderConfiguration, IServiceProvider serviceProvider)
-            : base(serviceProvider)
+            : base(rabbitMQProviderConfiguration, serviceProvider)
         {
             _rabbitMQProviderConfiguration = rabbitMQProviderConfiguration;
 

@@ -32,7 +32,7 @@ namespace ThunderPropagator.Providers.DotNet.Kafka
         private readonly IProducer<string, TKafkaProviderMessage> _producer;
         private CachedSchemaRegistryClient? _schemaRegistry;
 
-        public KafkaProvider(TKafkaProviderConfiguration kafkaProviderConfiguration, IServiceProvider serviceProvider) : base(serviceProvider)
+        public KafkaProvider(TKafkaProviderConfiguration kafkaProviderConfiguration, IServiceProvider serviceProvider) : base(kafkaProviderConfiguration, serviceProvider)
         {
             _kafkaProviderConfiguration = kafkaProviderConfiguration;
             var formatSerializerInvoker = serviceProvider.GetRequiredService<FormatSerializerInvoker>();

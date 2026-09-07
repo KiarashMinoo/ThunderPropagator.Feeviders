@@ -27,7 +27,7 @@ namespace ThunderPropagator.Providers.DotNet.WebApi
         public WebApiProvider(HttpClient httpClient,
             TWebApiProviderConfiguration webApiProviderConfiguration,
             IServiceProvider serviceProvider)
-            : base(serviceProvider)
+            : base(webApiProviderConfiguration, serviceProvider)
         {
             _httpClient = httpClient;
             _webApiProviderConfiguration = webApiProviderConfiguration;

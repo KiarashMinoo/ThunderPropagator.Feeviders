@@ -31,7 +31,7 @@ namespace ThunderPropagator.Providers.DotNet.RedisPubSub
         private readonly TRedisPubSubProviderConfiguration _redisPubSubProviderConfiguration;
         private readonly ISubscriber _subscriber;
 
-        public RedisPubSubProvider(TRedisPubSubProviderConfiguration redisPubSubProviderConfiguration, IServiceProvider serviceProvider) : base(serviceProvider)
+        public RedisPubSubProvider(TRedisPubSubProviderConfiguration redisPubSubProviderConfiguration, IServiceProvider serviceProvider) : base(redisPubSubProviderConfiguration, serviceProvider)
         {
             _redisPubSubProviderConfiguration = redisPubSubProviderConfiguration;
             _connectionMultiplexer = ConnectionMultiplexer.Connect(_redisPubSubProviderConfiguration.ConnectionString);

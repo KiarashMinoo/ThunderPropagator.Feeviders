@@ -27,7 +27,7 @@ namespace ThunderPropagator.Providers.DotNet.AwsSqs
         private readonly IAmazonSimpleNotificationService _client;
 
         public SnsProvider(TSnsProviderConfiguration snsProviderConfiguration, IServiceProvider serviceProvider)
-            : base(serviceProvider)
+            : base(snsProviderConfiguration, serviceProvider)
         {
             _snsProviderConfiguration = snsProviderConfiguration;
             _client = AwsSqsFeeviderConnectionFactory.CreateSnsClient(snsProviderConfiguration);

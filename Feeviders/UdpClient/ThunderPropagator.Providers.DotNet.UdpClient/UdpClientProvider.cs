@@ -30,7 +30,7 @@ namespace ThunderPropagator.Providers.DotNet.UdpClient
 
         private readonly UdpMessageProtector? _messageProtector;
 
-        public UdpClientProvider(TUdpClientProviderConfiguration udpClientProviderConfiguration, IServiceProvider serviceProvider) : base(serviceProvider)
+        public UdpClientProvider(TUdpClientProviderConfiguration udpClientProviderConfiguration, IServiceProvider serviceProvider) : base(udpClientProviderConfiguration, serviceProvider)
         {
             _udpClientProviderConfiguration = udpClientProviderConfiguration;
             _remoteEndpoint = new IPEndPoint(IPAddress.Parse(_udpClientProviderConfiguration.Endpoint), _udpClientProviderConfiguration.Port);

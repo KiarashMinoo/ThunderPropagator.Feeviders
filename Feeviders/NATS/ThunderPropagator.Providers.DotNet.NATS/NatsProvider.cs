@@ -40,7 +40,7 @@ namespace ThunderPropagator.Providers.DotNet.NATS
         private readonly Task? _jetStreamInitTask;
 
         public NatsProvider(TNatsProviderConfiguration natsProviderConfiguration, IServiceProvider serviceProvider)
-            : base(serviceProvider)
+            : base(natsProviderConfiguration, serviceProvider)
         {
             _natsProviderConfiguration = natsProviderConfiguration;
             _client = NatsClientFactory.CreateClient(

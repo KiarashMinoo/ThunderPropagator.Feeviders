@@ -128,8 +128,8 @@ namespace ThunderPropagator.UnitTests
 
         private sealed class TestProviderConfiguration : AbstractProviderConfiguration;
 
-        private sealed class TestProvider(IServiceProvider serviceProvider)
-            : AbstractProvider<TestProviderMessage, TestProviderConfiguration>(serviceProvider)
+        private sealed class TestProvider(TestProviderConfiguration providerConfiguration, IServiceProvider serviceProvider)
+            : AbstractProvider<TestProviderMessage, TestProviderConfiguration>(providerConfiguration, serviceProvider)
         {
             protected override Task InternalExecuteAsync(byte[] bytes, CancellationToken cancellationToken = default)
                 => Task.CompletedTask;

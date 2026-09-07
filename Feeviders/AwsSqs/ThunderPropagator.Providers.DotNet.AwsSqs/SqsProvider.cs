@@ -27,7 +27,7 @@ namespace ThunderPropagator.Providers.DotNet.AwsSqs
         private readonly IAmazonSQS _client;
 
         public SqsProvider(TSqsProviderConfiguration sqsProviderConfiguration, IServiceProvider serviceProvider)
-            : base(serviceProvider)
+            : base(sqsProviderConfiguration, serviceProvider)
         {
             _sqsProviderConfiguration = sqsProviderConfiguration;
             _client = AwsSqsFeeviderConnectionFactory.CreateSqsClient(sqsProviderConfiguration);

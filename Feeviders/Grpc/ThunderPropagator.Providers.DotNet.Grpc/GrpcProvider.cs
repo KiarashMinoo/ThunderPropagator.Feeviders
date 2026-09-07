@@ -27,7 +27,7 @@ namespace ThunderPropagator.Providers.DotNet.Grpc
         private readonly GrpcFeeviderService.GrpcFeeviderServiceClient _client;
 
         public GrpcProvider(TGrpcProviderConfiguration grpcProviderConfiguration, IServiceProvider serviceProvider)
-            : base(serviceProvider)
+            : base(grpcProviderConfiguration, serviceProvider)
         {
             _grpcProviderConfiguration = grpcProviderConfiguration;
             _channel = GrpcChannelFactory.CreateChannel(grpcProviderConfiguration);
@@ -39,7 +39,7 @@ namespace ThunderPropagator.Providers.DotNet.Grpc
         internal GrpcProvider(TGrpcProviderConfiguration grpcProviderConfiguration,
             IServiceProvider serviceProvider,
             GrpcFeeviderService.GrpcFeeviderServiceClient client)
-            : base(serviceProvider)
+            : base(grpcProviderConfiguration, serviceProvider)
         {
             _grpcProviderConfiguration = grpcProviderConfiguration;
             _client = client;

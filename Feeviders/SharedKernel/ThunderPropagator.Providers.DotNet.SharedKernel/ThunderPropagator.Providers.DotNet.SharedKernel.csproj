@@ -5,7 +5,12 @@
         <PackageReference Include="JetBrains.Annotations" />
         <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks"/>
         <PackageReference Include="Microsoft.Extensions.Configuration.Binder"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
         <PackageReference Include="OpenTelemetry.Api"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\InboxOutbox\ThunderPropagator.Providers.DotNet.Outbox\ThunderPropagator.Providers.DotNet.Outbox.csproj" />
     </ItemGroup>
 
 </Project>

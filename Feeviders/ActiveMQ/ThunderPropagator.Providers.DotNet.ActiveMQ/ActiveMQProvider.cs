@@ -46,7 +46,7 @@ namespace ThunderPropagator.Providers.DotNet.ActiveMQ
         private readonly ISession _session;
 
         public ActiveMQProvider(TActiveMQProviderConfiguration activeMQProviderConfiguration, IServiceProvider serviceProvider)
-            : base(serviceProvider)
+            : base(activeMQProviderConfiguration, serviceProvider)
         {
             _activeMQProviderConfiguration = activeMQProviderConfiguration;
 
