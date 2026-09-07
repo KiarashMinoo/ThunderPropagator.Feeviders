@@ -14,20 +14,27 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
     /// <remarks>
     /// <para>
     /// Different partitions are claimed and published concurrently (bounded by the configured degree of
-    /// parallelism); entries within one partition are always published strictly in
+    /// parallelism), always independently - one partition's backlog, failure, or backoff never delays
+    /// another's. Entries within one partition are always published strictly in
     /// <see cref="OutboxMessage.OrderingSequence"/> order, one at a time. If publishing entry N in a
-    /// partition's batch fails transiently (backed off for retry, not dead-lettered), every later entry
-    /// already claimed in that same batch is released back to <see cref="OutboxMessageStatus.Pending"/>
-    /// (via <see cref="IOutboxStore.ReleaseAsync"/>) rather than published - publishing them now would
-    /// put them ahead of N, which has not published yet. A dead-lettered entry, in contrast, will never
-    /// publish at all, so it is skipped without releasing the rest of the batch: the sequence of entries
-    /// that do eventually publish stays in order.
+    /// partition's batch fails transiently (backed off for retry, not dead-lettered), the default
+    /// <see cref="OutboxOrderingPolicy.StrictPerPartition"/> releases every later entry already claimed
+    /// in that same batch back to <see cref="OutboxMessageStatus.Pending"/> (via
+    /// <see cref="IOutboxStore.ReleaseAsync"/>) rather than publishing them - publishing them now would
+    /// put them ahead of N, which has not published yet; <see cref="OutboxOrderingPolicy.ContinueOnFailure"/>
+    /// instead lets them publish immediately, trading that ordering guarantee for availability. A
+    /// dead-lettered entry, in contrast, will never publish at all under either policy, so it is skipped
+    /// without releasing the rest of the batch: the sequence of entries that do eventually publish stays
+    /// in order regardless of policy.
     /// </para>
     /// <para>
-    /// A crash between the broker's acknowledgement and this worker's <see cref="IOutboxStore.MarkPublishedAsync"/>
-    /// call leaves the entry Publishing until its lease expires, after which it becomes claimable again
-    /// and is republished - the documented at-least-once (never exactly-once, never duplicate-free)
-    /// delivery guarantee this worker provides.
+    /// Every publish attempt carries <see cref="OutboxHeaderNames.MessageId"/>, stamped with the entry's
+    /// stable <see cref="OutboxMessage.MessageId"/> - see <see cref="OutboxOptions"/> remarks on
+    /// downstream deduplication. A crash between the broker's acknowledgement and this worker's
+    /// <see cref="IOutboxStore.MarkPublishedAsync"/> call leaves the entry Publishing until its lease
+    /// expires, after which it becomes claimable again and is republished under that same
+    /// <see cref="OutboxMessage.MessageId"/> - the documented at-least-once (never exactly-once, never
+    /// duplicate-free) delivery guarantee this worker provides.
     /// </para>
     /// <para>
     /// Hosting-agnostic by design (plain <see cref="StartAsync"/>/<see cref="StopAsync"/>, not
@@ -191,7 +198,7 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
                 for (var i = 0; i < batch.Count; i++)
                 {
                     var outcome = await PublishOneAsync(resolved, batch[i], leaseOwner, cancellationToken).ConfigureAwait(false);
-                    if (outcome != RelayOutcome.FailedRetryable)
+                    if (outcome != RelayOutcome.FailedRetryable || subscription.Options.OrderingPolicy == OutboxOrderingPolicy.ContinueOnFailure)
                         continue;
 
                     // Every later entry in this batch was already claimed alongside the one that just
@@ -216,7 +223,7 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
             try
             {
                 var provider = subscription.ResolveProvider(_serviceProvider);
-                await provider.PublishDirectAsync(claimed.Payload, claimed.Headers, cancellationToken).ConfigureAwait(false);
+                await provider.PublishDirectAsync(claimed.Payload, WithMessageIdHeader(claimed), cancellationToken).ConfigureAwait(false);
                 await store.MarkPublishedAsync(claimed.Id, leaseOwner, cancellationToken).ConfigureAwait(false);
                 return RelayOutcome.Published;
             }
@@ -239,6 +246,18 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
                 await store.MarkFailedAsync(claimed.Id, leaseOwner, reason, nextRetryAtUtc, cancellationToken).ConfigureAwait(false);
                 return RelayOutcome.FailedRetryable;
             }
+        }
+
+        /// <summary>
+        /// Stamps <see cref="OutboxHeaderNames.MessageId"/> with <see cref="OutboxMessage.MessageId"/> on
+        /// every publish attempt, overriding any value already present under that key - a downstream
+        /// consumer's deduplication key must always be this Outbox's own stable identifier, never
+        /// whatever the enqueuing call site happened to put there.
+        /// </summary>
+        private static IReadOnlyDictionary<string, string> WithMessageIdHeader(OutboxMessage claimed)
+        {
+            var headers = new Dictionary<string, string>(claimed.Headers) { [OutboxHeaderNames.MessageId] = claimed.MessageId };
+            return headers;
         }
 
         private async Task DeadLetterAsync(ResolvedSubscription resolved, OutboxMessage claimed, string leaseOwner, string reason, CancellationToken cancellationToken)
