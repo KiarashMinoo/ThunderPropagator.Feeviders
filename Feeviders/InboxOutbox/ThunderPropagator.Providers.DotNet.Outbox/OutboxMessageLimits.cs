@@ -37,5 +37,8 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
 
         /// <summary>Maximum length of a lease owner token.</summary>
         public const int MaxLeaseOwnerLength = 256;
+
+        /// <summary>Maximum entries a single <see cref="IOutboxStore.ClaimBatchAsync"/> call may return, bounding relay-worker batch size.</summary>
+        public const int MaxRelayBatchSize = 1000;
     }
 }
