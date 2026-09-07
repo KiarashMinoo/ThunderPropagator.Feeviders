@@ -1,5 +1,5 @@
-## [1.0.1-beta.74] — 2026-09-07
+## [1.0.1-beta.75] — 2026-09-07
 
 ### 🏠 Chores
 
-- Integrate opt-in enqueue behavior into AbstractProvider `(abb6fe3)` — Kiarash Minoo
+- Implement lease-safe relay worker with retry and dead-lettering `(9661fa0)` — Kiarash Minoo
