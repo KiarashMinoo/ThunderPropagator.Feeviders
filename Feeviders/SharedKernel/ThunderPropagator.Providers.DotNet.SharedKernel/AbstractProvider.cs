@@ -149,7 +149,12 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
             };
 
         /// <inheritdoc/>
-        Task IProvider.PublishDirectAsync(byte[] bytes, CancellationToken cancellationToken) =>
+        /// <remarks>
+        /// <paramref name="headers"/> is ignored - <see cref="InternalExecuteAsync(byte[], CancellationToken)"/>
+        /// has no way to attach transport-level headers to a raw-bytes publish. A transport that gains
+        /// one can override this member directly to honor it.
+        /// </remarks>
+        Task IProvider.PublishDirectAsync(byte[] bytes, IReadOnlyDictionary<string, string>? headers, CancellationToken cancellationToken) =>
             InternalExecuteAsync(bytes, cancellationToken);
 
         protected virtual Task InternalExecuteAsync(TFeederMessage feederMessage, CancellationToken cancellationToken = default)

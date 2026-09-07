@@ -210,6 +210,9 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
             public Task<IReadOnlyList<OutboxMessage>> ClaimBatchAsync(string? partitionKey, int maxCount, string leaseOwner, TimeSpan leaseDuration, CancellationToken cancellationToken = default) =>
                 throw new NotSupportedException();
 
+            public Task<IReadOnlyList<string?>> GetClaimablePartitionKeysAsync(CancellationToken cancellationToken = default) =>
+                throw new NotSupportedException();
+
             public Task<OutboxMessage?> RenewLeaseAsync(Guid id, string leaseOwner, TimeSpan leaseExtension, CancellationToken cancellationToken = default) =>
                 throw new NotSupportedException();
 

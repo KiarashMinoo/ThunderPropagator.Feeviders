@@ -44,6 +44,15 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
         Task<IReadOnlyList<OutboxMessage>> ClaimBatchAsync(string? partitionKey, int maxCount, string leaseOwner, TimeSpan leaseDuration, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Distinct <see cref="OutboxMessage.PartitionKey"/> values (including <see langword="null"/>
+        /// itself) currently holding at least one entry <see cref="ClaimBatchAsync"/> would claim - what
+        /// a relay worker polls before spinning up one <see cref="ClaimBatchAsync"/> loop per partition.
+        /// Needed because a relay worker cannot otherwise discover a partition key it did not itself
+        /// choose (see <see cref="OutboxPartitionStrategy.CallerSupplied"/>) ahead of time.
+        /// </summary>
+        Task<IReadOnlyList<string?>> GetClaimablePartitionKeysAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Extends an active lease's expiry, for slow publish operations. Returns
         /// <see langword="null"/> if <paramref name="leaseOwner"/> no longer matches the current lease.
         /// </summary>
