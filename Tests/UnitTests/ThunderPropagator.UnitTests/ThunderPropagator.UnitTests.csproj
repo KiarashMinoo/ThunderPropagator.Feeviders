@@ -12,6 +12,7 @@
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite"/>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
         <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+        <PackageReference Include="MongoDB.Driver"/>
         <PackageReference Include="MQTTnet.Server"/>
         <PackageReference Include="NJsonSchema"/>
         <PackageReference Include="NSubstitute"/>
@@ -32,6 +33,8 @@
         <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Providers.DotNet.Outbox.InMemory\ThunderPropagator.Providers.DotNet.Outbox.InMemory.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Feeders.Inbox.Redis\ThunderPropagator.Feeders.Inbox.Redis.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Providers.DotNet.Outbox.Redis\ThunderPropagator.Providers.DotNet.Outbox.Redis.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Feeders.Inbox.MongoDB\ThunderPropagator.Feeders.Inbox.MongoDB.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Providers.DotNet.Outbox.MongoDB\ThunderPropagator.Providers.DotNet.Outbox.MongoDB.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\SharedKernel\ThunderPropagator.Feeders.SharedKernel\ThunderPropagator.Feeders.SharedKernel.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\RabbitMQ\ThunderPropagator.Feeders.RabbitMQ\ThunderPropagator.Feeders.RabbitMQ.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\WebApi\ThunderPropagator.Feeders.WebApi\ThunderPropagator.Feeders.WebApi.csproj" />

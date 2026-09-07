@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="JetBrains.Annotations" />
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+        <PackageReference Include="MongoDB.Driver" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\ThunderPropagator.Providers.DotNet.Outbox\ThunderPropagator.Providers.DotNet.Outbox.csproj" />
+    </ItemGroup>
+
+</Project>
