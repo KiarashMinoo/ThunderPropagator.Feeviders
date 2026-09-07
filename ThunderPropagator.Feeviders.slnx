@@ -97,12 +97,22 @@
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />
     </Project>
+    <Project Path="Feeviders/InboxOutbox/ThunderPropagator.Feeders.Inbox.InMemory/ThunderPropagator.Feeders.Inbox.InMemory.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
     <Project Path="Feeviders/InboxOutbox/ThunderPropagator.Providers.DotNet.Outbox/ThunderPropagator.Providers.DotNet.Outbox.csproj">
       <Platform Solution="*|ARM64" Project="ARM64" />
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />
     </Project>
     <Project Path="Feeviders/InboxOutbox/ThunderPropagator.Providers.DotNet.Outbox.EFCore/ThunderPropagator.Providers.DotNet.Outbox.EFCore.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="Feeviders/InboxOutbox/ThunderPropagator.Providers.DotNet.Outbox.InMemory/ThunderPropagator.Providers.DotNet.Outbox.InMemory.csproj">
       <Platform Solution="*|ARM64" Project="ARM64" />
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />
