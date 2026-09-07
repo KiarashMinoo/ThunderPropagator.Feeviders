@@ -21,6 +21,12 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="8.*" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="8.*" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.*" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.*" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.*" />
+    <!-- Oracle's own official MySQL EF Core provider (there is no Microsoft-published one - SQL Server
+         is Microsoft's own database; PostgreSQL/MySQL are third-party) - chosen over the community
+         Pomelo.EntityFrameworkCore.MySql provider. -->
+    <PackageVersion Include="MySql.EntityFrameworkCore" Version="8.*" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'" Label="Microsoft.Extensions">
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="9.*" />
@@ -36,6 +42,9 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.*" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.*" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.*" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.*" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.*" />
+    <PackageVersion Include="MySql.EntityFrameworkCore" Version="9.*" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'" Label="Microsoft.Extensions">
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.*" />
@@ -51,6 +60,9 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.*" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.*" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.*" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.*" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.*" />
+    <PackageVersion Include="MySql.EntityFrameworkCore" Version="10.*" />
   </ItemGroup>
   <ItemGroup>
     <PackageVersion Include="Bogus" Version="35.6.5" />

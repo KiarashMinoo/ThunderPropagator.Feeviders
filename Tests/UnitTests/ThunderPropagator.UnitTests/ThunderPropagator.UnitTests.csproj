@@ -26,6 +26,7 @@
     <ItemGroup>
         <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Feeders.Inbox\ThunderPropagator.Feeders.Inbox.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Feeders.Inbox.InMemory\ThunderPropagator.Feeders.Inbox.InMemory.csproj" />
+        <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Feeders.Inbox.EFCore\ThunderPropagator.Feeders.Inbox.EFCore.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Providers.DotNet.Outbox\ThunderPropagator.Providers.DotNet.Outbox.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Providers.DotNet.Outbox.EFCore\ThunderPropagator.Providers.DotNet.Outbox.EFCore.csproj" />
         <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Providers.DotNet.Outbox.InMemory\ThunderPropagator.Providers.DotNet.Outbox.InMemory.csproj" />
