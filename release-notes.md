@@ -1,5 +1,5 @@
-## [1.0.1-beta.76] — 2026-09-07
+## [1.0.1-beta.77] — 2026-09-07
 
 ### 🏠 Chores
 
-- Define partition ordering and downstream idempotency requirements `(375cfeb)` — Kiarash Minoo
+- Implement thread-safe In-Memory backend packages `(c42fbf2)` — Kiarash Minoo

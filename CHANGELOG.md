@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.77] — 2026-09-07
+
+### 🏠 Chores
+
+- Implement thread-safe In-Memory backend packages `(c42fbf2)` — Kiarash Minoo
+
 ## [1.0.1-beta.76] — 2026-09-07
 
 ### 🏠 Chores
