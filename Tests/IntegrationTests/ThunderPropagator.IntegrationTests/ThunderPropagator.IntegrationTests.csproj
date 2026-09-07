@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks />
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <EnablePreviewFeatures>true</EnablePreviewFeatures>
@@ -8,11 +9,17 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="NSubstitute" />
+    <PackageReference Include="StackExchange.Redis" />
     <PackageReference Include="Testcontainers" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Feeviders\GcpPubSub\ThunderPropagator.Providers.DotNet.GcpPubSub\ThunderPropagator.Providers.DotNet.GcpPubSub.csproj" />
+    <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Feeders.Inbox.Redis\ThunderPropagator.Feeders.Inbox.Redis.csproj" />
+    <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Providers.DotNet.Outbox.Redis\ThunderPropagator.Providers.DotNet.Outbox.Redis.csproj" />
+    <!-- Reuses the shared InboxStoreContractTests/OutboxStoreContractTests abstract suites (public)
+         so the Redis backend proves it satisfies the exact same contract as every other backend. -->
+    <ProjectReference Include="..\..\UnitTests\ThunderPropagator.UnitTests\ThunderPropagator.UnitTests.csproj" />
   </ItemGroup>
 </Project>

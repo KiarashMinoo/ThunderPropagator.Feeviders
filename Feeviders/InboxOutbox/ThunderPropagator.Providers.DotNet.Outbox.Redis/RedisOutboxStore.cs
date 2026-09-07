@@ -1,0 +1,429 @@
+using System.Text.Json;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using StackExchange.Redis;
+
+namespace ThunderPropagator.Providers.DotNet.Outbox.Redis
+{
+    /// <summary>
+    /// <see cref="IOutboxStore"/> backed by <see href="https://redis.io/">Redis</see> via
+    /// StackExchange.Redis. Durable across restarts as long as the Redis deployment itself persists
+    /// (RDB/AOF) - unlike <c>InMemoryOutboxStore</c>, an entry survives this process exiting. Cannot
+    /// participate in <see cref="OutboxTransactionMode.Enlisted"/> (Redis has no shared local
+    /// transaction with an arbitrary business-side relational store) - <see cref="OutboxOptions.Validate"/>
+    /// already rejects that combination for <see cref="OutboxStoreType.Redis"/> at configuration time,
+    /// so this store never even receives an enlisted claim to reject itself.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Atomicity.</b> Every field-level decision is computed in C# using <see cref="OutboxMessage"/>'s
+    /// own transition rules - exactly the same rules <c>InMemoryOutboxStore</c> uses. Redis's role is
+    /// purely to make the read-decide-write sequence atomic via a single Lua script per mutation, keyed
+    /// on either the entry's monotonic <c>Version</c> field (<see cref="ClaimBatchAsync"/>, where there
+    /// is no prior owner identity to check) or its current <c>LeaseOwner</c> (every other lease-scoped
+    /// mutation). A version-CAS conflict during a batch claim simply skips that one candidate rather
+    /// than retrying or failing the whole batch - another caller already claimed or otherwise mutated it,
+    /// so it is no longer this call's to claim.
+    /// </para>
+    /// <para>
+    /// <b>Keys.</b> Every key this instance touches shares one Redis Cluster hash tag (the
+    /// <c>keyPrefix</c> constructor argument, wrapped in <c>{}</c>) so a multi-key Lua script never spans
+    /// more than one cluster slot - see <see cref="RedisKeyNamespace"/>. Two stores sharing one Redis
+    /// database/cluster MUST use different <c>keyPrefix</c>es or their keyspaces will collide.
+    /// </para>
+    /// <para>
+    /// <b>Retention.</b> <see cref="PurgeAsync"/> is the primary retention mechanism, exactly like
+    /// <c>InMemoryOutboxStore</c>. Optionally, <c>terminalEntryTtl</c> additionally applies a
+    /// native Redis <c>EXPIRE</c> to an entry's hash key the moment it becomes terminal (Published or
+    /// DeadLettered) - a passive safety net if <see cref="PurgeAsync"/> is never called - but never to a
+    /// non-terminal entry: a Pending/Publishing/Failed entry's key never has a TTL set on it, so it can
+    /// never expire out from under an in-flight claim or an unretried failure.
+    /// </para>
+    /// <para>
+    /// <b>Reconnects/timeouts/cluster.</b> This store does not itself manage reconnection - it uses
+    /// whatever <see cref="IConnectionMultiplexer"/> the caller supplies, and StackExchange.Redis's own
+    /// automatic-reconnect behavior applies exactly as the caller configured it. A
+    /// <see cref="RedisConnectionException"/>/<see cref="RedisTimeoutException"/> during any operation
+    /// propagates uncaught - <c>OutboxRelayWorker</c>'s existing exception handling already treats an
+    /// unexpected exception as transient and retries with backoff. Every script uses
+    /// <see cref="StackExchange.Redis.LuaScript"/>, which transparently falls back from <c>EVALSHA</c> to
+    /// a full <c>EVAL</c> on a cache miss (e.g. after failover to a replica that never had the script
+    /// loaded) - no manual script-cache management needed.
+    /// </para>
+    /// <para>
+    /// <b>Not throughput-optimized.</b> Like <c>InMemoryOutboxStore</c>, this backend favors correctness
+    /// and auditability over raw throughput: <see cref="ClaimBatchAsync"/> scans a partition's entire
+    /// active set rather than a bounded window, and <see cref="GetClaimablePartitionKeysAsync"/>/
+    /// <see cref="GetOldestPendingAgeAsync"/> may inspect every known partition's entries.
+    /// </para>
+    /// </remarks>
+    public sealed class RedisOutboxStore : IOutboxStore, IHealthCheck
+    {
+        // StackExchange.Redis's LuaScript named-parameter binding only supports scalar (RedisKey/RedisValue)
+        // parameters, not arrays - every variable-length field/value list below travels as one JSON-encoded
+        // scalar instead, decoded in Lua via cjson.decode (built into Redis's Lua runtime). @payload is the
+        // one exception: it is raw, arbitrary bytes, never valid to embed as a JSON string, so it always
+        // travels as its own separate, natively binary-safe scalar - see RedisOutboxMessageMapper's remarks.
+        private static readonly LuaScript EnqueueFinalizeScript = LuaScript.Prepare(
+            """
+            redis.call('SADD', @knownPartitionsKey, @partitionSlot)
+            redis.call('ZADD', @activeKey, @orderingSequence, @id)
+            redis.call('HSET', @messageKey, 'Payload', @payload)
+            local fields = cjson.decode(@fieldsJson)
+            for i = 1, #fields, 2 do
+              redis.call('HSET', @messageKey, fields[i], fields[i + 1])
+            end
+            return 1
+            """);
+
+        private static readonly LuaScript WriteScript = LuaScript.Prepare(
+            """
+            local current
+            if @casMode == 'version' then
+              current = redis.call('HGET', @messageKey, 'Version')
+            else
+              current = redis.call('HGET', @messageKey, 'LeaseOwner')
+            end
+            if current ~= @casValue then
+              return 0
+            end
+            if @terminal == '1' then
+              redis.call('ZREM', @activeKey, @id)
+              if redis.call('ZCARD', @activeKey) == 0 then
+                redis.call('SREM', @knownPartitionsKey, @partitionSlot)
+              end
+              redis.call('ZADD', @terminalKey, @terminalScore, @id)
+            end
+            local setFields = cjson.decode(@setFieldsJson)
+            for i = 1, #setFields, 2 do
+              redis.call('HSET', @messageKey, setFields[i], setFields[i + 1])
+            end
+            local deleteFields = cjson.decode(@deleteFieldsJson)
+            for i = 1, #deleteFields do
+              redis.call('HDEL', @messageKey, deleteFields[i])
+            end
+            if @ttlSeconds ~= '' then
+              redis.call('EXPIRE', @messageKey, @ttlSeconds)
+            end
+            return 1
+            """);
+
+        private static readonly LuaScript ReleaseScript = LuaScript.Prepare(
+            """
+            local currentOwner = redis.call('HGET', @messageKey, 'LeaseOwner')
+            local status = redis.call('HGET', @messageKey, 'Status')
+            if currentOwner ~= @leaseOwner or status ~= 'Publishing' then
+              return 0
+            end
+            redis.call('HSET', @messageKey, 'Status', 'Pending')
+            redis.call('HDEL', @messageKey, 'LeaseOwner', 'LeaseExpiresAtUtc', 'PublishingStartedAtUtc')
+            return 1
+            """);
+
+        private static readonly LuaScript PurgeScript = LuaScript.Prepare(
+            """
+            local ids = cjson.decode(@idsJson)
+            for i = 1, #ids do
+              redis.call('DEL', @keyPrefix .. ids[i])
+            end
+            if #ids > 0 then
+              redis.call('ZREM', @terminalKey, unpack(ids))
+            end
+            return #ids
+            """);
+
+        private readonly IConnectionMultiplexer _connectionMultiplexer;
+        private readonly RedisKeyNamespace _keys;
+        private readonly TimeProvider _timeProvider;
+        private readonly TimeSpan? _terminalEntryTtl;
+
+        /// <param name="connectionMultiplexer">Owned by the caller - never disposed by this store. See the class remarks for reconnect/failover behavior.</param>
+        /// <param name="keyPrefix">Namespaces every key this instance uses - see <see cref="RedisKeyNamespace"/>. Must be unique per logical store sharing a Redis database.</param>
+        /// <param name="timeProvider">Clock used for timestamps and lease/retry expiry. Defaults to <see cref="TimeProvider.System"/>.</param>
+        /// <param name="terminalEntryTtl">Passive-safety-net TTL applied to an entry's key only once it becomes terminal - see the class remarks. <see langword="null"/> (default) disables it, relying solely on explicit <see cref="PurgeAsync"/> calls.</param>
+        public RedisOutboxStore(IConnectionMultiplexer connectionMultiplexer, string keyPrefix, TimeProvider? timeProvider = null, TimeSpan? terminalEntryTtl = null)
+        {
+            ArgumentNullException.ThrowIfNull(connectionMultiplexer);
+            ArgumentException.ThrowIfNullOrWhiteSpace(keyPrefix);
+
+            _connectionMultiplexer = connectionMultiplexer;
+            _keys = new RedisKeyNamespace(keyPrefix);
+            _timeProvider = timeProvider ?? TimeProvider.System;
+            _terminalEntryTtl = terminalEntryTtl;
+        }
+
+        private IDatabase Database => _connectionMultiplexer.GetDatabase();
+
+        /// <inheritdoc/>
+        public async Task<OutboxMessage> EnqueueAsync(OutboxEnqueueRequest request, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+            var db = Database;
+            var partitionSlot = RedisKeyNamespace.PartitionSlot(request.PartitionKey);
+
+            // INCR alone is already atomic and durably reserves this sequence number process-wide - a
+            // crash before the finalize script below runs only ever leaves a skipped (never reused)
+            // sequence number, not a duplicate or a lost one.
+            var orderingSequence = await db.StringIncrementAsync(_keys.OrderingSequence(partitionSlot)).ConfigureAwait(false) - 1;
+
+            var message = OutboxMessage.CreatePending(
+                Guid.NewGuid(), request.MessageId, request.ProviderKey, orderingSequence,
+                request.SchemaVersion, request.PayloadContentType, request.Payload,
+                request.Headers, request.PartitionKey, _timeProvider);
+
+            var fieldsJson = RedisOutboxMessageMapper.ToFullFieldListJson(message, version: 1);
+            await db.ScriptEvaluateAsync(EnqueueFinalizeScript, new
+            {
+                knownPartitionsKey = (RedisKey)_keys.KnownPartitions,
+                activeKey = (RedisKey)_keys.Active(partitionSlot),
+                messageKey = (RedisKey)_keys.Message(message.Id),
+                partitionSlot,
+                id = message.Id.ToString("N"),
+                orderingSequence,
+                payload = (RedisValue)message.Payload,
+                fieldsJson,
+            }).ConfigureAwait(false);
+
+            return message;
+        }
+
+        /// <inheritdoc/>
+        public async Task<IReadOnlyList<OutboxMessage>> ClaimBatchAsync(string? partitionKey, int maxCount, string leaseOwner, TimeSpan leaseDuration, CancellationToken cancellationToken = default)
+        {
+            var db = Database;
+            var partitionSlot = RedisKeyNamespace.PartitionSlot(partitionKey);
+            var candidateIds = await db.SortedSetRangeByScoreAsync(_keys.Active(partitionSlot)).ConfigureAwait(false);
+            if (candidateIds.Length == 0)
+                return [];
+
+            var claimed = new List<OutboxMessage>();
+            foreach (var idValue in candidateIds)
+            {
+                if (claimed.Count >= maxCount)
+                    break;
+
+                var id = Guid.ParseExact((string)idValue!, "N");
+                var hashEntries = await db.HashGetAllAsync(_keys.Message(id)).ConfigureAwait(false);
+                if (hashEntries.Length == 0)
+                    continue; // Purged/removed concurrently since the ZRANGE snapshot was taken.
+
+                var existing = RedisOutboxMessageMapper.FromHashEntries(hashEntries);
+                var now = _timeProvider.GetUtcNow();
+                if (!IsClaimable(existing, now))
+                    continue;
+
+                var version = RedisOutboxMessageMapper.ReadVersion(hashEntries);
+                // An abandoned Publishing lease must first release back through Failed (Publishing isn't
+                // a valid source for Publishing in OutboxMessage's transition table) before it can be
+                // reclaimed. Every claim - first attempt, reclaimed abandoned lease, or retry - is
+                // itself a new attempt, so increments unconditionally.
+                var source = existing.Status == OutboxMessageStatus.Publishing
+                    ? existing.TryTransitionTo(OutboxMessageStatus.Failed, _timeProvider)
+                    : existing;
+                var publishing = source.TryTransitionTo(
+                    OutboxMessageStatus.Publishing, _timeProvider,
+                    leaseOwner: leaseOwner, leaseExpiresAtUtc: now + leaseDuration, incrementAttempt: true);
+
+                if (await WriteAsync(db, id, publishing, version + 1, partitionSlot, casMode: "version", casValue: version.ToString()).ConfigureAwait(false))
+                    claimed.Add(publishing);
+                // Else: another caller claimed/mutated this entry since our read above - it is no
+                // longer this call's to claim, so move on to the next candidate rather than retrying.
+            }
+
+            return claimed;
+        }
+
+        private static bool IsClaimable(OutboxMessage message, DateTimeOffset now) => message.Status switch
+        {
+            OutboxMessageStatus.Pending => true,
+            OutboxMessageStatus.Publishing => message.LeaseExpiresAtUtc is null || message.LeaseExpiresAtUtc <= now,
+            OutboxMessageStatus.Failed => message.NextRetryAtUtc is null || message.NextRetryAtUtc <= now,
+            _ => false,
+        };
+
+        /// <inheritdoc/>
+        public async Task<IReadOnlyList<string?>> GetClaimablePartitionKeysAsync(CancellationToken cancellationToken = default)
+        {
+            var db = Database;
+            var slots = await db.SetMembersAsync(_keys.KnownPartitions).ConfigureAwait(false);
+            var now = _timeProvider.GetUtcNow();
+            var claimable = new List<string?>();
+
+            foreach (var slotValue in slots)
+            {
+                var slot = (string)slotValue!;
+                var ids = await db.SortedSetRangeByScoreAsync(_keys.Active(slot)).ConfigureAwait(false);
+                foreach (var idValue in ids)
+                {
+                    var entries = await db.HashGetAllAsync(_keys.Message(Guid.ParseExact((string)idValue!, "N"))).ConfigureAwait(false);
+                    if (entries.Length > 0 && IsClaimable(RedisOutboxMessageMapper.FromHashEntries(entries), now))
+                    {
+                        claimable.Add(slot == RedisKeyNamespace.PartitionSlot(null) ? null : slot);
+                        break;
+                    }
+                }
+            }
+
+            return claimable;
+        }
+
+        /// <summary>Applies a CAS-guarded write, including its Active/Terminal/KnownPartitions side effects for a terminal transition and the passive TTL.</summary>
+        private async Task<bool> WriteAsync(IDatabase db, Guid id, OutboxMessage updated, long newVersion, string partitionSlot, string casMode, string casValue)
+        {
+            var (setFieldsJson, deleteFieldsJson) = RedisOutboxMessageMapper.ToChangedFieldListJson(updated, newVersion);
+            var isTerminal = updated.Status is OutboxMessageStatus.Published or OutboxMessageStatus.DeadLettered;
+            var terminalTimestamp = updated.Status switch
+            {
+                OutboxMessageStatus.Published => updated.PublishedAtUtc,
+                OutboxMessageStatus.DeadLettered => updated.DeadLetteredAtUtc,
+                _ => (DateTimeOffset?)null,
+            };
+
+            var result = (int)await db.ScriptEvaluateAsync(WriteScript, new
+            {
+                messageKey = (RedisKey)_keys.Message(id),
+                activeKey = (RedisKey)_keys.Active(partitionSlot),
+                knownPartitionsKey = (RedisKey)_keys.KnownPartitions,
+                terminalKey = (RedisKey)_keys.Terminal,
+                partitionSlot,
+                id = id.ToString("N"),
+                casMode,
+                casValue,
+                terminal = isTerminal ? "1" : "0",
+                terminalScore = isTerminal ? terminalTimestamp!.Value.ToUnixTimeMilliseconds() : 0,
+                setFieldsJson,
+                deleteFieldsJson,
+                ttlSeconds = isTerminal && _terminalEntryTtl is { } ttl ? ((long)ttl.TotalSeconds).ToString() : "",
+            }).ConfigureAwait(false);
+
+            return result == 1;
+        }
+
+        /// <inheritdoc/>
+        public Task<OutboxMessage?> RenewLeaseAsync(Guid id, string leaseOwner, TimeSpan leaseExtension, CancellationToken cancellationToken = default) =>
+            TransitionLeasedAsync(id, leaseOwner, m => m.RenewLease(_timeProvider, leaseOwner, leaseExtension));
+
+        /// <inheritdoc/>
+        public Task<OutboxMessage?> MarkPublishedAsync(Guid id, string leaseOwner, CancellationToken cancellationToken = default) =>
+            TransitionLeasedAsync(id, leaseOwner, m => m.TryTransitionTo(OutboxMessageStatus.Published, _timeProvider));
+
+        /// <inheritdoc/>
+        public Task<OutboxMessage?> MarkFailedAsync(Guid id, string leaseOwner, string failureReason, DateTimeOffset? nextRetryAtUtc, CancellationToken cancellationToken = default) =>
+            TransitionLeasedAsync(id, leaseOwner, m => m.TryTransitionTo(OutboxMessageStatus.Failed, _timeProvider, nextRetryAtUtc: nextRetryAtUtc, failureReason: failureReason));
+
+        /// <inheritdoc/>
+        public Task<OutboxMessage?> MarkDeadLetterAsync(Guid id, string leaseOwner, string failureReason, CancellationToken cancellationToken = default) =>
+            TransitionLeasedAsync(id, leaseOwner, m => m.TryTransitionTo(OutboxMessageStatus.DeadLettered, _timeProvider, failureReason: failureReason));
+
+        private async Task<OutboxMessage?> TransitionLeasedAsync(Guid id, string leaseOwner, Func<OutboxMessage, OutboxMessage?> transition)
+        {
+            var db = Database;
+            var hashEntries = await db.HashGetAllAsync(_keys.Message(id)).ConfigureAwait(false);
+            if (hashEntries.Length == 0)
+                return null;
+
+            var existing = RedisOutboxMessageMapper.FromHashEntries(hashEntries);
+            if (existing.LeaseOwner != leaseOwner)
+                return null;
+
+            var updated = transition(existing);
+            if (updated is null)
+                return null;
+
+            var version = RedisOutboxMessageMapper.ReadVersion(hashEntries);
+            var partitionSlot = RedisKeyNamespace.PartitionSlot(existing.PartitionKey);
+            var applied = await WriteAsync(db, id, updated, version + 1, partitionSlot, casMode: "owner", casValue: leaseOwner).ConfigureAwait(false);
+            return applied ? updated : null;
+        }
+
+        /// <inheritdoc/>
+        public async Task<bool> ReleaseAsync(Guid id, string leaseOwner, CancellationToken cancellationToken = default)
+        {
+            var result = (int)await Database.ScriptEvaluateAsync(ReleaseScript, new
+            {
+                messageKey = (RedisKey)_keys.Message(id),
+                leaseOwner,
+            }).ConfigureAwait(false);
+
+            return result == 1;
+        }
+
+        /// <inheritdoc/>
+        public async Task<int> GetDepthAsync(string? partitionKey, CancellationToken cancellationToken = default)
+        {
+            var db = Database;
+
+            if (partitionKey is not null)
+                return (int)await db.SortedSetLengthAsync(_keys.Active(RedisKeyNamespace.PartitionSlot(partitionKey))).ConfigureAwait(false);
+
+            var slots = await db.SetMembersAsync(_keys.KnownPartitions).ConfigureAwait(false);
+            var total = 0;
+            foreach (var slot in slots)
+                total += (int)await db.SortedSetLengthAsync(_keys.Active((string)slot!)).ConfigureAwait(false);
+
+            return total;
+        }
+
+        /// <inheritdoc/>
+        public async Task<TimeSpan?> GetOldestPendingAgeAsync(string? partitionKey, TimeProvider ageTimeProvider, CancellationToken cancellationToken = default)
+        {
+            var db = Database;
+            var slots = partitionKey is not null
+                ? [RedisKeyNamespace.PartitionSlot(partitionKey)]
+                : (await db.SetMembersAsync(_keys.KnownPartitions).ConfigureAwait(false)).Select(s => (string)s!).ToArray();
+
+            DateTimeOffset? oldest = null;
+            foreach (var slot in slots)
+            {
+                var ids = await db.SortedSetRangeByScoreAsync(_keys.Active(slot)).ConfigureAwait(false);
+                foreach (var idValue in ids)
+                {
+                    var createdAt = await db.HashGetAsync(_keys.Message(Guid.ParseExact((string)idValue!, "N")), RedisOutboxMessageMapper.FieldCreatedAtUtc).ConfigureAwait(false);
+                    if (createdAt.IsNull)
+                        continue;
+
+                    var timestamp = DateTimeOffset.FromUnixTimeMilliseconds((long)createdAt);
+                    if (oldest is null || timestamp < oldest)
+                        oldest = timestamp;
+                }
+            }
+
+            return oldest is null ? null : ageTimeProvider.GetUtcNow() - oldest.Value;
+        }
+
+        /// <inheritdoc/>
+        public async Task<int> PurgeAsync(DateTimeOffset olderThanUtc, CancellationToken cancellationToken = default)
+        {
+            var db = Database;
+            var ids = await db.SortedSetRangeByScoreAsync(_keys.Terminal, double.NegativeInfinity, olderThanUtc.ToUnixTimeMilliseconds() - 1).ConfigureAwait(false);
+            if (ids.Length == 0)
+                return 0;
+
+            var result = await db.ScriptEvaluateAsync(PurgeScript, new
+            {
+                terminalKey = (RedisKey)_keys.Terminal,
+                keyPrefix = (RedisKey)_keys.MessagePrefix,
+                idsJson = JsonSerializer.Serialize(ids.Select(v => (string)v!)),
+            }).ConfigureAwait(false);
+
+            return (int)result;
+        }
+
+        /// <inheritdoc/>
+        public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var latency = await Database.PingAsync().ConfigureAwait(false);
+                return HealthCheckResult.Healthy($"Redis responded to PING in {latency.TotalMilliseconds:F1}ms.");
+            }
+            catch (RedisConnectionException exception)
+            {
+                return HealthCheckResult.Unhealthy("Redis connection is unavailable.", exception);
+            }
+            catch (RedisTimeoutException exception)
+            {
+                return HealthCheckResult.Unhealthy("Redis did not respond to PING in time.", exception);
+            }
+        }
+    }
+}
