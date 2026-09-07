@@ -20,6 +20,13 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         private readonly Dictionary<Guid, OutboxMessage> _byId = [];
         private readonly Dictionary<string, long> _nextOrderingSequenceByPartition = [];
 
+        /// <summary>Test-only inspection, bypassing every <see cref="IOutboxStore"/> claim/lease semantic - never used by production code.</summary>
+        internal OutboxMessage Peek(string messageId)
+        {
+            lock (_gate)
+                return _byId.Values.Single(m => m.MessageId == messageId);
+        }
+
         public Task<OutboxMessage> EnqueueAsync(OutboxEnqueueRequest request, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -81,6 +88,16 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
                 OutboxMessageStatus.Failed => message.NextRetryAtUtc is null || message.NextRetryAtUtc <= now,
                 _ => false,
             };
+
+        public Task<IReadOnlyList<string?>> GetClaimablePartitionKeysAsync(CancellationToken cancellationToken = default)
+        {
+            lock (_gate)
+            {
+                var now = timeProvider.GetUtcNow();
+                IReadOnlyList<string?> partitionKeys = [.. _byId.Values.Where(m => IsClaimable(m, now)).Select(m => m.PartitionKey).Distinct()];
+                return Task.FromResult(partitionKeys);
+            }
+        }
 
         public Task<OutboxMessage?> RenewLeaseAsync(Guid id, string leaseOwner, TimeSpan leaseExtension, CancellationToken cancellationToken = default)
         {

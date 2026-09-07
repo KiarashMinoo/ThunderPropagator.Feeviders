@@ -90,6 +90,38 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         }
 
         [Fact]
+        public async Task GetClaimablePartitionKeysAsync_ShouldReturnDistinctPartitionsWithClaimableEntries()
+        {
+            var store = CreateStore(new ManualTimeProvider(DateTimeOffset.UnixEpoch));
+            await store.EnqueueAsync(CreateRequest("a1", partitionKey: "partition-a"));
+            await store.EnqueueAsync(CreateRequest("a2", partitionKey: "partition-a"));
+            await store.EnqueueAsync(CreateRequest("b1", partitionKey: "partition-b"));
+            await store.EnqueueAsync(CreateRequest("unpartitioned", partitionKey: null));
+
+            var partitionKeys = await store.GetClaimablePartitionKeysAsync();
+
+            Assert.Equal(3, partitionKeys.Count);
+            Assert.Contains("partition-a", partitionKeys);
+            Assert.Contains("partition-b", partitionKeys);
+            Assert.Contains(null, partitionKeys);
+        }
+
+        [Fact]
+        public async Task GetClaimablePartitionKeysAsync_ShouldExcludeAPartitionWithOnlyALiveLeaseOrTerminalEntries()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = CreateStore(timeProvider);
+            await store.EnqueueAsync(CreateRequest("leased", partitionKey: "partition-a"));
+            await store.ClaimBatchAsync("partition-a", 10, "owner-a", TimeSpan.FromMinutes(5));
+
+            await store.EnqueueAsync(CreateRequest("published", partitionKey: "partition-b"));
+            var publishedClaim = await store.ClaimBatchAsync("partition-b", 10, "owner-a", TimeSpan.FromMinutes(5));
+            await store.MarkPublishedAsync(publishedClaim[0].Id, "owner-a");
+
+            Assert.Empty(await store.GetClaimablePartitionKeysAsync());
+        }
+
+        [Fact]
         public async Task ClaimBatchAsync_ShouldRecoverAnAbandonedLease()
         {
             var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);

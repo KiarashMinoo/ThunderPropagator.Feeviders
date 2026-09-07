@@ -8,7 +8,8 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
 
         /// <summary>
         /// The message was durably enqueued to the Outbox - not yet published. A relay worker will
-        /// publish it later via <see cref="IProvider.PublishDirectAsync"/>; do not infer the message has
+        /// publish it later via <see cref="IProvider.PublishDirectAsync(byte[], IReadOnlyDictionary{string, string}?, CancellationToken)"/>;
+        /// do not infer the message has
         /// reached (or will imminently reach) the broker just because this call returned.
         /// </summary>
         Enqueued,
