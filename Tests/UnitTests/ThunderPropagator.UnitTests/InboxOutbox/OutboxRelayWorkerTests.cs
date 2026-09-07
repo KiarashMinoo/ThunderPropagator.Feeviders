@@ -44,6 +44,165 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         }
 
         [Fact]
+        public async Task RunOnceAsync_ShouldStampTheStableMessageIdHeaderOnEveryPublish()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = new ReferenceOutboxStore(timeProvider);
+            // The enqueuing call site's own value under this key must never win - the relay worker's
+            // own stable OutboxMessage.MessageId is always the authoritative deduplication key.
+            await store.EnqueueAsync(Request("m1") with { Headers = new Dictionary<string, string> { [OutboxHeaderNames.MessageId] = "spoofed" } });
+
+            var provider = DelegateProvider.Success();
+            var worker = BuildWorker(store, timeProvider, provider);
+
+            await worker.RunOnceAsync();
+
+            var (_, headers) = Assert.Single(provider.Published);
+            Assert.Equal("m1", headers![OutboxHeaderNames.MessageId]);
+        }
+
+        [Fact]
+        public async Task RunOnceAsync_RetriedEntry_ShouldKeepTheSameMessageIdHeaderAcrossAttempts()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = new ReferenceOutboxStore(timeProvider);
+            await store.EnqueueAsync(Request("m1"));
+
+            var attempt = 0;
+            var capturedIds = new List<string>();
+            var provider = DelegateProvider.Custom((_, headers) =>
+            {
+                capturedIds.Add(headers![OutboxHeaderNames.MessageId]);
+                if (++attempt == 1)
+                    throw new InvalidOperationException("ambiguous - broker outcome unknown");
+                return Task.CompletedTask;
+            });
+            var worker = BuildWorker(store, timeProvider, provider, RelayOptions() with { MaxRetryAttempts = 5 });
+
+            await worker.RunOnceAsync(); // fails once, backs off
+            timeProvider.Advance(TimeSpan.FromMinutes(10));
+            await worker.RunOnceAsync(); // retried claim - same MessageId
+
+            Assert.Equal(["m1", "m1"], capturedIds);
+            Assert.Equal(OutboxMessageStatus.Published, (await Get(store, "m1")).Status);
+        }
+
+        [Fact]
+        public async Task RunOnceAsync_ContinueOnFailurePolicy_ShouldPublishLaterEntriesDespiteAnEarlierTransientFailure()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = new ReferenceOutboxStore(timeProvider);
+            await store.EnqueueAsync(Request("m1", "partition-a"));
+            await store.EnqueueAsync(Request("m2", "partition-a"));
+
+            var published = new List<string>();
+            var provider = DelegateProvider.Custom(bytes =>
+            {
+                var id = System.Text.Encoding.UTF8.GetString(bytes);
+                if (id == "m1")
+                    throw new InvalidOperationException("transient");
+                published.Add(id);
+                return Task.CompletedTask;
+            });
+            var options = RelayOptions() with { MaxRetryAttempts = 5, OrderingPolicy = OutboxOrderingPolicy.ContinueOnFailure };
+            var worker = BuildWorker(store, timeProvider, provider, options);
+
+            await worker.RunOnceAsync();
+
+            Assert.Equal(["m2"], published); // m2 published despite m1 (ordered before it) still being Failed
+            Assert.Equal(OutboxMessageStatus.Failed, (await Get(store, "m1")).Status);
+            Assert.Equal(OutboxMessageStatus.Published, (await Get(store, "m2")).Status);
+        }
+
+        [Fact]
+        public async Task RunOnceAsync_IndependentPartitions_ShouldProgressConcurrentlyEvenWhenOnePartitionBlocks()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = new ReferenceOutboxStore(timeProvider);
+            await store.EnqueueAsync(Request("blocked", "partition-a"));
+            await store.EnqueueAsync(Request("free", "partition-b"));
+
+            var blockedGate = new TaskCompletionSource();
+            var freeCompleted = new TaskCompletionSource();
+            var provider = DelegateProvider.Custom(async bytes =>
+            {
+                var id = System.Text.Encoding.UTF8.GetString(bytes);
+                if (id == "blocked")
+                    await blockedGate.Task; // never released within this test - simulates a stuck partition
+                else
+                    freeCompleted.TrySetResult();
+            });
+            var worker = BuildWorker(store, timeProvider, provider);
+
+            var runOnce = worker.RunOnceAsync();
+            await freeCompleted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+            Assert.Equal(OutboxMessageStatus.Published, (await Get(store, "free")).Status);
+            blockedGate.TrySetResult();
+            await runOnce.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+
+        [Fact]
+        public async Task RunOnceAsync_SinglePartitionLargeBatch_ShouldPublishInStrictOrder()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = new ReferenceOutboxStore(timeProvider);
+            for (var i = 0; i < 25; i++)
+                await store.EnqueueAsync(Request($"m{i}", "partition-a"));
+
+            var published = new List<string>();
+            var provider = DelegateProvider.Custom(bytes =>
+            {
+                published.Add(System.Text.Encoding.UTF8.GetString(bytes));
+                return Task.CompletedTask;
+            });
+            var worker = BuildWorker(store, timeProvider, provider, RelayOptions() with { RelayBatchSize = 100 });
+
+            await worker.RunOnceAsync();
+
+            Assert.Equal(Enumerable.Range(0, 25).Select(i => $"m{i}"), published);
+        }
+
+        [Fact]
+        public async Task RunOnceAsync_HighConcurrency_ShouldRespectMaxDegreeOfParallelismAcrossManyPartitions()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = new ReferenceOutboxStore(timeProvider);
+            const int partitionCount = 20;
+            for (var i = 0; i < partitionCount; i++)
+                await store.EnqueueAsync(Request($"m{i}", $"partition-{i}"));
+
+            var inFlight = 0;
+            var maxObservedConcurrency = 0;
+            var gate = new object();
+            var provider = DelegateProvider.Custom(async _ =>
+            {
+                lock (gate)
+                {
+                    inFlight++;
+                    maxObservedConcurrency = Math.Max(maxObservedConcurrency, inFlight);
+                }
+
+                await Task.Delay(20);
+
+                lock (gate)
+                    inFlight--;
+            });
+
+            var storeFactory = Substitute.For<IOutboxStoreFactory>();
+            storeFactory.GetStore(StoreName, OutboxStoreType.InMemory).Returns(store);
+            var subscription = new OutboxRelaySubscription { ProviderKey = ProviderKey, Options = RelayOptions(), ResolveProvider = _ => provider };
+            var worker = new OutboxRelayWorker([subscription], storeFactory, Substitute.For<IServiceProvider>(), timeProvider, new FixedRandom(0.5), maxDegreeOfParallelism: 4);
+
+            await worker.RunOnceAsync();
+
+            Assert.True(maxObservedConcurrency <= 4, $"Observed concurrency {maxObservedConcurrency} exceeded the configured limit of 4.");
+            Assert.True(maxObservedConcurrency > 1, "Expected at least some concurrency across independent partitions.");
+            for (var i = 0; i < partitionCount; i++)
+                Assert.Equal(OutboxMessageStatus.Published, (await Get(store, $"m{i}")).Status);
+        }
+
+        [Fact]
         public async Task RunOnceAsync_PublishThrows_BelowMaxAttempts_ShouldFailWithComputedBackoff()
         {
             var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
@@ -388,6 +547,9 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
 
             public static DelegateProvider Custom(Func<byte[], Task> onPublish) =>
                 new((bytes, _, _) => onPublish(bytes));
+
+            public static DelegateProvider Custom(Func<byte[], IReadOnlyDictionary<string, string>?, Task> onPublish) =>
+                new((bytes, headers, _) => onPublish(bytes, headers));
         }
 
         private sealed class DelegateDeadLetterHandler(Func<OutboxMessage, string, CancellationToken, ValueTask> onHandle) : IOutboxDeadLetterHandler

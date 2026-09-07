@@ -23,6 +23,28 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
     /// key, exchange, etc.) travels on the message itself via <see cref="OutboxEnqueueRequest.Headers"/>,
     /// the same bounded header bag every backend already carries.
     /// </remarks>
+    /// <remarks>
+    /// <para>
+    /// <b>Downstream deduplication.</b> This Outbox provides at-least-once delivery, never
+    /// exactly-once: an ambiguous broker outcome (a publish call throws without the caller knowing
+    /// whether the broker actually received it), or a relay worker crash between the broker's
+    /// acknowledgement and its own <see cref="IOutboxStore.MarkPublishedAsync"/> call, both retry the
+    /// same entry under the same <see cref="OutboxMessage.MessageId"/> - see
+    /// <see cref="OutboxHeaderNames.MessageId"/>. A downstream consumer that cannot tolerate a duplicate
+    /// delivery must deduplicate on that header itself; this Outbox has no way to guarantee a broker
+    /// never redelivers or a relay worker never retries.
+    /// </para>
+    /// <para>
+    /// <b>Poison-message policy.</b> An entry that fails every attempt up to <see cref="MaxRetryAttempts"/>
+    /// is dead-lettered automatically and, from that point on, never blocks its partition (see
+    /// <see cref="OutboxOrderingPolicy"/>) - dead-lettering is itself the unblock mechanism. Setting
+    /// <see cref="MaxRetryAttempts"/> to zero dead-letters on the very first failure, for a Provider
+    /// where a broker-rejected message should never occupy a retry slot at all. Setting
+    /// <see cref="OrderingPolicy"/> to <see cref="OutboxOrderingPolicy.ContinueOnFailure"/> additionally
+    /// keeps a partition moving *while* a poison entry is still mid-retry, at the cost of strict
+    /// ordering for whatever publishes ahead of it in the meantime.
+    /// </para>
+    /// </remarks>
     public sealed record OutboxOptions
     {
         /// <summary>Whether the Outbox is active for this Provider. Disabled by default - the existing direct publish path is otherwise unchanged.</summary>
@@ -59,6 +81,14 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
 
         /// <summary>The shared partition key used when <see cref="PartitionStrategy"/> is <see cref="OutboxPartitionStrategy.Fixed"/>. Required in that case; ignored otherwise.</summary>
         public string? FixedPartitionKey { get; init; }
+
+        /// <summary>
+        /// What a relay worker does with the rest of a partition's claimed batch when one entry fails
+        /// transiently. Defaults to <see cref="OutboxOrderingPolicy.StrictPerPartition"/> - see
+        /// <see cref="OutboxOrderingPolicy"/> for the availability/ordering trade-off
+        /// <see cref="OutboxOrderingPolicy.ContinueOnFailure"/> makes instead.
+        /// </summary>
+        public OutboxOrderingPolicy OrderingPolicy { get; init; } = OutboxOrderingPolicy.StrictPerPartition;
 
         /// <summary>How often a relay worker polls <see cref="IOutboxStore.ClaimBatchAsync"/> for claimable entries.</summary>
         public TimeSpan RelayPollingInterval { get; init; } = TimeSpan.FromSeconds(30);
@@ -139,7 +169,7 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
             $"{nameof(OutboxOptions)} {{ {nameof(OutboxEnabled)} = {OutboxEnabled}, {nameof(StoreType)} = {StoreType}, "
             + $"{nameof(StoreConnectionName)} = {(string.IsNullOrEmpty(StoreConnectionName) ? "<none>" : "***")}, "
             + $"{nameof(RequireDurableStore)} = {RequireDurableStore}, {nameof(TransactionMode)} = {TransactionMode}, "
-            + $"{nameof(PartitionStrategy)} = {PartitionStrategy}, {nameof(RelayPollingInterval)} = {RelayPollingInterval}, "
+            + $"{nameof(PartitionStrategy)} = {PartitionStrategy}, {nameof(OrderingPolicy)} = {OrderingPolicy}, {nameof(RelayPollingInterval)} = {RelayPollingInterval}, "
             + $"{nameof(RelayBatchSize)} = {RelayBatchSize}, {nameof(MaxRetryAttempts)} = {MaxRetryAttempts}, "
             + $"{nameof(RetryBaseDelay)} = {RetryBaseDelay}, {nameof(RetryMaxDelay)} = {RetryMaxDelay}, "
             + $"{nameof(RetentionPeriod)} = {RetentionPeriod}, {nameof(ClaimLeaseDuration)} = {ClaimLeaseDuration}, "

@@ -10,8 +10,17 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
             var options = new OutboxOptions();
 
             Assert.False(options.OutboxEnabled);
+            Assert.Equal(OutboxOrderingPolicy.StrictPerPartition, options.OrderingPolicy);
             var exception = Record.Exception(options.Validate);
             Assert.Null(exception);
+        }
+
+        [Fact]
+        public void ToString_ShouldIncludeTheConfiguredOrderingPolicy()
+        {
+            var options = new OutboxOptions { OrderingPolicy = OutboxOrderingPolicy.ContinueOnFailure };
+
+            Assert.Contains(nameof(OutboxOrderingPolicy.ContinueOnFailure), options.ToString());
         }
 
         [Fact]
