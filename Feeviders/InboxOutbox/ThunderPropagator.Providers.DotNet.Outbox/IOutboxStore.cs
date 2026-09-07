@@ -23,13 +23,24 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
         Task<OutboxMessage> EnqueueAsync(OutboxEnqueueRequest request, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Atomically claims up to <paramref name="maxCount"/> <see cref="OutboxMessageStatus.Pending"/>
-        /// (or lease-expired <see cref="OutboxMessageStatus.Publishing"/>) entries within
-        /// <paramref name="partitionKey"/>, in <see cref="OutboxMessage.OrderingSequence"/> order,
-        /// stamping each with <paramref name="leaseOwner"/> and moving it to
-        /// <see cref="OutboxMessageStatus.Publishing"/>. No other caller can claim the same entries
-        /// until the lease expires.
+        /// Atomically claims up to <paramref name="maxCount"/> claimable entries from the single
+        /// partition <paramref name="partitionKey"/> identifies - an exact match against
+        /// <see cref="OutboxMessage.PartitionKey"/>, including <see langword="null"/> itself as the
+        /// partition for messages enqueued with no partition key, never "every partition". A relay
+        /// worker claims one partition at a time (typically one loop per known partition) so partitions
+        /// can be published concurrently and independently without one worker's claim spanning, and
+        /// therefore serializing, entries that belong to different partitions.
         /// </summary>
+        /// <remarks>
+        /// Claimable, in <see cref="OutboxMessage.OrderingSequence"/> order: <see cref="OutboxMessageStatus.Pending"/>
+        /// entries; <see cref="OutboxMessageStatus.Publishing"/> entries whose lease has expired (an
+        /// abandoned claim - the relay worker that held it crashed or was killed before calling
+        /// <see cref="MarkPublishedAsync"/>/<see cref="MarkFailedAsync"/>/<see cref="MarkDeadLetterAsync"/>/
+        /// <see cref="ReleaseAsync"/>); and <see cref="OutboxMessageStatus.Failed"/> entries whose
+        /// <see cref="OutboxMessage.NextRetryAtUtc"/> has elapsed. Every claimed entry is stamped with
+        /// <paramref name="leaseOwner"/> and moved to <see cref="OutboxMessageStatus.Publishing"/>; no
+        /// other caller can claim the same entry until that lease expires.
+        /// </remarks>
         Task<IReadOnlyList<OutboxMessage>> ClaimBatchAsync(string? partitionKey, int maxCount, string leaseOwner, TimeSpan leaseDuration, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -66,12 +77,19 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
         /// </summary>
         Task<bool> ReleaseAsync(Guid id, string leaseOwner, CancellationToken cancellationToken = default);
 
-        /// <summary>Number of not-yet-<see cref="OutboxMessageStatus.Published"/> entries, optionally scoped to a partition.</summary>
+        /// <summary>
+        /// Number of not-yet-terminal (not <see cref="OutboxMessageStatus.Published"/> or
+        /// <see cref="OutboxMessageStatus.DeadLettered"/>) entries. Unlike <see cref="ClaimBatchAsync"/>'s
+        /// exact-match <paramref name="partitionKey"/>, this is a reporting query: a <see langword="null"/>
+        /// <paramref name="partitionKey"/> aggregates across every partition (the store-wide backlog), and
+        /// a non-null value narrows the count to that one partition.
+        /// </summary>
         Task<int> GetDepthAsync(string? partitionKey, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Age of the oldest not-yet-<see cref="OutboxMessageStatus.Published"/> entry, optionally
-        /// scoped to a partition, or <see langword="null"/> if there is none.
+        /// Age of the oldest not-yet-terminal entry, or <see langword="null"/> if there is none. Same
+        /// aggregate-by-default scoping as <see cref="GetDepthAsync"/>: <see langword="null"/> means
+        /// across every partition, a non-null <paramref name="partitionKey"/> narrows to one.
         /// </summary>
         Task<TimeSpan?> GetOldestPendingAgeAsync(string? partitionKey, TimeProvider timeProvider, CancellationToken cancellationToken = default);
 
