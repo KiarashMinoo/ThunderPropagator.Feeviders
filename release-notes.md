@@ -1,5 +1,5 @@
-## [1.0.1-beta.69] — 2026-09-07
+## [1.0.1-beta.70] — 2026-09-07
 
 ### 🏠 Chores
 
-- Design atomic store claims, partition ordering, and recovery `(f97fe6d)` — Kiarash Minoo
+- Add and validate per-Provider outbox configuration `(665bfde)` — Kiarash Minoo
