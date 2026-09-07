@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.73] — 2026-09-07
+
+### 📦 Dependencies
+
+| Package | Old | New |
+|---------|-----|-----|
+| Testcontainers | 4.14.0 | 4.15.0 |
+
+- Bump Testcontainers from 4.14.0 to 4.15.0 `(8a92776)` — dependabot[bot]
+
 ## [1.0.1-beta.72] — 2026-09-07
 
 ### 🏠 Chores

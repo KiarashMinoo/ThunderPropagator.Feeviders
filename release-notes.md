@@ -1,5 +1,9 @@
-## [1.0.1-beta.72] — 2026-09-07
+## [1.0.1-beta.73] — 2026-09-07
 
-### 🏠 Chores
+### 📦 Dependencies
 
-- Define and implement the business-transaction enlistment boundary `(f0b1a07)` — Kiarash Minoo
+| Package | Old | New |
+|---------|-----|-----|
+| Testcontainers | 4.14.0 | 4.15.0 |
+
+- Bump Testcontainers from 4.14.0 to 4.15.0 `(8a92776)` — dependabot[bot]
