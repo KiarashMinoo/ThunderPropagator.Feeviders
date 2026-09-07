@@ -1,5 +1,5 @@
-## [1.0.1-beta.77] — 2026-09-07
+## [1.0.1-beta.78] — 2026-09-07
 
 ### 🏠 Chores
 
-- Implement thread-safe In-Memory backend packages `(c42fbf2)` — Kiarash Minoo
+- Implement Redis backend packages with atomic scripts `(4610734)` — Kiarash Minoo

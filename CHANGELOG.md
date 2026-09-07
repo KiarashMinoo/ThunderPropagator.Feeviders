@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.78] — 2026-09-07
+
+### 🏠 Chores
+
+- Implement Redis backend packages with atomic scripts `(4610734)` — Kiarash Minoo
+
 ## [1.0.1-beta.77] — 2026-09-07
 
 ### 🏠 Chores
