@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="JetBrains.Annotations" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\ThunderPropagator.Providers.DotNet.Outbox\ThunderPropagator.Providers.DotNet.Outbox.csproj" />
+    </ItemGroup>
+
+</Project>
