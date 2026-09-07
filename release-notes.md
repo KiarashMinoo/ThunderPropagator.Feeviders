@@ -1,5 +1,5 @@
-## [1.0.1-beta.70] — 2026-09-07
+## [1.0.1-beta.71] — 2026-09-07
 
 ### 🏠 Chores
 
-- Add and validate per-Provider outbox configuration `(665bfde)` — Kiarash Minoo
+- Implement store factory and DI registration by named configuration `(a240fe1)` — Kiarash Minoo
