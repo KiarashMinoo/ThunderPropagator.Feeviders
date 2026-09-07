@@ -63,9 +63,17 @@ namespace ThunderPropagator.Feeders.Inbox
         Task<InboxMessage?> RenewLeaseAsync(Guid id, string leaseOwner, TimeSpan leaseExtension, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Returns entries in <see cref="InboxMessageStatus.Failed"/> whose
-        /// <see cref="InboxMessage.NextRetryAtUtc"/> has elapsed, for a retry worker to claim via
-        /// <see cref="TryClaimAsync"/>. Does not itself claim anything.
+        /// Returns entries a retry worker should attempt to reclaim via <see cref="TryClaimAsync"/>:
+        /// entries in <see cref="InboxMessageStatus.Failed"/> whose <see cref="InboxMessage.NextRetryAtUtc"/>
+        /// has elapsed, AND entries still in <see cref="InboxMessageStatus.Processing"/> whose
+        /// <see cref="InboxMessage.LeaseExpiresAtUtc"/> has elapsed - an abandoned lease left behind by a
+        /// worker that claimed the entry and then crashed or was killed before calling
+        /// <see cref="CompleteAsync"/>/<see cref="FailAsync"/>/<see cref="DeadLetterAsync"/>, so it would
+        /// otherwise never resurface (broker redelivery is not guaranteed, and this status never reaches
+        /// <see cref="InboxMessageStatus.Failed"/> on its own). Does not itself claim anything - a
+        /// returned entry may already be claimed by the time a caller's own <see cref="TryClaimAsync"/>
+        /// runs, which must then report <see cref="InboxClaimOutcome.ClaimedByAnotherOwner"/> rather than
+        /// double-processing it.
         /// </summary>
         Task<IReadOnlyList<InboxMessage>> QueryRetryableAsync(Guid channelKey, int maxCount, CancellationToken cancellationToken = default);
 

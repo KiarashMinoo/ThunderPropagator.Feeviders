@@ -177,6 +177,30 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         }
 
         [Fact]
+        public async Task QueryRetryableAsync_ShouldIncludeAnAbandonedProcessingLease()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = CreateStore(timeProvider);
+            var channelKey = Guid.NewGuid();
+
+            // Claimed and then abandoned - the worker crashed before Complete/Fail/DeadLetter, so this
+            // entry never reaches Failed on its own.
+            var claim = await store.TryClaimAsync(CreateRequest("abandoned", channelKey, "owner-a", TimeSpan.FromMinutes(1)));
+            Assert.Equal(InboxMessageStatus.Processing, claim.Message!.Status);
+
+            var tooEarly = await store.QueryRetryableAsync(channelKey, maxCount: 10);
+            Assert.DoesNotContain(tooEarly, m => m.Id == claim.Message.Id);
+
+            timeProvider.Advance(TimeSpan.FromMinutes(2));
+
+            var retryable = await store.QueryRetryableAsync(channelKey, maxCount: 10);
+            Assert.Contains(retryable, m => m.Id == claim.Message.Id);
+
+            var reclaimed = await store.TryClaimAsync(CreateRequest("abandoned", channelKey, "owner-b", TimeSpan.FromMinutes(1)));
+            Assert.Equal(InboxClaimOutcome.Claimed, reclaimed.Outcome);
+        }
+
+        [Fact]
         public async Task PurgeAsync_ShouldOnlyRemoveTerminalEntriesOlderThanTheCutoff()
         {
             var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);

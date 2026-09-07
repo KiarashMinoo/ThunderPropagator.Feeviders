@@ -101,13 +101,21 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
             {
                 var now = timeProvider.GetUtcNow();
                 IReadOnlyList<InboxMessage> retryable = _byId.Values
-                    .Where(m => m.ChannelKey == channelKey && m.Status == InboxMessageStatus.Failed && (m.NextRetryAtUtc is null || m.NextRetryAtUtc <= now))
+                    .Where(m => m.ChannelKey == channelKey && IsRetryable(m, now))
                     .Take(maxCount)
                     .ToArray();
 
                 return Task.FromResult(retryable);
             }
         }
+
+        private static bool IsRetryable(InboxMessage message, DateTimeOffset now) =>
+            message.Status switch
+            {
+                InboxMessageStatus.Failed => message.NextRetryAtUtc is null || message.NextRetryAtUtc <= now,
+                InboxMessageStatus.Processing => message.LeaseExpiresAtUtc is null || message.LeaseExpiresAtUtc <= now,
+                _ => false,
+            };
 
         public Task<int> PurgeAsync(Guid channelKey, DateTimeOffset olderThanUtc, CancellationToken cancellationToken = default)
         {
