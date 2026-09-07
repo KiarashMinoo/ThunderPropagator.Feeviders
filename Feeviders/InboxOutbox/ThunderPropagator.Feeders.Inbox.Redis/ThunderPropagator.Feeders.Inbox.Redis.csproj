@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <PackageReference Include="JetBrains.Annotations" />
+        <!-- Microsoft.Extensions.DependencyInjection.Abstractions is intentionally not pinned here:
+             StackExchange.Redis unconditionally forces Microsoft.Extensions.Logging.Abstractions (and
+             therefore DependencyInjection.Abstractions) to 10.0.5 on every target framework, including
+             net8.0/net9.0 - pinning our own lower per-TFM floating version here would only create a
+             downgrade conflict with that transitive floor. The type is still available transitively. -->
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+        <PackageReference Include="StackExchange.Redis" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\ThunderPropagator.Feeders.Inbox\ThunderPropagator.Feeders.Inbox.csproj" />
+    </ItemGroup>
+
+</Project>
