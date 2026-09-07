@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 
 namespace ThunderPropagator.Providers.DotNet.Outbox
@@ -56,8 +57,12 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
         /// <summary>The raw, serialized message payload. Bounded by <see cref="OutboxMessageLimits.MaxPayloadSizeBytes"/>.</summary>
         public required byte[] Payload { get; init; }
 
-        /// <summary>Bounded header set. Never null - empty when there are no headers.</summary>
-        public IReadOnlyDictionary<string, string> Headers { get; init; } = new Dictionary<string, string>();
+        /// <summary>
+        /// Bounded header set. Never null - empty when there are no headers. Always enumerates in
+        /// ascending ordinal key order (see <see cref="NormalizeHeaders"/>) regardless of the order
+        /// headers were supplied in, so two messages with the same logical headers serialize identically.
+        /// </summary>
+        public IReadOnlyDictionary<string, string> Headers { get; init; } = NormalizeHeaders(null);
 
         /// <summary>Current lifecycle state.</summary>
         public required OutboxMessageStatus Status { get; init; }
@@ -73,6 +78,13 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
 
         /// <summary>When the message reached <see cref="OutboxMessageStatus.Published"/>.</summary>
         public DateTimeOffset? PublishedAtUtc { get; init; }
+
+        /// <summary>
+        /// When the message reached <see cref="OutboxMessageStatus.DeadLettered"/>. A purge/retention
+        /// worker ages a dead-lettered entry off this timestamp, the same way it ages a
+        /// <see cref="OutboxMessageStatus.Published"/> entry off <see cref="PublishedAtUtc"/>.
+        /// </summary>
+        public DateTimeOffset? DeadLetteredAtUtc { get; init; }
 
         /// <summary>Earliest time a retry claim may succeed, when <see cref="Status"/> is <see cref="OutboxMessageStatus.Failed"/>.</summary>
         public DateTimeOffset? NextRetryAtUtc { get; init; }
@@ -107,6 +119,7 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
             CreatedAtUtc = original.CreatedAtUtc;
             PublishingStartedAtUtc = original.PublishingStartedAtUtc;
             PublishedAtUtc = original.PublishedAtUtc;
+            DeadLetteredAtUtc = original.DeadLetteredAtUtc;
             NextRetryAtUtc = original.NextRetryAtUtc;
             LeaseOwner = original.LeaseOwner;
             LeaseExpiresAtUtc = original.LeaseExpiresAtUtc;
@@ -139,11 +152,24 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
                 SchemaVersion = schemaVersion,
                 PayloadContentType = payloadContentType,
                 Payload = payload,
-                Headers = headers ?? new Dictionary<string, string>(),
+                Headers = NormalizeHeaders(headers),
                 Status = OutboxMessageStatus.Pending,
                 Attempts = 0,
                 CreatedAtUtc = timeProvider.GetUtcNow(),
             };
+
+        private static readonly IReadOnlyDictionary<string, string> EmptyHeaders =
+            new ReadOnlyDictionary<string, string>(new Dictionary<string, string>());
+
+        /// <summary>
+        /// Copies <paramref name="headers"/> into a key-sorted (ordinal), read-only dictionary so
+        /// <see cref="Headers"/> always enumerates - and therefore serializes - in the same order
+        /// regardless of the order the caller supplied entries in.
+        /// </summary>
+        private static IReadOnlyDictionary<string, string> NormalizeHeaders(IReadOnlyDictionary<string, string>? headers) =>
+            headers is null or { Count: 0 }
+                ? EmptyHeaders
+                : new ReadOnlyDictionary<string, string>(new SortedDictionary<string, string>(new Dictionary<string, string>(headers), StringComparer.Ordinal));
 
         /// <summary>Whether a normal (non-requeue) transition from <see cref="Status"/> to <paramref name="target"/> is allowed.</summary>
         public bool CanTransitionTo(OutboxMessageStatus target) =>
@@ -200,6 +226,7 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
                 OutboxMessageStatus.DeadLettered => this with
                 {
                     Status = target,
+                    DeadLetteredAtUtc = now,
                     LeaseOwner = null,
                     LeaseExpiresAtUtc = null,
                     NextRetryAtUtc = null,
@@ -228,12 +255,32 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
                 Attempts = 0,
                 PublishingStartedAtUtc = null,
                 PublishedAtUtc = null,
+                DeadLetteredAtUtc = null,
                 NextRetryAtUtc = null,
                 LeaseOwner = null,
                 LeaseExpiresAtUtc = null,
                 FailureReason = null,
                 CreatedAtUtc = timeProvider.GetUtcNow(),
             };
+        }
+
+        /// <summary>
+        /// Extends an active publishing lease's expiry without otherwise changing this snapshot - the
+        /// one sanctioned mutation outside <see cref="TryTransitionTo"/>'s transition table, since a
+        /// heartbeat renewal is not itself a lifecycle transition. Backs <see cref="IOutboxStore.RenewLeaseAsync"/>.
+        /// </summary>
+        /// <returns>
+        /// The renewed snapshot, or <see langword="null"/> if <see cref="Status"/> is not
+        /// <see cref="OutboxMessageStatus.Publishing"/> or <paramref name="leaseOwner"/> does not match
+        /// <see cref="LeaseOwner"/> - the same compare-and-swap check every other lease-scoped operation
+        /// performs, so a relay worker that lost its lease can never renew it either.
+        /// </returns>
+        public OutboxMessage? RenewLease(TimeProvider timeProvider, string leaseOwner, TimeSpan leaseExtension)
+        {
+            if (Status != OutboxMessageStatus.Publishing || LeaseOwner != leaseOwner)
+                return null;
+
+            return this with { LeaseExpiresAtUtc = timeProvider.GetUtcNow() + leaseExtension };
         }
 
         private static string? Truncate(string? failureReason) =>
