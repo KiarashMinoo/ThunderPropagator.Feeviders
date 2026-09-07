@@ -102,6 +102,11 @@
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />
     </Project>
+    <Project Path="Feeviders/InboxOutbox/ThunderPropagator.Providers.DotNet.Outbox.EFCore/ThunderPropagator.Providers.DotNet.Outbox.EFCore.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
   </Folder>
   <Folder Name="/Feeviders/InboxOutbox/Stores/">
     <Project Path="Feeviders/InboxOutbox/Stores/InMemory/ThunderPropagator.InboxOutbox.InMemory/ThunderPropagator.InboxOutbox.InMemory.csproj">
