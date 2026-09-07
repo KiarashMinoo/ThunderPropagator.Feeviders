@@ -1,5 +1,5 @@
-## [1.0.1-beta.67] — 2026-09-07
+## [1.0.1-beta.68] — 2026-09-07
 
 ### 🏠 Chores
 
-- Implement lease-safe retry worker with exponential backoff `(a46e649)` — Kiarash Minoo
+- Close out versioned outbox message and status contracts `(32b3c24)` — Kiarash Minoo

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.68] — 2026-09-07
+
+### 🏠 Chores
+
+- Close out versioned outbox message and status contracts `(32b3c24)` — Kiarash Minoo
+
 ## [1.0.1-beta.67] — 2026-09-07
 
 ### 🏠 Chores
