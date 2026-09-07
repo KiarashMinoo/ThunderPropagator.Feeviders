@@ -1,5 +1,5 @@
-## [1.0.1-beta.75] — 2026-09-07
+## [1.0.1-beta.76] — 2026-09-07
 
 ### 🏠 Chores
 
-- Implement lease-safe relay worker with retry and dead-lettering `(9661fa0)` — Kiarash Minoo
+- Define partition ordering and downstream idempotency requirements `(375cfeb)` — Kiarash Minoo
