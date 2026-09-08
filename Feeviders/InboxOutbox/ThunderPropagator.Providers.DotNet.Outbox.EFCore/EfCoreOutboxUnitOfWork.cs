@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 
 namespace ThunderPropagator.Providers.DotNet.Outbox
@@ -33,10 +34,19 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
         {
             ArgumentNullException.ThrowIfNull(request);
 
+            // "outbox.enqueue" is anchored to this call, not to CommitAsync's later SaveChangesAsync - it
+            // represents the caller's own decision to enqueue, so it naturally nests under whatever
+            // business-transaction activity is ambient here. Its own trace context (not its parent's) is
+            // what gets persisted, so a relay attempt links back to this exact span.
+            using var activity = OutboxTelemetry.ActivitySource.StartActivity("outbox.enqueue", ActivityKind.Internal);
+            activity?.SetTag("outbox.provider_key", request.ProviderKey);
+            activity?.SetTag("outbox.message_id", request.MessageId);
+
+            var headers = OutboxTraceContext.WithCurrentTraceContext(request.Headers);
             var message = OutboxMessage.CreatePending(
                 Guid.NewGuid(), request.MessageId, request.ProviderKey, _nextOrderingSequence++,
                 request.SchemaVersion, request.PayloadContentType, request.Payload,
-                request.Headers, request.PartitionKey, _timeProvider);
+                headers, request.PartitionKey, _timeProvider);
 
             _staged.Add(message);
             dbContext.Add(message);

@@ -22,8 +22,6 @@ namespace ThunderPropagator.Feeders.SharedKernel
     /// </remarks>
     public sealed class InboxReceiveCoordinator
     {
-        internal static readonly ActivitySource ActivitySource = new("ThunderPropagator.Feeders.SharedKernel.InboxReceiveCoordinator");
-
         private readonly InboxOptions _options;
         private readonly Guid _channelKey;
         private readonly Guid _feederId;
@@ -119,12 +117,17 @@ namespace ThunderPropagator.Feeders.SharedKernel
                 return InboxReceiveOutcome.Disabled;
             }
 
-            using var activity = ActivitySource.StartActivity("InboxReceiveCoordinator_Receive", ActivityKind.Internal);
+            using var activity = InboxTelemetry.ActivitySource.StartActivity("inbox.receive", ActivityKind.Internal);
             activity?.SetTag("inbox.channel_key", _channelKey);
             activity?.SetTag("inbox.feeder_id", _feederId);
 
             var resolved = _messageIdResolver!.Resolve(new MessageIdResolutionRequest { Headers = headers, Payload = payload });
             activity?.SetTag("inbox.message_id", resolved.MessageId);
+
+            // Persisted now (activity.Current is this very "inbox.receive" activity), so a retry worker
+            // reclaiming this entry later - possibly after this process has long since exited - can link
+            // its own activity back to this one instead of losing the trace entirely.
+            var headersWithTraceContext = InboxTraceContext.WithCurrentTraceContext(headers);
 
             var leaseOwner = Guid.NewGuid().ToString("N");
             var channelTag = new KeyValuePair<string, object?>(InboxTelemetry.TagChannel, _channelKey);
@@ -137,7 +140,7 @@ namespace ThunderPropagator.Feeders.SharedKernel
                 SchemaVersion = 1,
                 PayloadContentType = payloadContentType,
                 Payload = payload,
-                Headers = headers,
+                Headers = headersWithTraceContext,
                 LeaseOwner = leaseOwner,
                 LeaseDuration = _options.ClaimLeaseDuration,
             }, cancellationToken)).ConfigureAwait(false);
