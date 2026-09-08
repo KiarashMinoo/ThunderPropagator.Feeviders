@@ -30,6 +30,8 @@ namespace ThunderPropagator.Feeders.SharedKernel
         private readonly TimeProvider _timeProvider;
         private readonly IInboxStore? _store;
         private readonly MessageIdResolver? _messageIdResolver;
+        private readonly IReadOnlyList<IInboxDeadLetterHandler> _deadLetterHandlers;
+        private readonly InboxDeadLetterPayloadPolicy _deadLetterPayloadPolicy;
 
         /// <summary>Whether the Inbox is active - mirrors <see cref="InboxOptions.InboxEnabled"/>.</summary>
         public bool InboxEnabled => _options.InboxEnabled;
@@ -42,7 +44,22 @@ namespace ThunderPropagator.Feeders.SharedKernel
         /// <see cref="InboxOptions.StoreConnectionName"/>, or no <paramref name="storeFactory"/> was
         /// supplied - both fail here, at construction, rather than on the first received message.
         /// </exception>
-        public InboxReceiveCoordinator(InboxOptions options, Guid channelKey, Guid feederId, IInboxStoreFactory? storeFactory, TimeProvider? timeProvider = null)
+        /// <remarks>
+        /// <paramref name="deadLetterHandlers"/> - empty by default - run, in order, by
+        /// <see cref="InboxDeadLetterPipeline"/> whenever <see cref="ReceiveAsync"/> itself dead-letters
+        /// an entry (exhausted retries on this, the live receive path - contrast <c>InboxRetryWorker</c>'s
+        /// own, separately-configured handlers for the same channel's retry path).
+        /// <paramref name="deadLetterPayloadPolicy"/> controls the <see cref="InboxDeadLetterContext"/>
+        /// payload visibility those handlers are handed.
+        /// </remarks>
+        public InboxReceiveCoordinator(
+            InboxOptions options,
+            Guid channelKey,
+            Guid feederId,
+            IInboxStoreFactory? storeFactory,
+            TimeProvider? timeProvider = null,
+            IReadOnlyList<IInboxDeadLetterHandler>? deadLetterHandlers = null,
+            InboxDeadLetterPayloadPolicy deadLetterPayloadPolicy = InboxDeadLetterPayloadPolicy.Include)
         {
             ArgumentNullException.ThrowIfNull(options);
             options.Validate();
@@ -51,6 +68,8 @@ namespace ThunderPropagator.Feeders.SharedKernel
             _channelKey = channelKey;
             _feederId = feederId;
             _timeProvider = timeProvider ?? TimeProvider.System;
+            _deadLetterHandlers = deadLetterHandlers ?? [];
+            _deadLetterPayloadPolicy = deadLetterPayloadPolicy;
 
             if (!options.InboxEnabled)
                 return;
@@ -160,7 +179,16 @@ namespace ThunderPropagator.Feeders.SharedKernel
 
                 if (claimed.AttemptCount >= _options.MaxRetryAttempts)
                 {
-                    await _store.DeadLetterAsync(claimed.Id, leaseOwner, reason, cancellationToken).ConfigureAwait(false);
+                    var deadLettered = await _store.DeadLetterAsync(claimed.Id, leaseOwner, reason, cancellationToken).ConfigureAwait(false);
+                    if (deadLettered is not null && _deadLetterHandlers.Count > 0)
+                    {
+                        var category = InboxFailureClassifier.Classify(exception, attemptsExhausted: true);
+                        var context = InboxDeadLetterContextFactory.Create(deadLettered, category, _deadLetterPayloadPolicy);
+                        // A failing handler must not undo the dead-lettering that already durably
+                        // succeeded above - InboxDeadLetterPipeline isolates each handler's own failure.
+                        await new InboxDeadLetterPipeline(_deadLetterHandlers).RunAsync(context, cancellationToken).ConfigureAwait(false);
+                    }
+
                     return InboxReceiveOutcome.DeadLettered;
                 }
 

@@ -393,6 +393,18 @@ namespace ThunderPropagator.Feeders.Inbox
         }
 
         /// <inheritdoc/>
+        public async Task<InboxMessage?> ReplayAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            await using var db = _createDbContext();
+            var existing = await db.Set<InboxMessage>().FirstOrDefaultAsync(m => m.Id == id, cancellationToken).ConfigureAwait(false);
+            if (existing is null || existing.Status is not (InboxMessageStatus.Processed or InboxMessageStatus.DeadLettered))
+                return null;
+
+            var replayed = existing.Replay(_timeProvider);
+            return await TryApplyAsync(db, existing, replayed, cancellationToken).ConfigureAwait(false) ? replayed : null;
+        }
+
+        /// <inheritdoc/>
         public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
             try

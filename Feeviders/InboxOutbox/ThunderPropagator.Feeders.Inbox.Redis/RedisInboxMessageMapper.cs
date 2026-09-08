@@ -88,6 +88,9 @@ namespace ThunderPropagator.Feeders.Inbox.Redis
                 FieldStatus, message.Status.ToString(),
                 FieldAttemptCount, message.AttemptCount.ToString(),
                 FieldVersion, version.ToString(),
+                // Never changes except via InboxMessage.Replay (every other transition leaves it as-is) -
+                // always included here regardless, since it is cheap and correct either way.
+                FieldReceivedAtUtc, message.ReceivedAtUtc.ToUnixTimeMilliseconds().ToString(),
             };
             var toDelete = new List<string>(6);
 

@@ -453,6 +453,21 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
         }
 
         /// <inheritdoc/>
+        public async Task<OutboxMessage?> ReplayAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            await using var db = _createDbContext();
+            var existing = await db.Set<OutboxMessage>().FirstOrDefaultAsync(m => m.Id == id, cancellationToken).ConfigureAwait(false);
+            if (existing is null || existing.Status is not (OutboxMessageStatus.Published or OutboxMessageStatus.DeadLettered))
+                return null;
+
+            var partitionSlot = PartitionSlot(existing.PartitionKey);
+            var newOrderingSequence = await AllocateNextOrderingSequenceAsync(db, partitionSlot, cancellationToken).ConfigureAwait(false);
+            var requeued = existing.Requeue(newOrderingSequence, _timeProvider);
+
+            return await TryApplyAsync(db, existing, requeued, cancellationToken).ConfigureAwait(false) ? requeued : null;
+        }
+
+        /// <inheritdoc/>
         public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
             try

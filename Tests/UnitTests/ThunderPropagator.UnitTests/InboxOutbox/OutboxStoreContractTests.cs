@@ -341,5 +341,78 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
             Assert.Equal(1, purged);
             Assert.Equal(1, await store.GetDepthAsync(null)); // the still-active entry is untouched
         }
+
+        [Fact]
+        public async Task ReplayAsync_DeadLetteredEntry_ShouldTransitionBackToPendingWithAFreshOrderingSequence()
+        {
+            var store = CreateStore(new ManualTimeProvider(DateTimeOffset.UnixEpoch));
+            await store.EnqueueAsync(CreateRequest("m1", partitionKey: "partition-a"));
+            var claim = await store.ClaimBatchAsync("partition-a", 10, "owner-a", TimeSpan.FromMinutes(5));
+            var originalOrderingSequence = claim[0].OrderingSequence;
+            await store.MarkDeadLetterAsync(claim[0].Id, "owner-a", "unrecoverable");
+
+            var replayed = await store.ReplayAsync(claim[0].Id);
+
+            Assert.NotNull(replayed);
+            Assert.Equal(OutboxMessageStatus.Pending, replayed!.Status);
+            Assert.Equal(0, replayed.Attempts);
+            Assert.Null(replayed.FailureReason);
+            Assert.True(replayed.OrderingSequence > originalOrderingSequence);
+
+            var reclaimed = await store.ClaimBatchAsync("partition-a", 10, "owner-b", TimeSpan.FromMinutes(5));
+            Assert.Single(reclaimed);
+            Assert.Equal("m1", reclaimed[0].MessageId);
+        }
+
+        [Fact]
+        public async Task ReplayAsync_PublishedEntry_ShouldAlsoTransitionBackToPending()
+        {
+            var store = CreateStore(new ManualTimeProvider(DateTimeOffset.UnixEpoch));
+            await store.EnqueueAsync(CreateRequest("m1"));
+            var claim = await store.ClaimBatchAsync(null, 10, "owner-a", TimeSpan.FromMinutes(5));
+            await store.MarkPublishedAsync(claim[0].Id, "owner-a");
+
+            var replayed = await store.ReplayAsync(claim[0].Id);
+
+            Assert.NotNull(replayed);
+            Assert.Equal(OutboxMessageStatus.Pending, replayed!.Status);
+        }
+
+        [Fact]
+        public async Task ReplayAsync_NonTerminalEntry_ShouldReturnNullWithoutMutatingIt()
+        {
+            var store = CreateStore(new ManualTimeProvider(DateTimeOffset.UnixEpoch));
+            await store.EnqueueAsync(CreateRequest("m1"));
+            var claim = await store.ClaimBatchAsync(null, 10, "owner-a", TimeSpan.FromMinutes(5));
+
+            var replayed = await store.ReplayAsync(claim[0].Id);
+
+            Assert.Null(replayed);
+            var stillHeld = await store.ClaimBatchAsync(null, 10, "owner-b", TimeSpan.FromMinutes(5));
+            Assert.Empty(stillHeld);
+        }
+
+        [Fact]
+        public async Task ReplayAsync_UnknownId_ShouldReturnNull()
+        {
+            var store = CreateStore(new ManualTimeProvider(DateTimeOffset.UnixEpoch));
+
+            Assert.Null(await store.ReplayAsync(Guid.NewGuid()));
+        }
+
+        [Fact]
+        public async Task ReplayAsync_AlreadyReplayedEntry_ShouldBeIdempotent_ReturningNullTheSecondTime()
+        {
+            var store = CreateStore(new ManualTimeProvider(DateTimeOffset.UnixEpoch));
+            await store.EnqueueAsync(CreateRequest("m1"));
+            var claim = await store.ClaimBatchAsync(null, 10, "owner-a", TimeSpan.FromMinutes(5));
+            await store.MarkDeadLetterAsync(claim[0].Id, "owner-a", "unrecoverable");
+
+            var first = await store.ReplayAsync(claim[0].Id);
+            var second = await store.ReplayAsync(claim[0].Id);
+
+            Assert.NotNull(first);
+            Assert.Null(second);
+        }
     }
 }

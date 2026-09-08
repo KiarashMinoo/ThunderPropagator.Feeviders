@@ -64,6 +64,14 @@ namespace ThunderPropagator.Providers.DotNet.Outbox.Redis
         /// </summary>
         private const int RequiredSchemaVersion = 1;
 
+        /// <summary>
+        /// Upper bound on how many times a version-CAS conflict during <see cref="ReplayAsync"/> retries
+        /// the read-decide-write cycle before giving up. Exists only to bound pathological contention
+        /// (many callers requeuing the exact same entry at once) - ordinary contention resolves in one
+        /// or two attempts.
+        /// </summary>
+        private const int MaxCasAttempts = 20;
+
         private const int MaxLockAcquireAttempts = 50;
         private static readonly TimeSpan LockAcquireRetryDelay = TimeSpan.FromMilliseconds(200);
         private static readonly TimeSpan LockTtl = TimeSpan.FromSeconds(30);
@@ -110,6 +118,14 @@ namespace ThunderPropagator.Providers.DotNet.Outbox.Redis
                 redis.call('SREM', @knownPartitionsKey, @partitionSlot)
               end
               redis.call('ZADD', @terminalKey, @terminalScore, @id)
+            elseif @reactivate == '1' then
+              -- Leaving a terminal state (see OutboxMessage.Requeue) - the mirror image of the branch
+              -- above: back onto the active set (and known-partitions, in case this was the partition's
+              -- only entry and therefore fell out of it) at its freshly assigned OrderingSequence, off
+              -- the terminal set.
+              redis.call('ZREM', @terminalKey, @id)
+              redis.call('SADD', @knownPartitionsKey, @partitionSlot)
+              redis.call('ZADD', @activeKey, @activeScore, @id)
             end
             local setFields = cjson.decode(@setFieldsJson)
             for i = 1, #setFields, 2 do
@@ -121,6 +137,10 @@ namespace ThunderPropagator.Providers.DotNet.Outbox.Redis
             end
             if @ttlSeconds ~= '' then
               redis.call('EXPIRE', @messageKey, @ttlSeconds)
+            elseif @reactivate == '1' then
+              -- A non-terminal entry must never expire out from under it - clear whatever passive TTL a
+              -- prior terminal write set on this key.
+              redis.call('PERSIST', @messageKey)
             end
             return 1
             """);
@@ -383,8 +403,8 @@ namespace ThunderPropagator.Providers.DotNet.Outbox.Redis
             return claimable;
         }
 
-        /// <summary>Applies a CAS-guarded write, including its Active/Terminal/KnownPartitions side effects for a terminal transition and the passive TTL.</summary>
-        private async Task<bool> WriteAsync(IDatabase db, Guid id, OutboxMessage updated, long newVersion, string partitionSlot, string casMode, string casValue)
+        /// <summary>Applies a CAS-guarded write, including its Active/Terminal/KnownPartitions side effects for a terminal transition (or, when <paramref name="wasTerminal"/>, a reactivating one) and the passive TTL.</summary>
+        private async Task<bool> WriteAsync(IDatabase db, Guid id, OutboxMessage updated, long newVersion, string partitionSlot, string casMode, string casValue, bool wasTerminal = false)
         {
             var (setFieldsJson, deleteFieldsJson) = RedisOutboxMessageMapper.ToChangedFieldListJson(updated, newVersion);
             var isTerminal = updated.Status is OutboxMessageStatus.Published or OutboxMessageStatus.DeadLettered;
@@ -407,6 +427,8 @@ namespace ThunderPropagator.Providers.DotNet.Outbox.Redis
                 casValue,
                 terminal = isTerminal ? "1" : "0",
                 terminalScore = isTerminal ? terminalTimestamp!.Value.ToUnixTimeMilliseconds() : 0,
+                reactivate = !isTerminal && wasTerminal ? "1" : "0",
+                activeScore = updated.OrderingSequence,
                 setFieldsJson,
                 deleteFieldsJson,
                 ttlSeconds = isTerminal && _terminalEntryTtl is { } ttl ? ((long)ttl.TotalSeconds).ToString() : "",
@@ -523,6 +545,40 @@ namespace ThunderPropagator.Providers.DotNet.Outbox.Redis
             }).ConfigureAwait(false);
 
             return (int)result;
+        }
+
+        /// <inheritdoc/>
+        public async Task<OutboxMessage?> ReplayAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            var db = Database;
+
+            for (var attempt = 0; attempt < MaxCasAttempts; attempt++)
+            {
+                var hashEntries = await db.HashGetAllAsync(_keys.Message(id)).ConfigureAwait(false);
+                if (hashEntries.Length == 0)
+                    return null;
+
+                var existing = RedisOutboxMessageMapper.FromHashEntries(hashEntries);
+                if (existing.Status is not (OutboxMessageStatus.Published or OutboxMessageStatus.DeadLettered))
+                    return null;
+
+                var partitionSlot = RedisKeyNamespace.PartitionSlot(existing.PartitionKey);
+                // INCR alone is already atomic and durably reserves this sequence number - see
+                // EnqueueAsync's own remarks on why a crash here only ever skips a value, never
+                // duplicates or loses one.
+                var newOrderingSequence = await db.StringIncrementAsync(_keys.OrderingSequence(partitionSlot)).ConfigureAwait(false) - 1;
+                var requeued = existing.Requeue(newOrderingSequence, _timeProvider);
+
+                var version = RedisOutboxMessageMapper.ReadVersion(hashEntries);
+                var applied = await WriteAsync(db, id, requeued, version + 1, partitionSlot, casMode: "version", casValue: version.ToString(), wasTerminal: true).ConfigureAwait(false);
+                if (applied)
+                    return requeued;
+                // Else: another caller mutated this entry since our read above - retry the whole cycle
+                // (the just-allocated ordering sequence is simply skipped, never reused or duplicated).
+            }
+
+            throw new InvalidOperationException(
+                $"Exceeded {MaxCasAttempts} attempts contending for an Outbox replay on entry '{id}' - this indicates pathological concurrency, not a normal outcome.");
         }
 
         /// <inheritdoc/>

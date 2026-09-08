@@ -407,6 +407,31 @@ namespace ThunderPropagator.Feeders.Inbox.MongoDB
         }
 
         /// <inheritdoc/>
+        public async Task<InboxMessage?> ReplayAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            var idString = id.ToString("N");
+
+            for (var attempt = 0; attempt < MaxCasAttempts; attempt++)
+            {
+                var doc = await _collection.Find(x => x.Id == idString).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+                if (doc is null)
+                    return null;
+
+                var existing = InboxMessageMapper.ToDomain(doc);
+                if (existing.Status is not (InboxMessageStatus.Processed or InboxMessageStatus.DeadLettered))
+                    return null;
+
+                var replayed = existing.Replay(_timeProvider);
+                if (await TryReplaceAsync(idString, doc.Version, replayed, cancellationToken).ConfigureAwait(false))
+                    return replayed;
+                // Else: another caller mutated this entry since our read above - retry the whole cycle.
+            }
+
+            throw new InvalidOperationException(
+                $"Exceeded {MaxCasAttempts} attempts contending for an Inbox replay on entry '{id}' - this indicates pathological concurrency, not a normal outcome.");
+        }
+
+        /// <inheritdoc/>
         public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
             try

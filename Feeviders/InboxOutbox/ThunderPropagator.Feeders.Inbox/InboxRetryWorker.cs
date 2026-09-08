@@ -31,7 +31,7 @@ namespace ThunderPropagator.Feeders.Inbox
         /// false is skipped entirely - it does not even resolve a store.
         /// </param>
         /// <param name="storeFactory">Resolves each enabled subscription's store once, here at construction - not once per poll.</param>
-        /// <param name="serviceProvider">Passed to <see cref="InboxRetrySubscription.CreateHandler"/>/<see cref="InboxRetrySubscription.CreateDeadLetterHandler"/> on every use, since a handler may itself be scoped.</param>
+        /// <param name="serviceProvider">Passed to <see cref="InboxRetrySubscription.CreateHandler"/>/<see cref="InboxRetrySubscription.CreateDeadLetterHandlers"/> on every use, since a handler may itself be scoped.</param>
         /// <param name="timeProvider">Clock used for lease/backoff arithmetic and to drive the polling timer. Defaults to <see cref="TimeProvider.System"/> - tests should supply a fake for deterministic backoff/lease-expiry assertions.</param>
         /// <param name="random">Jitter source for <see cref="InboxRetryBackoff"/>. Defaults to <see cref="Random.Shared"/> - tests should supply a seeded instance for deterministic backoff assertions.</param>
         /// <param name="maxDegreeOfParallelism">Upper bound on concurrently in-flight reprocessing attempts within one subscription's batch.</param>
@@ -226,7 +226,7 @@ namespace ThunderPropagator.Feeders.Inbox
             }
             catch (InboxNonRetryableException exception)
             {
-                await DeadLetterAsync(resolved, claimed, leaseOwner, exception.Message, cancellationToken).ConfigureAwait(false);
+                await DeadLetterAsync(resolved, claimed, leaseOwner, exception.Message, exception, attemptsExhausted: false, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception)
             {
@@ -234,7 +234,7 @@ namespace ThunderPropagator.Feeders.Inbox
 
                 if (claimed.AttemptCount >= subscription.Options.MaxRetryAttempts)
                 {
-                    await DeadLetterAsync(resolved, claimed, leaseOwner, reason, cancellationToken).ConfigureAwait(false);
+                    await DeadLetterAsync(resolved, claimed, leaseOwner, reason, exception, attemptsExhausted: true, cancellationToken).ConfigureAwait(false);
                 }
                 else
                 {
@@ -244,23 +244,24 @@ namespace ThunderPropagator.Feeders.Inbox
             }
         }
 
-        private async Task DeadLetterAsync(ResolvedSubscription resolved, InboxMessage claimed, string leaseOwner, string reason, CancellationToken cancellationToken)
+        private async Task DeadLetterAsync(ResolvedSubscription resolved, InboxMessage claimed, string leaseOwner, string reason, Exception exception, bool attemptsExhausted, CancellationToken cancellationToken)
         {
             var deadLettered = await resolved.Store.DeadLetterAsync(claimed.Id, leaseOwner, reason, cancellationToken).ConfigureAwait(false);
-
-            if (deadLettered is null || resolved.Subscription.CreateDeadLetterHandler is null)
+            if (deadLettered is null)
                 return;
 
-            try
-            {
-                var notifier = resolved.Subscription.CreateDeadLetterHandler(_serviceProvider);
-                await notifier.HandleAsync(deadLettered, reason, cancellationToken).ConfigureAwait(false);
-            }
-            catch
-            {
-                // A failing notification must not undo or retry the dead-lettering that already
-                // durably succeeded above - the (future) dead-letter pipeline's own concern to recover.
-            }
+            var handlers = resolved.Subscription.CreateDeadLetterHandlers;
+            if (handlers.Count == 0)
+                return;
+
+            var category = InboxFailureClassifier.Classify(exception, attemptsExhausted);
+            var context = InboxDeadLetterContextFactory.Create(deadLettered, category, resolved.Subscription.DeadLetterPayloadPolicy);
+            var pipeline = new InboxDeadLetterPipeline([.. handlers.Select(create => create(_serviceProvider))]);
+
+            // A failing handler must not undo or retry the dead-lettering that already durably succeeded
+            // above - InboxDeadLetterPipeline itself isolates one handler's failure from every other, so
+            // the only thing left to do with its result here is let it complete; nothing to recover.
+            await pipeline.RunAsync(context, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>

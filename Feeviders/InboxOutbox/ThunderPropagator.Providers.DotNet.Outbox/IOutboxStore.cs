@@ -108,5 +108,19 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
         /// retry-eligible entry. Returns the number of entries purged.
         /// </summary>
         Task<int> PurgeAsync(DateTimeOffset olderThanUtc, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Atomically transitions a terminal entry (<see cref="OutboxMessageStatus.Published"/> or
+        /// <see cref="OutboxMessageStatus.DeadLettered"/>) back to <see cref="OutboxMessageStatus.Pending"/>
+        /// via <see cref="OutboxMessage.Requeue"/>, assigning it a fresh, partition-scoped
+        /// <see cref="OutboxMessage.OrderingSequence"/> the same way <see cref="EnqueueAsync"/> would for
+        /// a brand-new message - the manual replay/requeue operation
+        /// <see cref="OutboxDeadLetterReplayService"/> builds on. Idempotent in the sense that requeuing
+        /// an entry that is no longer terminal (e.g. a concurrent requeue already moved it) returns
+        /// <see langword="null"/> rather than applying a second requeue - implementations must verify the
+        /// entry is still terminal as part of the same atomic operation that applies the transition.
+        /// Returns <see langword="null"/> if the entry does not exist or is not currently terminal.
+        /// </summary>
+        Task<OutboxMessage?> ReplayAsync(Guid id, CancellationToken cancellationToken = default);
     }
 }

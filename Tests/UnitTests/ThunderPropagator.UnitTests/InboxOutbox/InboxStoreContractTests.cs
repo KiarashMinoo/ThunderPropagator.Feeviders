@@ -219,5 +219,76 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
             Assert.Null(await store.GetAsync("old-processed", channelKey, null));
             Assert.Equal(InboxMessageStatus.Processing, (await store.GetAsync("active", channelKey, null))!.Status);
         }
+
+        [Fact]
+        public async Task ReplayAsync_DeadLetteredEntry_ShouldTransitionBackToReceivedWithAFreshAttemptIdentity()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = CreateStore(timeProvider);
+            var channelKey = Guid.NewGuid();
+
+            var claim = await store.TryClaimAsync(CreateRequest("m1", channelKey, "owner-a", TimeSpan.FromMinutes(5)));
+            await store.DeadLetterAsync(claim.Message!.Id, "owner-a", "unrecoverable");
+
+            var replayed = await store.ReplayAsync(claim.Message.Id);
+
+            Assert.NotNull(replayed);
+            Assert.Equal(InboxMessageStatus.Received, replayed!.Status);
+            Assert.Equal(0, replayed.AttemptCount);
+            Assert.Null(replayed.FailureReason);
+            Assert.Null(replayed.DeadLetteredAtUtc);
+
+            // The replayed entry is claimable again, exactly like a brand-new message.
+            var reclaim = await store.TryClaimAsync(CreateRequest("m1", channelKey, "owner-b", TimeSpan.FromMinutes(5)));
+            Assert.Equal(InboxClaimOutcome.Claimed, reclaim.Outcome);
+        }
+
+        [Fact]
+        public async Task ReplayAsync_ProcessedEntry_ShouldAlsoTransitionBackToReceived()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = CreateStore(timeProvider);
+            var claim = await store.TryClaimAsync(CreateRequest("m1", Guid.NewGuid(), "owner-a", TimeSpan.FromMinutes(5)));
+            await store.CompleteAsync(claim.Message!.Id, "owner-a");
+
+            var replayed = await store.ReplayAsync(claim.Message.Id);
+
+            Assert.NotNull(replayed);
+            Assert.Equal(InboxMessageStatus.Received, replayed!.Status);
+        }
+
+        [Fact]
+        public async Task ReplayAsync_NonTerminalEntry_ShouldReturnNullWithoutMutatingIt()
+        {
+            var store = CreateStore(new ManualTimeProvider(DateTimeOffset.UnixEpoch));
+            var claim = await store.TryClaimAsync(CreateRequest("m1", Guid.NewGuid(), "owner-a", TimeSpan.FromMinutes(5)));
+
+            var replayed = await store.ReplayAsync(claim.Message!.Id);
+
+            Assert.Null(replayed);
+            Assert.Equal(InboxMessageStatus.Processing, (await store.GetAsync("m1", claim.Message.ChannelKey, null))!.Status);
+        }
+
+        [Fact]
+        public async Task ReplayAsync_UnknownId_ShouldReturnNull()
+        {
+            var store = CreateStore(new ManualTimeProvider(DateTimeOffset.UnixEpoch));
+
+            Assert.Null(await store.ReplayAsync(Guid.NewGuid()));
+        }
+
+        [Fact]
+        public async Task ReplayAsync_AlreadyReplayedEntry_ShouldBeIdempotent_ReturningNullTheSecondTime()
+        {
+            var store = CreateStore(new ManualTimeProvider(DateTimeOffset.UnixEpoch));
+            var claim = await store.TryClaimAsync(CreateRequest("m1", Guid.NewGuid(), "owner-a", TimeSpan.FromMinutes(5)));
+            await store.DeadLetterAsync(claim.Message!.Id, "owner-a", "unrecoverable");
+
+            var first = await store.ReplayAsync(claim.Message.Id);
+            var second = await store.ReplayAsync(claim.Message.Id);
+
+            Assert.NotNull(first);
+            Assert.Null(second);
+        }
     }
 }

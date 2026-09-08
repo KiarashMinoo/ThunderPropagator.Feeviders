@@ -119,7 +119,9 @@ namespace ThunderPropagator.Feeders.Inbox.Redis
             elseif @retryableOp ~= 'none' then
               redis.call('ZADD', @retryableKey, @retryableOp, @id)
             end
-            if @terminalOp ~= 'none' then
+            if @terminalOp == 'remove' then
+              redis.call('ZREM', @terminalKey, @id)
+            elseif @terminalOp ~= 'none' then
               redis.call('ZADD', @terminalKey, @terminalOp, @id)
             end
             local setFields = cjson.decode(@setFieldsJson)
@@ -132,6 +134,10 @@ namespace ThunderPropagator.Feeders.Inbox.Redis
             end
             if @ttlSeconds ~= '' then
               redis.call('EXPIRE', @messageKey, @ttlSeconds)
+            elseif @terminalOp == 'remove' then
+              -- Leaving a terminal state (see InboxMessage.Replay) must clear any passive TTL a prior
+              -- terminal write set on this key - a non-terminal entry must never expire out from under it.
+              redis.call('PERSIST', @messageKey)
             end
             return 1
             """);
@@ -369,7 +375,7 @@ namespace ThunderPropagator.Feeders.Inbox.Redis
         }
 
         /// <summary>Applies a CAS-guarded write for an already-existing entry, including its retry-tracking/terminal zset side effects and (for a terminal write) the passive TTL.</summary>
-        private async Task<bool> WriteAsync(IDatabase db, Guid id, InboxMessage updated, long newVersion, string casMode, string casValue)
+        private async Task<bool> WriteAsync(IDatabase db, Guid id, InboxMessage updated, long newVersion, string casMode, string casValue, bool wasTerminal = false)
         {
             var (setFieldsJson, deleteFieldsJson) = RedisInboxMessageMapper.ToChangedFieldListJson(updated, newVersion);
             var retryableScore = RedisInboxMessageMapper.RetryableScore(updated);
@@ -390,7 +396,11 @@ namespace ThunderPropagator.Feeders.Inbox.Redis
                 casMode,
                 casValue,
                 retryableOp = retryableScore is { } score ? score.ToString() : "remove",
-                terminalOp = isTerminal ? terminalTimestamp!.Value.ToUnixTimeMilliseconds().ToString() : "none",
+                // A write reaching a terminal state ZADDs the terminal zset; one leaving a terminal state
+                // (only possible via InboxMessage.Replay - every other transition table entry only ever
+                // reaches Processed/DeadLettered, never leaves them) must ZREM it instead of leaving a
+                // stale entry behind.
+                terminalOp = isTerminal ? terminalTimestamp!.Value.ToUnixTimeMilliseconds().ToString() : wasTerminal ? "remove" : "none",
                 setFieldsJson,
                 deleteFieldsJson,
                 ttlSeconds = isTerminal && _terminalEntryTtl is { } ttl ? ((long)ttl.TotalSeconds).ToString() : "",
@@ -484,6 +494,33 @@ namespace ThunderPropagator.Feeders.Inbox.Redis
             }).ConfigureAwait(false);
 
             return (int)result;
+        }
+
+        /// <inheritdoc/>
+        public async Task<InboxMessage?> ReplayAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            var db = Database;
+
+            for (var attempt = 0; attempt < MaxCasAttempts; attempt++)
+            {
+                var hashEntries = await db.HashGetAllAsync(_keys.Message(id)).ConfigureAwait(false);
+                if (hashEntries.Length == 0)
+                    return null;
+
+                var existing = RedisInboxMessageMapper.FromHashEntries(hashEntries);
+                if (existing.Status is not (InboxMessageStatus.Processed or InboxMessageStatus.DeadLettered))
+                    return null;
+
+                var replayed = existing.Replay(_timeProvider);
+                var version = RedisInboxMessageMapper.ReadVersion(hashEntries);
+                var applied = await WriteAsync(db, id, replayed, version + 1, casMode: "version", casValue: version.ToString(), wasTerminal: true).ConfigureAwait(false);
+                if (applied)
+                    return replayed;
+                // Else: another caller mutated this entry since our read above - retry the whole cycle.
+            }
+
+            throw new InvalidOperationException(
+                $"Exceeded {MaxCasAttempts} attempts contending for an Inbox replay on entry '{id}' - this indicates pathological concurrency, not a normal outcome.");
         }
 
         /// <inheritdoc/>

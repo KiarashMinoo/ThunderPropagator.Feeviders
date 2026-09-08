@@ -183,5 +183,19 @@ namespace ThunderPropagator.Feeders.Inbox.InMemory
                 return updated;
             }
         }
+
+        /// <inheritdoc/>
+        public Task<InboxMessage?> ReplayAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            lock (_gate)
+            {
+                if (!_byId.TryGetValue(id, out var existing) || existing.Status is not (InboxMessageStatus.Processed or InboxMessageStatus.DeadLettered))
+                    return Task.FromResult<InboxMessage?>(null);
+
+                var replayed = existing.Replay(_timeProvider);
+                _byId[id] = replayed;
+                return Task.FromResult<InboxMessage?>(replayed);
+            }
+        }
     }
 }

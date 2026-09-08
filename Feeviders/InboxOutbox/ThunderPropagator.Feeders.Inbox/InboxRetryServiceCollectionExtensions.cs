@@ -16,7 +16,8 @@ namespace ThunderPropagator.Feeders.Inbox
             Guid channelKey,
             InboxOptions options,
             Func<IServiceProvider, IInboxRetryHandler> createHandler,
-            Func<IServiceProvider, IInboxDeadLetterHandler>? createDeadLetterHandler = null)
+            IReadOnlyList<Func<IServiceProvider, IInboxDeadLetterHandler>>? createDeadLetterHandlers = null,
+            InboxDeadLetterPayloadPolicy deadLetterPayloadPolicy = InboxDeadLetterPayloadPolicy.Include)
         {
             ArgumentNullException.ThrowIfNull(options);
             ArgumentNullException.ThrowIfNull(createHandler);
@@ -34,7 +35,8 @@ namespace ThunderPropagator.Feeders.Inbox
                 ChannelKey = channelKey,
                 Options = options,
                 CreateHandler = createHandler,
-                CreateDeadLetterHandler = createDeadLetterHandler,
+                CreateDeadLetterHandlers = createDeadLetterHandlers ?? [],
+                DeadLetterPayloadPolicy = deadLetterPayloadPolicy,
             });
 
             services.TryAddSingleton<InboxRetryWorker>();
