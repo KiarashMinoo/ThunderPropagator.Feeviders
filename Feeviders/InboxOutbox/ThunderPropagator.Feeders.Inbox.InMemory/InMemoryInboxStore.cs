@@ -15,12 +15,27 @@ namespace ThunderPropagator.Feeders.Inbox.InMemory
     /// tests get full isolation for free by simply constructing a fresh instance instead of needing to
     /// reset or clear one.
     /// </remarks>
-    public sealed class InMemoryInboxStore(TimeProvider? timeProvider = null) : IInboxStore
+    public sealed class InMemoryInboxStore(TimeProvider? timeProvider = null) : IInboxStore, IInboxStoreInitializer
     {
         private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
         private readonly object _gate = new();
         private readonly Dictionary<Guid, InboxMessage> _byId = [];
         private readonly Dictionary<(Guid ChannelKey, string? PartitionKey, string MessageId), Guid> _dedupIndex = [];
+
+        /// <summary>
+        /// Trivially always ready: a process-local dictionary has no persisted schema to create/verify,
+        /// and (per the class remarks) is never shared across replicas, so there is nothing to race
+        /// over either. Implemented only so callers never need to special-case this backend - see
+        /// <see cref="IInboxStoreInitializer"/>'s remarks.
+        /// </summary>
+        public Task<StoreInitializationResult> InitializeAsync(StoreInitializationMode mode = StoreInitializationMode.Apply, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new StoreInitializationResult
+            {
+                Outcome = mode == StoreInitializationMode.VerifyOnly ? StoreInitializationOutcome.VerifiedCompatible : StoreInitializationOutcome.Ready,
+                RequiredSchemaVersion = 1,
+                PersistedSchemaVersion = 1,
+                Message = "In-memory store has no persisted schema.",
+            });
 
         /// <inheritdoc/>
         public Task<InboxClaimResult> TryClaimAsync(InboxClaimRequest request, CancellationToken cancellationToken = default)

@@ -53,5 +53,11 @@ namespace ThunderPropagator.Providers.DotNet.Outbox.Redis
 
         /// <summary>Sorted set of every terminal (Published/DeadLettered) entry, scored by when it became terminal - backs <see cref="RedisOutboxStore.PurgeAsync"/>.</summary>
         public string Terminal => $"{_tag}:outbox:terminal";
+
+        /// <summary>String key holding this store's persisted key/script layout version - see <see cref="RedisOutboxStore.InitializeAsync"/>.</summary>
+        public string SchemaVersion => $"{_tag}:outbox:schema-version";
+
+        /// <summary>Mutual-exclusion key <see cref="RedisOutboxStore.InitializeAsync"/> holds for the duration of one initialization attempt.</summary>
+        public string SchemaLock => $"{_tag}:outbox:schema-lock";
     }
 }

@@ -92,16 +92,31 @@ namespace ThunderPropagator.Feeders.Inbox
                 await ProcessBatchAsync(resolved, cancellationToken).ConfigureAwait(false);
         }
 
-        /// <summary>Starts one polling loop per enabled subscription, each on its own <see cref="InboxOptions.RetryPollingInterval"/>.</summary>
+        /// <summary>
+        /// Ensures every subscription's store is ready (see <see cref="IInboxStoreInitializer"/>), then
+        /// starts one polling loop per enabled subscription, each on its own
+        /// <see cref="InboxOptions.RetryPollingInterval"/>. No polling loop starts - not even for a
+        /// subscription whose own store initialized fine - if any subscription's store is not ready.
+        /// </summary>
         /// <exception cref="InvalidOperationException">Already started.</exception>
-        public Task StartAsync(CancellationToken cancellationToken = default)
+        /// <exception cref="InboxStoreInitializationFailedException">A subscription's store implements <see cref="IInboxStoreInitializer"/> and did not report <see cref="StoreInitializationResult.IsReady"/>.</exception>
+        public async Task StartAsync(CancellationToken cancellationToken = default)
         {
             if (_stoppingCts is not null)
                 throw new InvalidOperationException($"{nameof(InboxRetryWorker)} is already started.");
 
+            foreach (var resolved in _subscriptions)
+            {
+                if (resolved.Store is not IInboxStoreInitializer initializer)
+                    continue;
+
+                var result = await initializer.InitializeAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+                if (!result.IsReady)
+                    throw new InboxStoreInitializationFailedException(resolved.Subscription.ChannelKey, result);
+            }
+
             _stoppingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _pollingLoops = [.. _subscriptions.Select(resolved => PollAsync(resolved, _stoppingCts.Token))];
-            return Task.CompletedTask;
         }
 
         private async Task PollAsync(ResolvedSubscription resolved, CancellationToken cancellationToken)

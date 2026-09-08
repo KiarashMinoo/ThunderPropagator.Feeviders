@@ -25,8 +25,10 @@ internal sealed class EfCoreTestDbContext(DbContextOptions<EfCoreTestDbContext> 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new InboxMessageEntityTypeConfiguration(Schema));
+        modelBuilder.ApplyConfiguration(new InboxSchemaVersionEntityTypeConfiguration(Schema));
         modelBuilder.ApplyConfiguration(new OutboxMessageEntityTypeConfiguration(Schema));
         modelBuilder.ApplyConfiguration(new OutboxSequenceCounterEntityTypeConfiguration(Schema));
+        modelBuilder.ApplyConfiguration(new OutboxSchemaVersionEntityTypeConfiguration(Schema));
     }
 
     public static DbContextOptions<EfCoreTestDbContext> BuildOptions(string connectionString) =>

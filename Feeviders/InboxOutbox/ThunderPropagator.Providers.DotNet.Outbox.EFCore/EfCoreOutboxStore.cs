@@ -1,4 +1,7 @@
+using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace ThunderPropagator.Providers.DotNet.Outbox
@@ -40,7 +43,7 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
     /// <see cref="OutboxSequenceCounterEntityTypeConfiguration"/>) to.
     /// </para>
     /// </remarks>
-    public sealed class EfCoreOutboxStore : IOutboxStore, IHealthCheck
+    public sealed class EfCoreOutboxStore : IOutboxStore, IHealthCheck, IOutboxStoreInitializer
     {
         /// <summary>
         /// <see cref="OutboxMessage.PartitionKey"/> is nullable; <see cref="OutboxSequenceCounter.PartitionKey"/>
@@ -52,6 +55,15 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
         internal const string NullPartitionSentinel = "~~null-partition~~";
 
         private const int MaxConcurrencyRetries = 20;
+
+        /// <summary>
+        /// This store's table/index layout version - see <see cref="InitializeAsync"/>. Bump whenever a
+        /// change here would make an older version of this class misread an existing schema.
+        /// </summary>
+        private const int RequiredSchemaVersion = 1;
+
+        private const string SchemaRowId = "schema";
+        private static readonly TimeSpan SchemaLockTimeout = TimeSpan.FromSeconds(30);
 
         private readonly Func<DbContext> _createDbContext;
         private readonly TimeProvider _timeProvider;
@@ -71,6 +83,135 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
         }
 
         private static string PartitionSlot(string? partitionKey) => partitionKey ?? NullPartitionSentinel;
+
+        /// <summary>
+        /// Creates this database's Outbox tables (if none exist yet) or upgrades the persisted schema
+        /// version (if older than <see cref="RequiredSchemaVersion"/>), tracked in
+        /// <see cref="OutboxSchemaVersion"/> - the caller's model must also apply
+        /// <see cref="OutboxSchemaVersionEntityTypeConfiguration"/> for this to work at all. See
+        /// <c>EfCoreInboxStore.InitializeAsync</c>'s remarks for the full design (provider advisory lock
+        /// for <see cref="StoreInitializationMode.Apply"/> only; "fails clearly" via
+        /// <see cref="StoreInitializationOutcome.InsufficientPermissions"/> for any <see cref="DbException"/>,
+        /// a deliberate simplification given three different ADO providers' distinct exception shapes).
+        /// </summary>
+        public async Task<StoreInitializationResult> InitializeAsync(StoreInitializationMode mode = StoreInitializationMode.Apply, CancellationToken cancellationToken = default)
+        {
+            if (mode == StoreInitializationMode.VerifyOnly)
+                return await VerifySchemaAsync(cancellationToken).ConfigureAwait(false);
+
+            await using var db = _createDbContext();
+            var lockName = BuildLockName(db);
+
+            try
+            {
+                await db.Database.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+
+                var acquired = await SchemaLockDialect.TryAcquireAsync(db, lockName, SchemaLockTimeout, cancellationToken).ConfigureAwait(false);
+                if (!acquired)
+                    throw new TimeoutException(
+                        $"Could not acquire the Outbox schema initialization lock '{lockName}' within {SchemaLockTimeout.TotalSeconds:F0}s - another replica appears to be stuck holding it.");
+
+                try
+                {
+                    return await ApplySchemaAsync(db, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    await SchemaLockDialect.ReleaseAsync(db, lockName, cancellationToken).ConfigureAwait(false);
+                }
+            }
+            catch (DbException exception)
+            {
+                return Result(StoreInitializationOutcome.InsufficientPermissions, null, "The database rejected a read/write needed to initialize the schema.", exception);
+            }
+            finally
+            {
+                await db.Database.CloseConnectionAsync().ConfigureAwait(false);
+            }
+        }
+
+        private async Task<StoreInitializationResult> ApplySchemaAsync(DbContext db, CancellationToken cancellationToken)
+        {
+            // Deliberately not IRelationalDatabaseCreator.HasTablesAsync(): confirmed empirically that
+            // it answers "does this DATABASE have any tables at all", not "does this model's own
+            // schema/tables exist" - wrong wherever multiple schemas share one database (every caller
+            // of this store in this repo's own tests). CreateTablesAsync's own success/failure is what's
+            // actually schema/table-name-specific, so that is the real "already initialized?" signal.
+            var creator = db.GetService<IRelationalDatabaseCreator>();
+            try
+            {
+                await creator.CreateTablesAsync(cancellationToken).ConfigureAwait(false);
+                db.Add(new OutboxSchemaVersion { Id = SchemaRowId, Version = RequiredSchemaVersion });
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                return Result(StoreInitializationOutcome.Upgraded, null, $"Outbox schema created at version {RequiredSchemaVersion}.");
+            }
+            catch (DbException)
+            {
+                // Tables already exist - fall through to read-and-reconcile the persisted version
+                // below. A genuine permission problem surfaces from the read/write that follows instead.
+            }
+
+            var row = await db.Set<OutboxSchemaVersion>().FirstOrDefaultAsync(x => x.Id == SchemaRowId, cancellationToken).ConfigureAwait(false);
+            if (row is null)
+            {
+                db.Add(new OutboxSchemaVersion { Id = SchemaRowId, Version = RequiredSchemaVersion });
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                return Result(StoreInitializationOutcome.Upgraded, null, $"Schema-version row created at version {RequiredSchemaVersion} for a pre-existing schema.");
+            }
+
+            if (row.Version == RequiredSchemaVersion)
+                return Result(StoreInitializationOutcome.Ready, row.Version, "Outbox schema already at the required version.");
+
+            if (row.Version > RequiredSchemaVersion)
+                return Result(StoreInitializationOutcome.IncompatibleVersion, row.Version,
+                    $"Persisted Outbox schema version {row.Version} is newer than this code's version {RequiredSchemaVersion} - this code is too old to talk to this database safely.");
+
+            var previousVersion = row.Version;
+            row.Version = RequiredSchemaVersion;
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            return Result(StoreInitializationOutcome.Upgraded, previousVersion, $"Outbox schema upgraded from version {previousVersion} to {RequiredSchemaVersion}.");
+        }
+
+        private async Task<StoreInitializationResult> VerifySchemaAsync(CancellationToken cancellationToken)
+        {
+            await using var db = _createDbContext();
+
+            try
+            {
+                var row = await db.Set<OutboxSchemaVersion>().FirstOrDefaultAsync(x => x.Id == SchemaRowId, cancellationToken).ConfigureAwait(false);
+                if (row is null)
+                    return Result(StoreInitializationOutcome.IncompatibleVersion, null, "No schema-version row was found (tables may not exist at all).");
+
+                return row.Version == RequiredSchemaVersion
+                    ? Result(StoreInitializationOutcome.VerifiedCompatible, row.Version, "Outbox schema verified compatible.")
+                    : Result(StoreInitializationOutcome.IncompatibleVersion, row.Version, $"Persisted version {row.Version} does not match required version {RequiredSchemaVersion}.");
+            }
+            catch (DbException exception)
+            {
+                // Most likely the schema-version table itself does not exist yet - i.e. this schema was
+                // never initialized, which VerifyOnly must report as "not compatible", not as a
+                // permission problem: a real permission failure would already have surfaced from every
+                // other read this store performs, not uniquely from this one.
+                return Result(StoreInitializationOutcome.IncompatibleVersion, null, "Could not read the schema-version row - this schema was likely never initialized.", exception);
+            }
+        }
+
+        private static string BuildLockName(DbContext db)
+        {
+            var entityType = db.Model.FindEntityType(typeof(OutboxMessage));
+            var table = entityType?.GetTableName() ?? nameof(OutboxMessage);
+            var schema = entityType?.GetSchema();
+            return schema is null ? $"ThunderPropagator.Outbox.Schema.{table}" : $"ThunderPropagator.Outbox.Schema.{schema}.{table}";
+        }
+
+        private static StoreInitializationResult Result(StoreInitializationOutcome outcome, int? persisted, string message, Exception? error = null) => new()
+        {
+            Outcome = outcome,
+            RequiredSchemaVersion = RequiredSchemaVersion,
+            PersistedSchemaVersion = persisted,
+            Message = message,
+            Error = error,
+        };
 
         /// <inheritdoc/>
         public async Task<OutboxMessage> EnqueueAsync(OutboxEnqueueRequest request, CancellationToken cancellationToken = default)

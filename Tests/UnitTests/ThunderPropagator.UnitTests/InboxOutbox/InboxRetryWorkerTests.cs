@@ -255,6 +255,59 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
             Assert.Equal(InboxMessageStatus.Processed, (await store.GetAsync("m1", ChannelKey, null))!.Status);
         }
 
+        [Fact]
+        public async Task StartAsync_StoreInitializationNotReady_ShouldThrowAndNeverStartPolling()
+        {
+            var store = Substitute.For<IInboxStore, IInboxStoreInitializer>();
+            ((IInboxStoreInitializer)store).InitializeAsync(Arg.Any<StoreInitializationMode>(), Arg.Any<CancellationToken>())
+                .Returns(new StoreInitializationResult
+                {
+                    Outcome = StoreInitializationOutcome.IncompatibleVersion,
+                    RequiredSchemaVersion = 1,
+                    PersistedSchemaVersion = 2,
+                    Message = "too new",
+                });
+            var storeFactory = Substitute.For<IInboxStoreFactory>();
+            storeFactory.GetStore(StoreName, InboxStoreType.InMemory).Returns(store);
+            var subscription = new InboxRetrySubscription
+            {
+                ChannelKey = ChannelKey,
+                Options = RetryOptions(),
+                CreateHandler = _ => DelegateHandler.Success(_ => { }),
+            };
+            var worker = new InboxRetryWorker([subscription], storeFactory, Substitute.For<IServiceProvider>());
+
+            var exception = await Assert.ThrowsAsync<InboxStoreInitializationFailedException>(() => worker.StartAsync());
+
+            Assert.Equal(ChannelKey, exception.ChannelKey);
+            Assert.Equal(StoreInitializationOutcome.IncompatibleVersion, exception.Result.Outcome);
+            await store.DidNotReceiveWithAnyArgs().QueryRetryableAsync(default, default);
+        }
+
+        [Fact]
+        public async Task StartAsync_StoreInitializationReady_ShouldInitializeBeforePolling()
+        {
+            var store = Substitute.For<IInboxStore, IInboxStoreInitializer>();
+            ((IInboxStoreInitializer)store).InitializeAsync(Arg.Any<StoreInitializationMode>(), Arg.Any<CancellationToken>())
+                .Returns(new StoreInitializationResult { Outcome = StoreInitializationOutcome.Ready, RequiredSchemaVersion = 1, PersistedSchemaVersion = 1, Message = "ok" });
+            store.QueryRetryableAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns([]);
+            var storeFactory = Substitute.For<IInboxStoreFactory>();
+            storeFactory.GetStore(StoreName, InboxStoreType.InMemory).Returns(store);
+            var options = RetryOptions() with { RetryPollingInterval = TimeSpan.FromMilliseconds(10) };
+            var subscription = new InboxRetrySubscription
+            {
+                ChannelKey = ChannelKey,
+                Options = options,
+                CreateHandler = _ => DelegateHandler.Success(_ => { }),
+            };
+            var worker = new InboxRetryWorker([subscription], storeFactory, Substitute.For<IServiceProvider>());
+
+            await worker.StartAsync();
+            await worker.StopAsync(TimeSpan.FromSeconds(5));
+
+            await ((IInboxStoreInitializer)store).Received(1).InitializeAsync(Arg.Any<StoreInitializationMode>(), Arg.Any<CancellationToken>());
+        }
+
         private static InboxRetryWorker BuildWorker(
             ReferenceInboxStore store, TimeProvider timeProvider, IInboxRetryHandler handler, InboxOptions? options = null, Random? random = null)
         {
