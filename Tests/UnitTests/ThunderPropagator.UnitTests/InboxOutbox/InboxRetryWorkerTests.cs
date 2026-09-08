@@ -27,6 +27,21 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         }
 
         [Fact]
+        public async Task RunOnceAsync_ShouldRecordAHeartbeatForThePolledChannel_EvenWhenNothingWasEligible()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = new ReferenceInboxStore(timeProvider);
+            var worker = BuildWorker(store, timeProvider, DelegateHandler.Success(_ => { }));
+
+            Assert.False(((IInboxWorkerHeartbeat)worker).LastPolledAtUtc.ContainsKey(ChannelKey));
+
+            await worker.RunOnceAsync();
+
+            Assert.True(((IInboxWorkerHeartbeat)worker).LastPolledAtUtc.TryGetValue(ChannelKey, out var lastPolledAtUtc));
+            Assert.Equal(timeProvider.GetUtcNow(), lastPolledAtUtc);
+        }
+
+        [Fact]
         public async Task RunOnceAsync_HandlerThrows_BelowMaxAttempts_ShouldFailWithComputedBackoff()
         {
             var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);

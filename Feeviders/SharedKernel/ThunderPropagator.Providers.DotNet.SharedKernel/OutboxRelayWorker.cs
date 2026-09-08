@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using ThunderPropagator.Providers.DotNet.Outbox;
 
@@ -44,15 +45,19 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
     /// the entry point tests use to drive relaying deterministically against a fake clock.
     /// </para>
     /// </remarks>
-    public sealed class OutboxRelayWorker : IAsyncDisposable
+    public sealed class OutboxRelayWorker : IAsyncDisposable, IOutboxWorkerHeartbeat
     {
         private readonly IReadOnlyList<ResolvedSubscription> _subscriptions;
         private readonly IServiceProvider _serviceProvider;
         private readonly TimeProvider _timeProvider;
         private readonly Random _random;
         private readonly int _maxDegreeOfParallelism;
+        private readonly ConcurrentDictionary<string, DateTimeOffset> _lastPolledAtUtc = new(StringComparer.Ordinal);
         private CancellationTokenSource? _stoppingCts;
         private Task[]? _pollingLoops;
+
+        /// <inheritdoc/>
+        public IReadOnlyDictionary<string, DateTimeOffset> LastPolledAtUtc => _lastPolledAtUtc;
 
         /// <param name="subscriptions">One entry per Provider to relay. A subscription with <see cref="OutboxOptions.OutboxEnabled"/> false is skipped entirely - it does not even resolve a store.</param>
         /// <param name="storeFactory">Resolves each enabled subscription's store once, here at construction - not once per poll.</param>
@@ -193,20 +198,30 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
         {
             var providerKey = resolved.Subscription.ProviderKey;
 
-            // Depth/age are read once per poll here (not inside an ObservableGauge callback, which must
-            // be synchronous) and cached in OutboxTelemetry - see its remarks on why the gauges themselves
-            // never call the store.
-            var depth = await TimedAsync(providerKey, "GetDepth", () => resolved.Store.GetDepthAsync(null, cancellationToken)).ConfigureAwait(false);
-            var oldestPendingAge = await TimedAsync(providerKey, "GetOldestPendingAge", () => resolved.Store.GetOldestPendingAgeAsync(null, _timeProvider, cancellationToken)).ConfigureAwait(false);
-            OutboxTelemetry.ReportDepthSnapshot(providerKey, depth, oldestPendingAge);
+            try
+            {
+                // Depth/age are read once per poll here (not inside an ObservableGauge callback, which
+                // must be synchronous) and cached in OutboxTelemetry - see its remarks on why the gauges
+                // themselves never call the store.
+                var depth = await TimedAsync(providerKey, "GetDepth", () => resolved.Store.GetDepthAsync(null, cancellationToken)).ConfigureAwait(false);
+                var oldestPendingAge = await TimedAsync(providerKey, "GetOldestPendingAge", () => resolved.Store.GetOldestPendingAgeAsync(null, _timeProvider, cancellationToken)).ConfigureAwait(false);
+                OutboxTelemetry.ReportDepthSnapshot(providerKey, depth, oldestPendingAge);
 
-            var partitionKeys = await TimedAsync(providerKey, "GetClaimablePartitionKeys", () => resolved.Store.GetClaimablePartitionKeysAsync(cancellationToken)).ConfigureAwait(false);
-            if (partitionKeys.Count == 0)
-                return;
+                var partitionKeys = await TimedAsync(providerKey, "GetClaimablePartitionKeys", () => resolved.Store.GetClaimablePartitionKeysAsync(cancellationToken)).ConfigureAwait(false);
+                if (partitionKeys.Count == 0)
+                    return;
 
-            using var throttle = new SemaphoreSlim(_maxDegreeOfParallelism);
-            var loops = partitionKeys.Select(partitionKey => ProcessPartitionAsync(resolved, partitionKey, throttle, cancellationToken));
-            await Task.WhenAll(loops).ConfigureAwait(false);
+                using var throttle = new SemaphoreSlim(_maxDegreeOfParallelism);
+                var loops = partitionKeys.Select(partitionKey => ProcessPartitionAsync(resolved, partitionKey, throttle, cancellationToken));
+                await Task.WhenAll(loops).ConfigureAwait(false);
+            }
+            finally
+            {
+                // Recorded regardless of outcome - a heartbeat means "the polling loop is alive and
+                // completed an iteration for this Provider," not "found or successfully relayed
+                // anything." A stuck/unavailable store surfaces through its own IHealthCheck instead.
+                _lastPolledAtUtc[providerKey] = _timeProvider.GetUtcNow();
+            }
         }
 
         private async Task ProcessPartitionAsync(ResolvedSubscription resolved, string? partitionKey, SemaphoreSlim throttle, CancellationToken cancellationToken)
