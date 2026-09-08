@@ -184,7 +184,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
             public Task<IReadOnlyList<InboxMessage>> QueryRetryableAsync(Guid channelKey, int maxCount, CancellationToken cancellationToken = default) =>
                 throw new NotSupportedException();
 
-            public Task<int> PurgeAsync(Guid channelKey, DateTimeOffset olderThanUtc, CancellationToken cancellationToken = default) =>
+            public Task<InboxPurgeResult> PurgeAsync(InboxPurgeRequest request, CancellationToken cancellationToken = default) =>
                 throw new NotSupportedException();
 
             public Task<InboxMessage?> ReplayAsync(Guid id, CancellationToken cancellationToken = default) =>

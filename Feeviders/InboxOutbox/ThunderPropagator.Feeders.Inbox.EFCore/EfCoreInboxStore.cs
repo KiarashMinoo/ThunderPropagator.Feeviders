@@ -379,17 +379,40 @@ namespace ThunderPropagator.Feeders.Inbox
         }
 
         /// <inheritdoc/>
-        public async Task<int> PurgeAsync(Guid channelKey, DateTimeOffset olderThanUtc, CancellationToken cancellationToken = default)
+        public async Task<InboxPurgeResult> PurgeAsync(InboxPurgeRequest request, CancellationToken cancellationToken = default)
         {
             await using var db = _createDbContext();
 
-            return await db.Set<InboxMessage>()
-                .Where(m => m.ChannelKey == channelKey)
+            // Two-step (select bounded ID batch, then delete by ID list) rather than a single
+            // ExecuteDeleteAsync composed with Take: Take-before-ExecuteDelete translation support is
+            // provider-dependent, but every relational provider here can translate a plain ORDER BY +
+            // Select(Id) + Take, and an ExecuteDeleteAsync filtered by an ID list translates everywhere.
+            var eligibleIds = await db.Set<InboxMessage>()
+                .Where(m => m.ChannelKey == request.ChannelKey)
                 .Where(m =>
-                    (m.Status == InboxMessageStatus.Processed && m.ProcessedAtUtc < olderThanUtc) ||
-                    (m.Status == InboxMessageStatus.DeadLettered && m.DeadLetteredAtUtc < olderThanUtc))
+                    (request.ProcessedOlderThanUtc != null && m.Status == InboxMessageStatus.Processed && m.ProcessedAtUtc < request.ProcessedOlderThanUtc) ||
+                    (request.DeadLetteredOlderThanUtc != null && m.Status == InboxMessageStatus.DeadLettered && m.DeadLetteredAtUtc < request.DeadLetteredOlderThanUtc))
+                .OrderBy(m => m.Status == InboxMessageStatus.Processed ? m.ProcessedAtUtc : m.DeadLetteredAtUtc)
+                .Select(m => m.Id)
+                .Take(request.MaxCount + 1)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            var hasMore = eligibleIds.Count > request.MaxCount;
+            var batchIds = hasMore ? eligibleIds.Take(request.MaxCount).ToList() : eligibleIds;
+            var idsToDelete = request.ExcludedIds is { Count: > 0 }
+                ? batchIds.Where(id => !request.ExcludedIds.Contains(id)).ToList()
+                : batchIds;
+
+            if (idsToDelete.Count == 0)
+                return new InboxPurgeResult { PurgedCount = 0, HasMore = hasMore };
+
+            var purgedCount = await db.Set<InboxMessage>()
+                .Where(m => idsToDelete.Contains(m.Id))
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
+
+            return new InboxPurgeResult { PurgedCount = purgedCount, HasMore = hasMore };
         }
 
         /// <inheritdoc/>

@@ -40,5 +40,8 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
 
         /// <summary>Maximum entries a single <see cref="IOutboxStore.ClaimBatchAsync"/> call may return, bounding relay-worker batch size.</summary>
         public const int MaxRelayBatchSize = 1000;
+
+        /// <summary>Maximum entries a single <see cref="IOutboxStore.PurgeAsync"/> call may delete, bounding purge-worker batch size.</summary>
+        public const int MaxPurgeBatchSize = 5000;
     }
 }

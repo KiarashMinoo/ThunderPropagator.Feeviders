@@ -394,16 +394,47 @@ namespace ThunderPropagator.Feeders.Inbox.MongoDB
         }
 
         /// <inheritdoc/>
-        public async Task<int> PurgeAsync(Guid channelKey, DateTimeOffset olderThanUtc, CancellationToken cancellationToken = default)
+        public async Task<InboxPurgeResult> PurgeAsync(InboxPurgeRequest request, CancellationToken cancellationToken = default)
         {
-            var channelKeyString = channelKey.ToString("N");
             var builder = Builders<InboxMessageDocument>.Filter;
-            var filter = builder.Eq(x => x.ChannelKey, channelKeyString) &
-                         builder.In(x => x.Status, [InboxMessageStatus.Processed, InboxMessageStatus.DeadLettered]) &
-                         builder.Lt(x => x.TerminalAtUtc, olderThanUtc.UtcDateTime);
+            var statusFilters = new List<FilterDefinition<InboxMessageDocument>>();
 
-            var result = await _collection.DeleteManyAsync(filter, cancellationToken).ConfigureAwait(false);
-            return (int)result.DeletedCount;
+            if (request.ProcessedOlderThanUtc is { } processedCutoff)
+                statusFilters.Add(builder.Eq(x => x.Status, InboxMessageStatus.Processed) & builder.Lt(x => x.TerminalAtUtc, processedCutoff.UtcDateTime));
+
+            if (request.DeadLetteredOlderThanUtc is { } deadLetteredCutoff)
+                statusFilters.Add(builder.Eq(x => x.Status, InboxMessageStatus.DeadLettered) & builder.Lt(x => x.TerminalAtUtc, deadLetteredCutoff.UtcDateTime));
+
+            if (statusFilters.Count == 0)
+                return new InboxPurgeResult { PurgedCount = 0, HasMore = false };
+
+            var filter = builder.Eq(x => x.ChannelKey, request.ChannelKey.ToString("N")) & builder.Or(statusFilters);
+
+            // Two-step (select bounded ID batch, then delete by ID list) rather than a single bounded
+            // DeleteMany: MongoDB's deleteMany has no built-in limit/sort, so a bounded, oldest-first
+            // batch requires finding the IDs first.
+            var eligibleIds = await _collection.Find(filter)
+                .Sort(Builders<InboxMessageDocument>.Sort.Ascending(x => x.TerminalAtUtc))
+                .Limit(request.MaxCount + 1)
+                .Project(x => x.Id)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            var hasMore = eligibleIds.Count > request.MaxCount;
+            var batchIds = hasMore ? eligibleIds.Take(request.MaxCount).ToList() : eligibleIds;
+            var idsToDelete = batchIds;
+
+            if (request.ExcludedIds is { Count: > 0 })
+            {
+                var excludedIdStrings = request.ExcludedIds.Select(id => id.ToString("N")).ToHashSet();
+                idsToDelete = [.. batchIds.Where(id => !excludedIdStrings.Contains(id))];
+            }
+
+            if (idsToDelete.Count == 0)
+                return new InboxPurgeResult { PurgedCount = 0, HasMore = hasMore };
+
+            var deleteResult = await _collection.DeleteManyAsync(builder.In(x => x.Id, idsToDelete), cancellationToken).ConfigureAwait(false);
+            return new InboxPurgeResult { PurgedCount = (int)deleteResult.DeletedCount, HasMore = hasMore };
         }
 
         /// <inheritdoc/>

@@ -213,11 +213,105 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
             timeProvider.Advance(TimeSpan.FromDays(1));
             await store.TryClaimAsync(CreateRequest("active", channelKey, "owner-b", TimeSpan.FromMinutes(5)));
 
-            var purged = await store.PurgeAsync(channelKey, timeProvider.GetUtcNow());
+            var result = await store.PurgeAsync(new InboxPurgeRequest { ChannelKey = channelKey, ProcessedOlderThanUtc = timeProvider.GetUtcNow(), DeadLetteredOlderThanUtc = timeProvider.GetUtcNow() });
 
-            Assert.Equal(1, purged);
+            Assert.Equal(1, result.PurgedCount);
+            Assert.False(result.HasMore);
             Assert.Null(await store.GetAsync("old-processed", channelKey, null));
             Assert.Equal(InboxMessageStatus.Processing, (await store.GetAsync("active", channelKey, null))!.Status);
+        }
+
+        [Fact]
+        public async Task PurgeAsync_ShouldNotRemoveAnEntryExactlyAtTheCutoff()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = CreateStore(timeProvider);
+            var channelKey = Guid.NewGuid();
+
+            var claim = await store.TryClaimAsync(CreateRequest("m1", channelKey, "owner-a", TimeSpan.FromMinutes(5)));
+            await store.CompleteAsync(claim.Message!.Id, "owner-a");
+            var processedAtUtc = (await store.GetAsync("m1", channelKey, null))!.ProcessedAtUtc!.Value;
+
+            var result = await store.PurgeAsync(new InboxPurgeRequest { ChannelKey = channelKey, ProcessedOlderThanUtc = processedAtUtc });
+
+            Assert.Equal(0, result.PurgedCount);
+            Assert.NotNull(await store.GetAsync("m1", channelKey, null));
+        }
+
+        [Fact]
+        public async Task PurgeAsync_ShouldApplyIndependentCutoffsPerStatus()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = CreateStore(timeProvider);
+            var channelKey = Guid.NewGuid();
+
+            var processedClaim = await store.TryClaimAsync(CreateRequest("processed", channelKey, "owner-a", TimeSpan.FromMinutes(5)));
+            await store.CompleteAsync(processedClaim.Message!.Id, "owner-a");
+
+            var deadLetterClaim = await store.TryClaimAsync(CreateRequest("dead-lettered", channelKey, "owner-a", TimeSpan.FromMinutes(5)));
+            await store.DeadLetterAsync(deadLetterClaim.Message!.Id, "owner-a", "boom");
+
+            timeProvider.Advance(TimeSpan.FromDays(1));
+
+            // Only Processed is purged this call - DeadLettered's own cutoff (null) skips it entirely,
+            // even though it is just as old.
+            var result = await store.PurgeAsync(new InboxPurgeRequest { ChannelKey = channelKey, ProcessedOlderThanUtc = timeProvider.GetUtcNow(), DeadLetteredOlderThanUtc = null });
+
+            Assert.Equal(1, result.PurgedCount);
+            Assert.Null(await store.GetAsync("processed", channelKey, null));
+            Assert.NotNull(await store.GetAsync("dead-lettered", channelKey, null));
+        }
+
+        [Fact]
+        public async Task PurgeAsync_ShouldRespectMaxCountAndReportHasMoreUntilExhausted()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = CreateStore(timeProvider);
+            var channelKey = Guid.NewGuid();
+
+            for (var i = 0; i < 5; i++)
+            {
+                var claim = await store.TryClaimAsync(CreateRequest($"m{i}", channelKey, "owner-a", TimeSpan.FromMinutes(5)));
+                await store.CompleteAsync(claim.Message!.Id, "owner-a");
+            }
+
+            timeProvider.Advance(TimeSpan.FromDays(1));
+            var cutoff = timeProvider.GetUtcNow();
+
+            var first = await store.PurgeAsync(new InboxPurgeRequest { ChannelKey = channelKey, ProcessedOlderThanUtc = cutoff, MaxCount = 2 });
+            Assert.Equal(2, first.PurgedCount);
+            Assert.True(first.HasMore);
+
+            var second = await store.PurgeAsync(new InboxPurgeRequest { ChannelKey = channelKey, ProcessedOlderThanUtc = cutoff, MaxCount = 2 });
+            Assert.Equal(2, second.PurgedCount);
+            Assert.True(second.HasMore);
+
+            var third = await store.PurgeAsync(new InboxPurgeRequest { ChannelKey = channelKey, ProcessedOlderThanUtc = cutoff, MaxCount = 2 });
+            Assert.Equal(1, third.PurgedCount);
+            Assert.False(third.HasMore);
+        }
+
+        [Fact]
+        public async Task PurgeAsync_ShouldNeverPurgeAnExcludedId()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = CreateStore(timeProvider);
+            var channelKey = Guid.NewGuid();
+
+            var claim = await store.TryClaimAsync(CreateRequest("held", channelKey, "owner-a", TimeSpan.FromMinutes(5)));
+            await store.CompleteAsync(claim.Message!.Id, "owner-a");
+
+            timeProvider.Advance(TimeSpan.FromDays(1));
+
+            var result = await store.PurgeAsync(new InboxPurgeRequest
+            {
+                ChannelKey = channelKey,
+                ProcessedOlderThanUtc = timeProvider.GetUtcNow(),
+                ExcludedIds = new HashSet<Guid> { claim.Message.Id },
+            });
+
+            Assert.Equal(0, result.PurgedCount);
+            Assert.NotNull(await store.GetAsync("held", channelKey, null));
         }
 
         [Fact]

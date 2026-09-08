@@ -203,6 +203,60 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         }
 
         [Fact]
+        public void Validate_DeadLetterRetentionPeriodNotPositive_ShouldThrow()
+        {
+            var options = new OutboxOptions { DeadLetterRetentionPeriod = TimeSpan.Zero };
+
+            Assert.Throws<ArgumentException>(options.Validate);
+        }
+
+        [Fact]
+        public void Validate_DeadLetterRetentionPeriodNull_ShouldPass()
+        {
+            var options = new OutboxOptions { DeadLetterRetentionPeriod = null };
+
+            var exception = Record.Exception(options.Validate);
+
+            Assert.Null(exception);
+        }
+
+        [Fact]
+        public void Validate_PurgePollingIntervalNotPositive_ShouldThrow()
+        {
+            var options = new OutboxOptions { PurgePollingInterval = TimeSpan.Zero };
+
+            Assert.Throws<ArgumentException>(options.Validate);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(OutboxMessageLimits.MaxPurgeBatchSize + 1)]
+        public void Validate_PurgeBatchSizeOutOfBounds_ShouldThrow(int purgeBatchSize)
+        {
+            var options = new OutboxOptions { PurgeBatchSize = purgeBatchSize };
+
+            Assert.Throws<ArgumentException>(options.Validate);
+        }
+
+        [Fact]
+        public void Validate_PurgeBatchSizeAtMax_ShouldPass()
+        {
+            var options = new OutboxOptions { PurgeBatchSize = OutboxMessageLimits.MaxPurgeBatchSize };
+
+            var exception = Record.Exception(options.Validate);
+
+            Assert.Null(exception);
+        }
+
+        [Fact]
+        public void Validate_MaxPurgeBatchesPerRunNotPositive_ShouldThrow()
+        {
+            var options = new OutboxOptions { MaxPurgeBatchesPerRun = 0 };
+
+            Assert.Throws<ArgumentException>(options.Validate);
+        }
+
+        [Fact]
         public void Validate_ClaimLeaseDurationNotPositive_ShouldThrow()
         {
             var options = new OutboxOptions { ClaimLeaseDuration = TimeSpan.Zero };

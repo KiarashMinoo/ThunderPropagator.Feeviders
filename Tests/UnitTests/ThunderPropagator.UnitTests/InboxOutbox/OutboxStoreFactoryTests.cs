@@ -234,7 +234,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
             public Task<TimeSpan?> GetOldestPendingAgeAsync(string? partitionKey, TimeProvider timeProvider, CancellationToken cancellationToken = default) =>
                 throw new NotSupportedException();
 
-            public Task<int> PurgeAsync(DateTimeOffset olderThanUtc, CancellationToken cancellationToken = default) =>
+            public Task<OutboxPurgeResult> PurgeAsync(OutboxPurgeRequest request, CancellationToken cancellationToken = default) =>
                 throw new NotSupportedException();
 
             public Task<OutboxMessage?> ReplayAsync(Guid id, CancellationToken cancellationToken = default) =>
