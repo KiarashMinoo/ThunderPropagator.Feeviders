@@ -1,5 +1,6 @@
-## [1.0.1-beta.83] — 2026-09-08
+## [1.0.1-beta.84] — 2026-09-08
 
 ### 🏠 Chores
 
-- Implement logging, channel, and broker dead-letter handlers `(8954f59)` — Kiarash Minoo
+- Implement safe retention and purge workers `(19a4257)` — Kiarash Minoo
+- Disable build configurations for ARM64, x64, x86, and Release|Any CPU `(8aebeeb)` — Kiarash Minoo
