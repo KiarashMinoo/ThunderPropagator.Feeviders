@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.80] — 2026-09-08
+
+### 🏠 Chores
+
+- Implement MongoDB backend packages with atomic claims `(67a498a)` — Kiarash Minoo
+
 ## [1.0.1-beta.79] — 2026-09-07
 
 ### 🏠 Chores

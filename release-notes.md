@@ -1,5 +1,5 @@
-## [1.0.1-beta.79] — 2026-09-07
+## [1.0.1-beta.80] — 2026-09-08
 
 ### 🏠 Chores
 
-- Implement EF Core backend packages for SQL providers `(3de6daa)` — Kiarash Minoo
+- Implement MongoDB backend packages with atomic claims `(67a498a)` — Kiarash Minoo
