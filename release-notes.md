@@ -1,5 +1,5 @@
-## [1.0.1-beta.82] — 2026-09-08
+## [1.0.1-beta.83] — 2026-09-08
 
 ### 🏠 Chores
 
-- Define dead-letter records, policies, and handler pipeline `(4b9c3e2)` — Kiarash Minoo
+- Implement logging, channel, and broker dead-letter handlers `(8954f59)` — Kiarash Minoo

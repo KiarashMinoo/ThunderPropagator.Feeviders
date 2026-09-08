@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.83] — 2026-09-08
+
+### 🏠 Chores
+
+- Implement logging, channel, and broker dead-letter handlers `(8954f59)` — Kiarash Minoo
+
 ## [1.0.1-beta.82] — 2026-09-08
 
 ### 🏠 Chores
