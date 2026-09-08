@@ -83,5 +83,19 @@ namespace ThunderPropagator.Feeders.Inbox
         /// retry-eligible entry. Returns the number of entries purged.
         /// </summary>
         Task<int> PurgeAsync(Guid channelKey, DateTimeOffset olderThanUtc, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Atomically transitions a terminal entry (<see cref="InboxMessageStatus.Processed"/> or
+        /// <see cref="InboxMessageStatus.DeadLettered"/>) back to <see cref="InboxMessageStatus.Received"/>
+        /// via <see cref="InboxMessage.Replay"/> - the manual replay/requeue operation
+        /// <see cref="InboxDeadLetterReplayService"/> builds on. Idempotent in the sense that replaying
+        /// an entry that is no longer terminal (e.g. a concurrent replay already moved it, or it was
+        /// independently reclaimed) returns <see langword="null"/> rather than applying a second replay -
+        /// implementations must verify the entry is still terminal as part of the same atomic operation
+        /// that applies the transition, the same compare-and-swap discipline every lease-scoped mutation
+        /// here already follows. Returns <see langword="null"/> if the entry does not exist or is not
+        /// currently terminal.
+        /// </summary>
+        Task<InboxMessage?> ReplayAsync(Guid id, CancellationToken cancellationToken = default);
     }
 }

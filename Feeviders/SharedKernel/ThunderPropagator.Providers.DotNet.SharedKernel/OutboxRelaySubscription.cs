@@ -29,10 +29,13 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
         public required Func<IServiceProvider, IProvider> ResolveProvider { get; init; }
 
         /// <summary>
-        /// Optionally builds a handler notified after an entry from this Provider is dead-lettered. When
-        /// <see langword="null"/>, dead-lettering proceeds with no notification - the extension point a
-        /// future dead-letter pipeline plugs into is simply absent until one is registered.
+        /// Builds every handler run, in order, by <see cref="OutboxDeadLetterPipeline"/> after an entry
+        /// from this Provider is dead-lettered. Empty by default - dead-lettering proceeds with no
+        /// notification when no handlers are registered.
         /// </summary>
-        public Func<IServiceProvider, IOutboxDeadLetterHandler>? CreateDeadLetterHandler { get; init; }
+        public IReadOnlyList<Func<IServiceProvider, IOutboxDeadLetterHandler>> CreateDeadLetterHandlers { get; init; } = [];
+
+        /// <summary>Payload visibility policy for the <see cref="OutboxDeadLetterContext"/> handed to <see cref="CreateDeadLetterHandlers"/>. Defaults to <see cref="OutboxDeadLetterPayloadPolicy.Include"/>.</summary>
+        public OutboxDeadLetterPayloadPolicy DeadLetterPayloadPolicy { get; init; } = OutboxDeadLetterPayloadPolicy.Include;
     }
 }

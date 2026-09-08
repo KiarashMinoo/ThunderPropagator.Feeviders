@@ -228,6 +228,24 @@ namespace ThunderPropagator.Providers.DotNet.Outbox.InMemory
             }
         }
 
+        /// <inheritdoc/>
+        public Task<OutboxMessage?> ReplayAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            lock (_gate)
+            {
+                if (!_byId.TryGetValue(id, out var existing) || existing.Status is not (OutboxMessageStatus.Published or OutboxMessageStatus.DeadLettered))
+                    return Task.FromResult<OutboxMessage?>(null);
+
+                var partitionSlot = PartitionSlot(existing.PartitionKey);
+                var newOrderingSequence = _nextOrderingSequenceByPartition.GetValueOrDefault(partitionSlot, 0);
+                _nextOrderingSequenceByPartition[partitionSlot] = newOrderingSequence + 1;
+
+                var requeued = existing.Requeue(newOrderingSequence, _timeProvider);
+                _byId[id] = requeued;
+                return Task.FromResult<OutboxMessage?>(requeued);
+            }
+        }
+
         private static string PartitionSlot(string? partitionKey) => partitionKey ?? NullPartitionSentinel;
     }
 }

@@ -17,7 +17,8 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
             string providerKey,
             OutboxOptions options,
             Func<IServiceProvider, IProvider> resolveProvider,
-            Func<IServiceProvider, IOutboxDeadLetterHandler>? createDeadLetterHandler = null)
+            IReadOnlyList<Func<IServiceProvider, IOutboxDeadLetterHandler>>? createDeadLetterHandlers = null,
+            OutboxDeadLetterPayloadPolicy deadLetterPayloadPolicy = OutboxDeadLetterPayloadPolicy.Include)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(providerKey);
             ArgumentNullException.ThrowIfNull(options);
@@ -36,7 +37,8 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
                 ProviderKey = providerKey,
                 Options = options,
                 ResolveProvider = resolveProvider,
-                CreateDeadLetterHandler = createDeadLetterHandler,
+                CreateDeadLetterHandlers = createDeadLetterHandlers ?? [],
+                DeadLetterPayloadPolicy = deadLetterPayloadPolicy,
             });
 
             services.TryAddSingleton<OutboxRelayWorker>();

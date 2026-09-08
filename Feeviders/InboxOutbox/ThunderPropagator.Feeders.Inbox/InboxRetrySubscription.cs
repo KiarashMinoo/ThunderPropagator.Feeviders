@@ -21,10 +21,13 @@ namespace ThunderPropagator.Feeders.Inbox
         public required Func<IServiceProvider, IInboxRetryHandler> CreateHandler { get; init; }
 
         /// <summary>
-        /// Optionally builds a handler notified after an entry from this channel is dead-lettered. When
-        /// <see langword="null"/>, dead-lettering proceeds with no notification - the extension point a
-        /// future dead-letter pipeline plugs into is simply absent until one is registered.
+        /// Builds every handler run, in order, by <see cref="InboxDeadLetterPipeline"/> after an entry
+        /// from this channel is dead-lettered. Empty by default - dead-lettering proceeds with no
+        /// notification when no handlers are registered.
         /// </summary>
-        public Func<IServiceProvider, IInboxDeadLetterHandler>? CreateDeadLetterHandler { get; init; }
+        public IReadOnlyList<Func<IServiceProvider, IInboxDeadLetterHandler>> CreateDeadLetterHandlers { get; init; } = [];
+
+        /// <summary>Payload visibility policy for the <see cref="InboxDeadLetterContext"/> handed to <see cref="CreateDeadLetterHandlers"/>. Defaults to <see cref="InboxDeadLetterPayloadPolicy.Include"/>.</summary>
+        public InboxDeadLetterPayloadPolicy DeadLetterPayloadPolicy { get; init; } = InboxDeadLetterPayloadPolicy.Include;
     }
 }

@@ -318,7 +318,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
             var store = new ReferenceOutboxStore(timeProvider);
             await store.EnqueueAsync(Request("m1"));
 
-            OutboxMessage? notified = null;
+            OutboxDeadLetterContext? notified = null;
             var storeFactory = Substitute.For<IOutboxStoreFactory>();
             storeFactory.GetStore(StoreName, OutboxStoreType.InMemory).Returns(store);
             var options = RelayOptions() with { MaxRetryAttempts = 1 };
@@ -327,11 +327,11 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
                 ProviderKey = ProviderKey,
                 Options = options,
                 ResolveProvider = _ => DelegateProvider.Throwing(new OutboxNonRetryableException("unrecoverable")),
-                CreateDeadLetterHandler = _ => new DelegateDeadLetterHandler((message, _, _) =>
+                CreateDeadLetterHandlers = [_ => new DelegateDeadLetterHandler((context, _) =>
                 {
-                    notified = message;
+                    notified = context;
                     return ValueTask.CompletedTask;
-                }),
+                })],
             };
             var worker = new OutboxRelayWorker([subscription], storeFactory, Substitute.For<IServiceProvider>(), timeProvider, new FixedRandom(0.5));
 
@@ -595,10 +595,13 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
                 new((bytes, headers, _) => onPublish(bytes, headers));
         }
 
-        private sealed class DelegateDeadLetterHandler(Func<OutboxMessage, string, CancellationToken, ValueTask> onHandle) : IOutboxDeadLetterHandler
+        private sealed class DelegateDeadLetterHandler(Func<OutboxDeadLetterContext, CancellationToken, ValueTask> onHandle) : IOutboxDeadLetterHandler
         {
-            public ValueTask HandleAsync(OutboxMessage message, string failureReason, CancellationToken cancellationToken) =>
-                onHandle(message, failureReason, cancellationToken);
+            public async ValueTask<OutboxDeadLetterHandlerOutcome> HandleAsync(OutboxDeadLetterContext context, CancellationToken cancellationToken)
+            {
+                await onHandle(context, cancellationToken).ConfigureAwait(false);
+                return OutboxDeadLetterHandlerOutcome.Handled;
+            }
         }
     }
 }

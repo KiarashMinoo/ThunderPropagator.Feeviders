@@ -186,6 +186,9 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
 
             public Task<int> PurgeAsync(Guid channelKey, DateTimeOffset olderThanUtc, CancellationToken cancellationToken = default) =>
                 throw new NotSupportedException();
+
+            public Task<InboxMessage?> ReplayAsync(Guid id, CancellationToken cancellationToken = default) =>
+                throw new NotSupportedException();
         }
     }
 }

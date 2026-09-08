@@ -441,6 +441,34 @@ namespace ThunderPropagator.Providers.DotNet.Outbox.MongoDB
         }
 
         /// <inheritdoc/>
+        public async Task<OutboxMessage?> ReplayAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            var idString = id.ToString("N");
+
+            for (var attempt = 0; attempt < MaxCasAttempts; attempt++)
+            {
+                var doc = await _collection.Find(x => x.Id == idString).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+                if (doc is null)
+                    return null;
+
+                var existing = OutboxMessageMapper.ToDomain(doc);
+                if (existing.Status is not (OutboxMessageStatus.Published or OutboxMessageStatus.DeadLettered))
+                    return null;
+
+                var newOrderingSequence = await AllocateNextOrderingSequenceAsync(existing.PartitionKey, session: null, cancellationToken).ConfigureAwait(false);
+                var requeued = existing.Requeue(newOrderingSequence, _timeProvider);
+
+                if (await TryReplaceAsync(idString, doc.Version, requeued, cancellationToken).ConfigureAwait(false))
+                    return requeued;
+                // Else: another caller mutated this entry since our read above - retry the whole cycle
+                // (the just-allocated ordering sequence is simply skipped, never reused or duplicated).
+            }
+
+            throw new InvalidOperationException(
+                $"Exceeded {MaxCasAttempts} attempts contending for an Outbox replay on entry '{id}' - this indicates pathological concurrency, not a normal outcome.");
+        }
+
+        /// <inheritdoc/>
         public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
             try

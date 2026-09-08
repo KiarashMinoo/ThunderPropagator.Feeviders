@@ -156,7 +156,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
             var store = new ReferenceInboxStore(timeProvider);
             await FailOnce(store, timeProvider, "m1");
 
-            InboxMessage? notified = null;
+            InboxDeadLetterContext? notified = null;
             var storeFactory = Substitute.For<IInboxStoreFactory>();
             storeFactory.GetStore(StoreName, InboxStoreType.InMemory).Returns(store);
             var options = RetryOptions() with { MaxRetryAttempts = 1 };
@@ -165,11 +165,11 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
                 ChannelKey = ChannelKey,
                 Options = options,
                 CreateHandler = _ => DelegateHandler.Throwing(new InboxNonRetryableException("unrecoverable")),
-                CreateDeadLetterHandler = _ => new DelegateDeadLetterHandler((message, _, _) =>
+                CreateDeadLetterHandlers = [_ => new DelegateDeadLetterHandler((context, _) =>
                 {
-                    notified = message;
+                    notified = context;
                     return ValueTask.CompletedTask;
-                }),
+                })],
             };
             var worker = new InboxRetryWorker([subscription], storeFactory, Substitute.For<IServiceProvider>(), timeProvider, new FixedRandom(0.5));
 
@@ -365,10 +365,13 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
                 new(_ => throw exception);
         }
 
-        private sealed class DelegateDeadLetterHandler(Func<InboxMessage, string, CancellationToken, ValueTask> onHandle) : IInboxDeadLetterHandler
+        private sealed class DelegateDeadLetterHandler(Func<InboxDeadLetterContext, CancellationToken, ValueTask> onHandle) : IInboxDeadLetterHandler
         {
-            public ValueTask HandleAsync(InboxMessage message, string failureReason, CancellationToken cancellationToken) =>
-                onHandle(message, failureReason, cancellationToken);
+            public async ValueTask<InboxDeadLetterHandlerOutcome> HandleAsync(InboxDeadLetterContext context, CancellationToken cancellationToken)
+            {
+                await onHandle(context, cancellationToken).ConfigureAwait(false);
+                return InboxDeadLetterHandlerOutcome.Handled;
+            }
         }
     }
 }

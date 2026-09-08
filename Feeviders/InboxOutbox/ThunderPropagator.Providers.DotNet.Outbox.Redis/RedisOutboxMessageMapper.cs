@@ -83,6 +83,10 @@ namespace ThunderPropagator.Providers.DotNet.Outbox.Redis
                 FieldStatus, message.Status.ToString(),
                 FieldAttempts, message.Attempts.ToString(),
                 FieldVersion, version.ToString(),
+                // Both only ever change via OutboxMessage.Requeue (every other transition leaves them
+                // as-is) - always included here regardless, since it is cheap and correct either way.
+                FieldOrderingSequence, message.OrderingSequence.ToString(),
+                FieldCreatedAtUtc, message.CreatedAtUtc.ToUnixTimeMilliseconds().ToString(),
             };
             var toDelete = new List<string>(6);
 
