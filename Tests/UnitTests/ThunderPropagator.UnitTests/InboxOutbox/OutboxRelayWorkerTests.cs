@@ -26,11 +26,32 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         }
 
         [Fact]
+        public async Task RunOnceAsync_ShouldRecordAHeartbeatForThePolledProvider_EvenWhenNothingWasClaimable()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = new ReferenceOutboxStore(timeProvider);
+            var worker = BuildWorker(store, timeProvider, DelegateProvider.Success());
+
+            Assert.False(((IOutboxWorkerHeartbeat)worker).LastPolledAtUtc.ContainsKey(ProviderKey));
+
+            await worker.RunOnceAsync();
+
+            Assert.True(((IOutboxWorkerHeartbeat)worker).LastPolledAtUtc.TryGetValue(ProviderKey, out var lastPolledAtUtc));
+            Assert.Equal(timeProvider.GetUtcNow(), lastPolledAtUtc);
+        }
+
+        [Fact]
         public async Task RunOnceAsync_ShouldPassOriginalPayloadAndHeadersToPublishDirectAsync()
         {
             var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
             var store = new ReferenceOutboxStore(timeProvider);
-            var headers = new Dictionary<string, string> { ["traceparent"] = "00-abc-def-01" };
+            // Deliberately not "traceparent": OutboxRelayWorker always refreshes that specific header to
+            // the current "outbox.relay" activity's own id when one is live (see OutboxTraceContext) -
+            // whether one is live depends on process-wide ActivityListener registration, which other
+            // tests running concurrently in this same process can enable, so asserting an exact seeded
+            // "traceparent" value survives unchanged is inherently flaky. A different, arbitrary header
+            // key still proves the general "original headers pass through" behavior this test is for.
+            var headers = new Dictionary<string, string> { ["x-custom-header"] = "custom-value" };
             await store.EnqueueAsync(Request("m1") with { Payload = [9, 8, 7], Headers = headers });
 
             var provider = DelegateProvider.Success();
@@ -40,7 +61,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
 
             var (bytes, capturedHeaders) = Assert.Single(provider.Published);
             Assert.Equal<byte>([9, 8, 7], bytes);
-            Assert.Equal("00-abc-def-01", capturedHeaders!["traceparent"]);
+            Assert.Equal("custom-value", capturedHeaders!["x-custom-header"]);
         }
 
         [Fact]

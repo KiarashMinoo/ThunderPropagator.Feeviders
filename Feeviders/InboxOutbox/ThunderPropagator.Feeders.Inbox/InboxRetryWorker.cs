@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 
 namespace ThunderPropagator.Feeders.Inbox
@@ -18,15 +19,19 @@ namespace ThunderPropagator.Feeders.Inbox
     /// batch per subscription directly, without waiting on a polling interval - the entry point tests use
     /// to drive retries deterministically against a fake clock.
     /// </remarks>
-    public sealed class InboxRetryWorker : IAsyncDisposable
+    public sealed class InboxRetryWorker : IAsyncDisposable, IInboxWorkerHeartbeat
     {
         private readonly IReadOnlyList<ResolvedSubscription> _subscriptions;
         private readonly IServiceProvider _serviceProvider;
         private readonly TimeProvider _timeProvider;
         private readonly Random _random;
         private readonly int _maxDegreeOfParallelism;
+        private readonly ConcurrentDictionary<Guid, DateTimeOffset> _lastPolledAtUtc = new();
         private CancellationTokenSource? _stoppingCts;
         private Task[]? _pollingLoops;
+
+        /// <inheritdoc/>
+        public IReadOnlyDictionary<Guid, DateTimeOffset> LastPolledAtUtc => _lastPolledAtUtc;
 
         /// <param name="subscriptions">
         /// One entry per channel to poll. A subscription with <see cref="InboxOptions.InboxEnabled"/>
@@ -170,16 +175,27 @@ namespace ThunderPropagator.Feeders.Inbox
         private async Task ProcessBatchAsync(ResolvedSubscription resolved, CancellationToken cancellationToken)
         {
             var channelKey = resolved.Subscription.ChannelKey;
-            var candidates = await TimedAsync(channelKey, "QueryRetryable", () => resolved.Store
-                .QueryRetryableAsync(channelKey, resolved.Subscription.Options.RetryBatchSize, cancellationToken))
-                .ConfigureAwait(false);
 
-            if (candidates.Count == 0)
-                return;
+            try
+            {
+                var candidates = await TimedAsync(channelKey, "QueryRetryable", () => resolved.Store
+                    .QueryRetryableAsync(channelKey, resolved.Subscription.Options.RetryBatchSize, cancellationToken))
+                    .ConfigureAwait(false);
 
-            using var throttle = new SemaphoreSlim(_maxDegreeOfParallelism);
-            var attempts = candidates.Select(candidate => ProcessOneAsync(resolved, candidate, throttle, cancellationToken));
-            await Task.WhenAll(attempts).ConfigureAwait(false);
+                if (candidates.Count == 0)
+                    return;
+
+                using var throttle = new SemaphoreSlim(_maxDegreeOfParallelism);
+                var attempts = candidates.Select(candidate => ProcessOneAsync(resolved, candidate, throttle, cancellationToken));
+                await Task.WhenAll(attempts).ConfigureAwait(false);
+            }
+            finally
+            {
+                // Recorded regardless of outcome - a heartbeat means "the polling loop is alive and
+                // completed an iteration for this channel," not "found or successfully processed
+                // anything." A stuck/unavailable store surfaces through its own IHealthCheck instead.
+                _lastPolledAtUtc[channelKey] = _timeProvider.GetUtcNow();
+            }
         }
 
         private async Task ProcessOneAsync(ResolvedSubscription resolved, InboxMessage candidate, SemaphoreSlim throttle, CancellationToken cancellationToken)
