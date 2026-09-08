@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.81] — 2026-09-08
+
+### 🏠 Chores
+
+- Add idempotent schema, index, and migration initialization `(cc87e32)` — Kiarash Minoo
+
 ## [1.0.1-beta.80] — 2026-09-08
 
 ### 🏠 Chores
