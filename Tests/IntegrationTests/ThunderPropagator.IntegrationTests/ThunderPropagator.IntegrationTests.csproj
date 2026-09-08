@@ -8,10 +8,12 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="MongoDB.Driver" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="StackExchange.Redis" />
     <PackageReference Include="Testcontainers" />
+    <PackageReference Include="Testcontainers.MongoDb" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
@@ -21,6 +23,8 @@
     <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Providers.DotNet.Outbox.Redis\ThunderPropagator.Providers.DotNet.Outbox.Redis.csproj" />
     <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Feeders.Inbox.EFCore\ThunderPropagator.Feeders.Inbox.EFCore.csproj" />
     <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Providers.DotNet.Outbox.EFCore\ThunderPropagator.Providers.DotNet.Outbox.EFCore.csproj" />
+    <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Feeders.Inbox.MongoDB\ThunderPropagator.Feeders.Inbox.MongoDB.csproj" />
+    <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Providers.DotNet.Outbox.MongoDB\ThunderPropagator.Providers.DotNet.Outbox.MongoDB.csproj" />
     <!-- Reuses the shared InboxStoreContractTests/OutboxStoreContractTests abstract suites (public)
          so each backend proves it satisfies the exact same contract as every other backend. -->
     <ProjectReference Include="..\..\UnitTests\ThunderPropagator.UnitTests\ThunderPropagator.UnitTests.csproj" />
