@@ -37,5 +37,8 @@ namespace ThunderPropagator.Feeders.Inbox
 
         /// <summary>Maximum entries a single <see cref="IInboxStore.QueryRetryableAsync"/> call may return, bounding retry-worker batch size.</summary>
         public const int MaxRetryBatchSize = 1000;
+
+        /// <summary>Maximum entries a single <see cref="IInboxStore.PurgeAsync"/> call may delete, bounding purge-worker batch size.</summary>
+        public const int MaxPurgeBatchSize = 5000;
     }
 }

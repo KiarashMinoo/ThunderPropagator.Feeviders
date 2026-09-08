@@ -103,11 +103,14 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
         Task<TimeSpan?> GetOldestPendingAgeAsync(string? partitionKey, TimeProvider timeProvider, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Deletes terminal (<see cref="OutboxMessageStatus.Published"/>/<see cref="OutboxMessageStatus.DeadLettered"/>)
-        /// entries older than <paramref name="olderThanUtc"/>. Must never remove a leased or
-        /// retry-eligible entry. Returns the number of entries purged.
+        /// Deletes at most <see cref="OutboxPurgeRequest.MaxCount"/> terminal
+        /// (<see cref="OutboxMessageStatus.Published"/>/<see cref="OutboxMessageStatus.DeadLettered"/>)
+        /// entries matching <paramref name="request"/>. Must never remove a leased, retry-eligible, or
+        /// excluded entry - a non-terminal entry (Pending/Publishing/Failed-awaiting-retry) is never
+        /// eligible regardless of age, by construction (only <see cref="OutboxMessageStatus.Published"/>/
+        /// <see cref="OutboxMessageStatus.DeadLettered"/> are ever considered).
         /// </summary>
-        Task<int> PurgeAsync(DateTimeOffset olderThanUtc, CancellationToken cancellationToken = default);
+        Task<OutboxPurgeResult> PurgeAsync(OutboxPurgeRequest request, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Atomically transitions a terminal entry (<see cref="OutboxMessageStatus.Published"/> or

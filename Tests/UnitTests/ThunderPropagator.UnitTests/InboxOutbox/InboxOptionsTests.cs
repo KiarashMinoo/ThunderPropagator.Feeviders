@@ -93,6 +93,64 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         }
 
         [Fact]
+        public void Validate_DeadLetterRetentionPeriodShorterThanDeduplicationWindow_ShouldThrow()
+        {
+            var options = new InboxOptions
+            {
+                DeduplicationWindow = TimeSpan.FromDays(7),
+                DeadLetterRetentionPeriod = TimeSpan.FromDays(1),
+            };
+
+            Assert.Throws<ArgumentException>(options.Validate);
+        }
+
+        [Fact]
+        public void Validate_DeadLetterRetentionPeriodNull_ShouldPass()
+        {
+            var options = new InboxOptions { DeadLetterRetentionPeriod = null };
+
+            var exception = Record.Exception(options.Validate);
+
+            Assert.Null(exception);
+        }
+
+        [Fact]
+        public void Validate_PurgePollingIntervalNotPositive_ShouldThrow()
+        {
+            var options = new InboxOptions { PurgePollingInterval = TimeSpan.Zero };
+
+            Assert.Throws<ArgumentException>(options.Validate);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(InboxMessageLimits.MaxPurgeBatchSize + 1)]
+        public void Validate_PurgeBatchSizeOutOfBounds_ShouldThrow(int purgeBatchSize)
+        {
+            var options = new InboxOptions { PurgeBatchSize = purgeBatchSize };
+
+            Assert.Throws<ArgumentException>(options.Validate);
+        }
+
+        [Fact]
+        public void Validate_PurgeBatchSizeAtMax_ShouldPass()
+        {
+            var options = new InboxOptions { PurgeBatchSize = InboxMessageLimits.MaxPurgeBatchSize };
+
+            var exception = Record.Exception(options.Validate);
+
+            Assert.Null(exception);
+        }
+
+        [Fact]
+        public void Validate_MaxPurgeBatchesPerRunNotPositive_ShouldThrow()
+        {
+            var options = new InboxOptions { MaxPurgeBatchesPerRun = 0 };
+
+            Assert.Throws<ArgumentException>(options.Validate);
+        }
+
+        [Fact]
         public void Validate_NegativeMaxRetryAttempts_ShouldThrow()
         {
             var options = new InboxOptions { MaxRetryAttempts = -1 };

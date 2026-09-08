@@ -147,19 +147,27 @@ namespace ThunderPropagator.Feeders.Inbox.InMemory
             };
 
         /// <inheritdoc/>
-        public Task<int> PurgeAsync(Guid channelKey, DateTimeOffset olderThanUtc, CancellationToken cancellationToken = default)
+        public Task<InboxPurgeResult> PurgeAsync(InboxPurgeRequest request, CancellationToken cancellationToken = default)
         {
             lock (_gate)
             {
-                var toPurge = _byId.Values
-                    .Where(m => m.ChannelKey == channelKey)
+                var eligible = _byId.Values
+                    .Where(m => m.ChannelKey == request.ChannelKey)
                     .Where(m => m.Status switch
                     {
-                        InboxMessageStatus.Processed => m.ProcessedAtUtc < olderThanUtc,
-                        InboxMessageStatus.DeadLettered => m.DeadLetteredAtUtc < olderThanUtc,
+                        InboxMessageStatus.Processed => request.ProcessedOlderThanUtc is { } cutoff && m.ProcessedAtUtc < cutoff,
+                        InboxMessageStatus.DeadLettered => request.DeadLetteredOlderThanUtc is { } cutoff && m.DeadLetteredAtUtc < cutoff,
                         _ => false,
                     })
+                    .OrderBy(m => m.Status == InboxMessageStatus.Processed ? m.ProcessedAtUtc : m.DeadLetteredAtUtc)
+                    .Take(request.MaxCount + 1)
                     .ToArray();
+
+                var hasMore = eligible.Length > request.MaxCount;
+                var batch = hasMore ? eligible[..request.MaxCount] : eligible;
+                var toPurge = request.ExcludedIds is null
+                    ? batch
+                    : [.. batch.Where(m => !request.ExcludedIds.Contains(m.Id))];
 
                 foreach (var message in toPurge)
                 {
@@ -167,7 +175,7 @@ namespace ThunderPropagator.Feeders.Inbox.InMemory
                     _dedupIndex.Remove((message.ChannelKey, message.PartitionKey, message.MessageId));
                 }
 
-                return Task.FromResult(toPurge.Length);
+                return Task.FromResult(new InboxPurgeResult { PurgedCount = toPurge.Length, HasMore = hasMore });
             }
         }
 

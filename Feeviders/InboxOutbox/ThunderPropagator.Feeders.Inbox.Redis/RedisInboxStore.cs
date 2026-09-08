@@ -478,22 +478,70 @@ namespace ThunderPropagator.Feeders.Inbox.Redis
         }
 
         /// <inheritdoc/>
-        public async Task<int> PurgeAsync(Guid channelKey, DateTimeOffset olderThanUtc, CancellationToken cancellationToken = default)
+        public async Task<InboxPurgeResult> PurgeAsync(InboxPurgeRequest request, CancellationToken cancellationToken = default)
         {
+            if (request.ProcessedOlderThanUtc is null && request.DeadLetteredOlderThanUtc is null)
+                return new InboxPurgeResult { PurgedCount = 0, HasMore = false };
+
             var db = Database;
-            var terminalKey = _keys.Terminal(channelKey);
-            var ids = await db.SortedSetRangeByScoreAsync(terminalKey, double.NegativeInfinity, olderThanUtc.ToUnixTimeMilliseconds() - 1).ConfigureAwait(false);
-            if (ids.Length == 0)
-                return 0;
+            var terminalKey = _keys.Terminal(request.ChannelKey);
+
+            // The terminal sorted set mixes Processed and DeadLettered members together, scored by
+            // whichever one applies - bound the range scan by the LARGER of the two cutoffs (so a null
+            // cutoff, meaning "skip this status", never widens the scan), then check each candidate's own
+            // Status below to apply its OWN cutoff, since the shared score range alone cannot distinguish
+            // them. A generous scan window (4x maxCount) makes it unlikely one batch under-counts when one
+            // status vastly outnumbers the other in the same window; see InboxPurgeResult.HasMore's
+            // conservative fallback for the rare case it still does.
+            var maxCutoffMs = Math.Max(
+                request.ProcessedOlderThanUtc?.ToUnixTimeMilliseconds() ?? long.MinValue,
+                request.DeadLetteredOlderThanUtc?.ToUnixTimeMilliseconds() ?? long.MinValue) - 1;
+            var scanWindow = Math.Max(request.MaxCount * 4, request.MaxCount + 1);
+
+            var candidates = await db.SortedSetRangeByScoreAsync(terminalKey, double.NegativeInfinity, maxCutoffMs, take: scanWindow).ConfigureAwait(false);
+            if (candidates.Length == 0)
+                return new InboxPurgeResult { PurgedCount = 0, HasMore = false };
+
+            var statusTasks = candidates
+                .Select(candidate => db.HashGetAsync(_keys.MessagePrefix + (string)candidate!, RedisInboxMessageMapper.FieldStatus))
+                .ToArray();
+            await Task.WhenAll(statusTasks).ConfigureAwait(false);
+
+            var matched = new List<string>(candidates.Length);
+            for (var i = 0; i < candidates.Length; i++)
+            {
+                if (statusTasks[i].Result.IsNullOrEmpty)
+                    continue; // already gone - a race with a concurrent purge/replay of the same entry
+
+                var status = Enum.Parse<InboxMessageStatus>((string)statusTasks[i].Result!);
+                var qualifies = status switch
+                {
+                    InboxMessageStatus.Processed => request.ProcessedOlderThanUtc is not null,
+                    InboxMessageStatus.DeadLettered => request.DeadLetteredOlderThanUtc is not null,
+                    _ => false,
+                };
+
+                if (qualifies)
+                    matched.Add((string)candidates[i]!);
+            }
+
+            var hasMore = candidates.Length == scanWindow || matched.Count > request.MaxCount;
+            var batch = matched.Count > request.MaxCount ? matched.Take(request.MaxCount) : matched;
+            var idsToDelete = (request.ExcludedIds is { Count: > 0 }
+                ? batch.Where(id => !request.ExcludedIds.Contains(Guid.ParseExact(id, "N")))
+                : batch).ToArray();
+
+            if (idsToDelete.Length == 0)
+                return new InboxPurgeResult { PurgedCount = 0, HasMore = hasMore };
 
             var result = await db.ScriptEvaluateAsync(PurgeScript, new
             {
                 terminalKey = (RedisKey)terminalKey,
                 keyPrefix = (RedisKey)_keys.MessagePrefix,
-                idsJson = JsonSerializer.Serialize(ids.Select(v => (string)v!)),
+                idsJson = JsonSerializer.Serialize(idsToDelete),
             }).ConfigureAwait(false);
 
-            return (int)result;
+            return new InboxPurgeResult { PurgedCount = (int)result, HasMore = hasMore };
         }
 
         /// <inheritdoc/>

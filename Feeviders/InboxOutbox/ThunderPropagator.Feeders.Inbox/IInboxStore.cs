@@ -78,11 +78,14 @@ namespace ThunderPropagator.Feeders.Inbox
         Task<IReadOnlyList<InboxMessage>> QueryRetryableAsync(Guid channelKey, int maxCount, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Deletes terminal (<see cref="InboxMessageStatus.Processed"/>/<see cref="InboxMessageStatus.DeadLettered"/>)
-        /// entries older than <paramref name="olderThanUtc"/>. Must never remove a leased or
-        /// retry-eligible entry. Returns the number of entries purged.
+        /// Deletes at most <see cref="InboxPurgeRequest.MaxCount"/> terminal
+        /// (<see cref="InboxMessageStatus.Processed"/>/<see cref="InboxMessageStatus.DeadLettered"/>)
+        /// entries matching <paramref name="request"/>. Must never remove a leased, retry-eligible, or
+        /// excluded entry - a non-terminal entry (Received/Processing/Failed-awaiting-retry) is never
+        /// eligible regardless of age, by construction (only <see cref="InboxMessageStatus.Processed"/>/
+        /// <see cref="InboxMessageStatus.DeadLettered"/> are ever considered).
         /// </summary>
-        Task<int> PurgeAsync(Guid channelKey, DateTimeOffset olderThanUtc, CancellationToken cancellationToken = default);
+        Task<InboxPurgeResult> PurgeAsync(InboxPurgeRequest request, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Atomically transitions a terminal entry (<see cref="InboxMessageStatus.Processed"/> or

@@ -108,6 +108,29 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
         /// <summary>How long terminal (<see cref="OutboxMessageStatus.Published"/>/<see cref="OutboxMessageStatus.DeadLettered"/>) entries are kept before a retention worker purges them via <see cref="IOutboxStore.PurgeAsync"/>.</summary>
         public TimeSpan RetentionPeriod { get; init; } = TimeSpan.FromDays(7);
 
+        /// <summary>
+        /// Separate retention window for DeadLettered entries only, overriding <see cref="RetentionPeriod"/>
+        /// for that one status. <see langword="null"/> (default) means DeadLettered entries follow
+        /// <see cref="RetentionPeriod"/> exactly like Published entries always have. Set this when dead
+        /// letters need longer retention than successfully published entries do, to leave time for
+        /// manual triage/replay before <see cref="OutboxPurgeWorker"/> removes them.
+        /// </summary>
+        public TimeSpan? DeadLetterRetentionPeriod { get; init; }
+
+        /// <summary>How often <see cref="OutboxPurgeWorker"/> runs a purge pass for this Provider.</summary>
+        public TimeSpan PurgePollingInterval { get; init; } = TimeSpan.FromHours(1);
+
+        /// <summary>Maximum entries <see cref="OutboxPurgeWorker"/> deletes per <see cref="IOutboxStore.PurgeAsync"/> call. Bounded by <see cref="OutboxMessageLimits.MaxPurgeBatchSize"/>.</summary>
+        public int PurgeBatchSize { get; init; } = 500;
+
+        /// <summary>
+        /// Maximum consecutive purge batches <see cref="OutboxPurgeWorker"/> runs per polling tick before
+        /// waiting for the next <see cref="PurgePollingInterval"/>, bounding how long one purge pass can
+        /// occupy the store even when far more eligible entries exist than fit in one
+        /// <see cref="PurgeBatchSize"/> batch.
+        /// </summary>
+        public int MaxPurgeBatchesPerRun { get; init; } = 20;
+
         /// <summary>How long a publishing lease (<see cref="IOutboxStore.ClaimBatchAsync"/>) is held for before it becomes reclaimable by another relay worker.</summary>
         public TimeSpan ClaimLeaseDuration { get; init; } = TimeSpan.FromSeconds(30);
 
@@ -157,6 +180,18 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
             if (RetentionPeriod <= TimeSpan.Zero)
                 throw new ArgumentException($"{nameof(RetentionPeriod)} must be positive.", nameof(RetentionPeriod));
 
+            if (DeadLetterRetentionPeriod is { } deadLetterRetentionPeriod && deadLetterRetentionPeriod <= TimeSpan.Zero)
+                throw new ArgumentException($"{nameof(DeadLetterRetentionPeriod)} must be positive.", nameof(DeadLetterRetentionPeriod));
+
+            if (PurgePollingInterval <= TimeSpan.Zero)
+                throw new ArgumentException($"{nameof(PurgePollingInterval)} must be positive.", nameof(PurgePollingInterval));
+
+            if (PurgeBatchSize is <= 0 or > OutboxMessageLimits.MaxPurgeBatchSize)
+                throw new ArgumentException($"{nameof(PurgeBatchSize)} must be between 1 and {OutboxMessageLimits.MaxPurgeBatchSize}.", nameof(PurgeBatchSize));
+
+            if (MaxPurgeBatchesPerRun <= 0)
+                throw new ArgumentException($"{nameof(MaxPurgeBatchesPerRun)} must be at least 1.", nameof(MaxPurgeBatchesPerRun));
+
             if (ClaimLeaseDuration <= TimeSpan.Zero)
                 throw new ArgumentException($"{nameof(ClaimLeaseDuration)} must be positive.", nameof(ClaimLeaseDuration));
 
@@ -172,7 +207,9 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
             + $"{nameof(PartitionStrategy)} = {PartitionStrategy}, {nameof(OrderingPolicy)} = {OrderingPolicy}, {nameof(RelayPollingInterval)} = {RelayPollingInterval}, "
             + $"{nameof(RelayBatchSize)} = {RelayBatchSize}, {nameof(MaxRetryAttempts)} = {MaxRetryAttempts}, "
             + $"{nameof(RetryBaseDelay)} = {RetryBaseDelay}, {nameof(RetryMaxDelay)} = {RetryMaxDelay}, "
-            + $"{nameof(RetentionPeriod)} = {RetentionPeriod}, {nameof(ClaimLeaseDuration)} = {ClaimLeaseDuration}, "
+            + $"{nameof(RetentionPeriod)} = {RetentionPeriod}, {nameof(DeadLetterRetentionPeriod)} = {DeadLetterRetentionPeriod}, "
+            + $"{nameof(PurgePollingInterval)} = {PurgePollingInterval}, {nameof(PurgeBatchSize)} = {PurgeBatchSize}, "
+            + $"{nameof(MaxPurgeBatchesPerRun)} = {MaxPurgeBatchesPerRun}, {nameof(ClaimLeaseDuration)} = {ClaimLeaseDuration}, "
             + $"{nameof(MaxPayloadSizeBytes)} = {MaxPayloadSizeBytes} }}";
     }
 }

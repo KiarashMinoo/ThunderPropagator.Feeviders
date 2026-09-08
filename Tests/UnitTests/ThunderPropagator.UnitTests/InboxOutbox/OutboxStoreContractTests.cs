@@ -336,10 +336,99 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
             await store.EnqueueAsync(CreateRequest("active"));
             await store.ClaimBatchAsync(null, 10, "owner-b", TimeSpan.FromMinutes(5));
 
-            var purged = await store.PurgeAsync(timeProvider.GetUtcNow());
+            var result = await store.PurgeAsync(new OutboxPurgeRequest { PublishedOlderThanUtc = timeProvider.GetUtcNow(), DeadLetteredOlderThanUtc = timeProvider.GetUtcNow() });
 
-            Assert.Equal(1, purged);
+            Assert.Equal(1, result.PurgedCount);
+            Assert.False(result.HasMore);
             Assert.Equal(1, await store.GetDepthAsync(null)); // the still-active entry is untouched
+        }
+
+        [Fact]
+        public async Task PurgeAsync_ShouldNotRemoveAnEntryExactlyAtTheCutoff()
+        {
+            var store = CreateStore(new ManualTimeProvider(DateTimeOffset.UnixEpoch));
+            await store.EnqueueAsync(CreateRequest("m1"));
+            var claim = await store.ClaimBatchAsync(null, 10, "owner-a", TimeSpan.FromMinutes(5));
+            var published = await store.MarkPublishedAsync(claim[0].Id, "owner-a");
+
+            var result = await store.PurgeAsync(new OutboxPurgeRequest { PublishedOlderThanUtc = published!.PublishedAtUtc });
+
+            Assert.Equal(0, result.PurgedCount);
+            Assert.NotNull(await store.ReplayAsync(claim[0].Id)); // still there (and still terminal) - replay succeeding proves it survived
+        }
+
+        [Fact]
+        public async Task PurgeAsync_ShouldApplyIndependentCutoffsPerStatus()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = CreateStore(timeProvider);
+
+            await store.EnqueueAsync(CreateRequest("published"));
+            var publishedClaim = await store.ClaimBatchAsync(null, 10, "owner-a", TimeSpan.FromMinutes(5));
+            await store.MarkPublishedAsync(publishedClaim[0].Id, "owner-a");
+
+            await store.EnqueueAsync(CreateRequest("dead-lettered"));
+            var deadClaim = await store.ClaimBatchAsync(null, 10, "owner-a", TimeSpan.FromMinutes(5));
+            await store.MarkDeadLetterAsync(deadClaim.Single(m => m.MessageId == "dead-lettered").Id, "owner-a", "boom");
+
+            timeProvider.Advance(TimeSpan.FromDays(1));
+
+            // Only Published is purged this call - DeadLettered's own cutoff (null) skips it entirely,
+            // even though it is just as old.
+            var result = await store.PurgeAsync(new OutboxPurgeRequest { PublishedOlderThanUtc = timeProvider.GetUtcNow(), DeadLetteredOlderThanUtc = null });
+
+            Assert.Equal(1, result.PurgedCount);
+            Assert.NotNull(await store.ReplayAsync(deadClaim.Single(m => m.MessageId == "dead-lettered").Id));
+        }
+
+        [Fact]
+        public async Task PurgeAsync_ShouldRespectMaxCountAndReportHasMoreUntilExhausted()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = CreateStore(timeProvider);
+
+            for (var i = 0; i < 5; i++)
+            {
+                await store.EnqueueAsync(CreateRequest($"m{i}"));
+                var claim = await store.ClaimBatchAsync(null, 10, "owner-a", TimeSpan.FromMinutes(5));
+                await store.MarkPublishedAsync(claim.Single(m => m.MessageId == $"m{i}").Id, "owner-a");
+            }
+
+            timeProvider.Advance(TimeSpan.FromDays(1));
+            var cutoff = timeProvider.GetUtcNow();
+
+            var first = await store.PurgeAsync(new OutboxPurgeRequest { PublishedOlderThanUtc = cutoff, MaxCount = 2 });
+            Assert.Equal(2, first.PurgedCount);
+            Assert.True(first.HasMore);
+
+            var second = await store.PurgeAsync(new OutboxPurgeRequest { PublishedOlderThanUtc = cutoff, MaxCount = 2 });
+            Assert.Equal(2, second.PurgedCount);
+            Assert.True(second.HasMore);
+
+            var third = await store.PurgeAsync(new OutboxPurgeRequest { PublishedOlderThanUtc = cutoff, MaxCount = 2 });
+            Assert.Equal(1, third.PurgedCount);
+            Assert.False(third.HasMore);
+        }
+
+        [Fact]
+        public async Task PurgeAsync_ShouldNeverPurgeAnExcludedId()
+        {
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = CreateStore(timeProvider);
+            await store.EnqueueAsync(CreateRequest("held"));
+            var claim = await store.ClaimBatchAsync(null, 10, "owner-a", TimeSpan.FromMinutes(5));
+            await store.MarkPublishedAsync(claim[0].Id, "owner-a");
+
+            timeProvider.Advance(TimeSpan.FromDays(1));
+
+            var result = await store.PurgeAsync(new OutboxPurgeRequest
+            {
+                PublishedOlderThanUtc = timeProvider.GetUtcNow(),
+                ExcludedIds = new HashSet<Guid> { claim[0].Id },
+            });
+
+            Assert.Equal(0, result.PurgedCount);
+            Assert.NotNull(await store.ReplayAsync(claim[0].Id));
         }
 
         [Fact]

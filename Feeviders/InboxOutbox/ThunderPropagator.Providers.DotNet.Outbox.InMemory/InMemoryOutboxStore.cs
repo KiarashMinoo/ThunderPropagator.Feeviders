@@ -195,23 +195,31 @@ namespace ThunderPropagator.Providers.DotNet.Outbox.InMemory
         private static bool IsBacklog(OutboxMessageStatus status) => status is not (OutboxMessageStatus.Published or OutboxMessageStatus.DeadLettered);
 
         /// <inheritdoc/>
-        public Task<int> PurgeAsync(DateTimeOffset olderThanUtc, CancellationToken cancellationToken = default)
+        public Task<OutboxPurgeResult> PurgeAsync(OutboxPurgeRequest request, CancellationToken cancellationToken = default)
         {
             lock (_gate)
             {
-                var toPurge = _byId.Values
+                var eligible = _byId.Values
                     .Where(m => m.Status switch
                     {
-                        OutboxMessageStatus.Published => m.PublishedAtUtc < olderThanUtc,
-                        OutboxMessageStatus.DeadLettered => m.DeadLetteredAtUtc < olderThanUtc,
+                        OutboxMessageStatus.Published => request.PublishedOlderThanUtc is { } cutoff && m.PublishedAtUtc < cutoff,
+                        OutboxMessageStatus.DeadLettered => request.DeadLetteredOlderThanUtc is { } cutoff && m.DeadLetteredAtUtc < cutoff,
                         _ => false,
                     })
+                    .OrderBy(m => m.Status == OutboxMessageStatus.Published ? m.PublishedAtUtc : m.DeadLetteredAtUtc)
+                    .Take(request.MaxCount + 1)
                     .ToArray();
+
+                var hasMore = eligible.Length > request.MaxCount;
+                var batch = hasMore ? eligible[..request.MaxCount] : eligible;
+                var toPurge = request.ExcludedIds is null
+                    ? batch
+                    : [.. batch.Where(m => !request.ExcludedIds.Contains(m.Id))];
 
                 foreach (var message in toPurge)
                     _byId.Remove(message.Id);
 
-                return Task.FromResult(toPurge.Length);
+                return Task.FromResult(new OutboxPurgeResult { PurgedCount = toPurge.Length, HasMore = hasMore });
             }
         }
 
