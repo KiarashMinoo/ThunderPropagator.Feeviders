@@ -13,5 +13,10 @@ namespace ThunderPropagator.Feeders.Inbox
         internal static readonly Counter<long> BatchesRun = Meter.CreateCounter<long>(
             "thunderpropagator.feeders.inbox.purge.batches",
             description: "Number of Inbox purge batches executed.");
+
+        internal static readonly Histogram<double> BatchDuration = Meter.CreateHistogram<double>(
+            "thunderpropagator.feeders.inbox.purge.batch.duration",
+            unit: "ms",
+            description: "Duration of one IInboxStore.PurgeAsync batch call.");
     }
 }

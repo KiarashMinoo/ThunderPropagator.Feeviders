@@ -13,5 +13,10 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
         internal static readonly Counter<long> BatchesRun = Meter.CreateCounter<long>(
             "thunderpropagator.providers.dotnet.outbox.purge.batches",
             description: "Number of Outbox purge batches executed.");
+
+        internal static readonly Histogram<double> BatchDuration = Meter.CreateHistogram<double>(
+            "thunderpropagator.providers.dotnet.outbox.purge.batch.duration",
+            unit: "ms",
+            description: "Duration of one IOutboxStore.PurgeAsync batch call.");
     }
 }

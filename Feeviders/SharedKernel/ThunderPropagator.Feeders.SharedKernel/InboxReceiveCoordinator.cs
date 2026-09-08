@@ -127,7 +127,8 @@ namespace ThunderPropagator.Feeders.SharedKernel
             activity?.SetTag("inbox.message_id", resolved.MessageId);
 
             var leaseOwner = Guid.NewGuid().ToString("N");
-            var claim = await _store!.TryClaimAsync(new InboxClaimRequest
+            var channelTag = new KeyValuePair<string, object?>(InboxTelemetry.TagChannel, _channelKey);
+            var claim = await TimedAsync("TryClaim", () => _store!.TryClaimAsync(new InboxClaimRequest
             {
                 MessageId = resolved.MessageId,
                 ChannelKey = _channelKey,
@@ -139,26 +140,30 @@ namespace ThunderPropagator.Feeders.SharedKernel
                 Headers = headers,
                 LeaseOwner = leaseOwner,
                 LeaseDuration = _options.ClaimLeaseDuration,
-            }, cancellationToken).ConfigureAwait(false);
+            }, cancellationToken)).ConfigureAwait(false);
 
             activity?.SetTag("inbox.claim_outcome", claim.Outcome.ToString());
 
             switch (claim.Outcome)
             {
                 case InboxClaimOutcome.AlreadyProcessed:
+                    InboxTelemetry.Duplicates.Add(1, channelTag);
                     await acknowledgeAsync(cancellationToken).ConfigureAwait(false);
                     return InboxReceiveOutcome.Duplicate;
 
                 case InboxClaimOutcome.DeadLettered:
+                    InboxTelemetry.Duplicates.Add(1, channelTag);
                     await acknowledgeAsync(cancellationToken).ConfigureAwait(false);
                     return InboxReceiveOutcome.AlreadyDeadLettered;
 
                 case InboxClaimOutcome.ClaimedByAnotherOwner:
                     // Another worker holds an unexpired lease on this dedup key - this call never held
                     // the claim, so it must not acknowledge, complete, or fail it.
+                    InboxTelemetry.ClaimContention.Add(1, channelTag);
                     return InboxReceiveOutcome.InProgress;
             }
 
+            InboxTelemetry.Received.Add(1, channelTag);
             var claimed = claim.Message!;
 
             // Durably claimed: the Inbox (and its retry worker) now owns recovering this message, so the
@@ -168,8 +173,9 @@ namespace ThunderPropagator.Feeders.SharedKernel
             try
             {
                 await invokeHandlerAsync(cancellationToken).ConfigureAwait(false);
-                await _store.CompleteAsync(claimed.Id, leaseOwner, cancellationToken).ConfigureAwait(false);
+                await TimedAsync("Complete", () => _store!.CompleteAsync(claimed.Id, leaseOwner, cancellationToken)).ConfigureAwait(false);
                 activity?.SetStatus(ActivityStatusCode.Ok);
+                InboxTelemetry.Processed.Add(1, channelTag);
                 return InboxReceiveOutcome.Processed;
             }
             catch (Exception exception)
@@ -179,22 +185,50 @@ namespace ThunderPropagator.Feeders.SharedKernel
 
                 if (claimed.AttemptCount >= _options.MaxRetryAttempts)
                 {
-                    var deadLettered = await _store.DeadLetterAsync(claimed.Id, leaseOwner, reason, cancellationToken).ConfigureAwait(false);
-                    if (deadLettered is not null && _deadLetterHandlers.Count > 0)
+                    var deadLettered = await TimedAsync("DeadLetter", () => _store!.DeadLetterAsync(claimed.Id, leaseOwner, reason, cancellationToken)).ConfigureAwait(false);
+                    if (deadLettered is not null)
                     {
                         var category = InboxFailureClassifier.Classify(exception, attemptsExhausted: true);
-                        var context = InboxDeadLetterContextFactory.Create(deadLettered, category, _deadLetterPayloadPolicy);
-                        // A failing handler must not undo the dead-lettering that already durably
-                        // succeeded above - InboxDeadLetterPipeline isolates each handler's own failure.
-                        await new InboxDeadLetterPipeline(_deadLetterHandlers).RunAsync(context, cancellationToken).ConfigureAwait(false);
+                        InboxTelemetry.DeadLettered.Add(1, channelTag, new KeyValuePair<string, object?>(InboxTelemetry.TagCategory, category.ToString()));
+
+                        if (_deadLetterHandlers.Count > 0)
+                        {
+                            var context = InboxDeadLetterContextFactory.Create(deadLettered, category, _deadLetterPayloadPolicy);
+                            // A failing handler must not undo the dead-lettering that already durably
+                            // succeeded above - InboxDeadLetterPipeline isolates each handler's own failure.
+                            await new InboxDeadLetterPipeline(_deadLetterHandlers).RunAsync(context, cancellationToken).ConfigureAwait(false);
+                        }
                     }
 
                     return InboxReceiveOutcome.DeadLettered;
                 }
 
-                var nextRetryAtUtc = _timeProvider.GetUtcNow() + ComputeBackoff(_options, claimed.AttemptCount);
-                await _store.FailAsync(claimed.Id, leaseOwner, reason, nextRetryAtUtc, cancellationToken).ConfigureAwait(false);
+                var delay = ComputeBackoff(_options, claimed.AttemptCount);
+                var nextRetryAtUtc = _timeProvider.GetUtcNow() + delay;
+                await TimedAsync("Fail", () => _store!.FailAsync(claimed.Id, leaseOwner, reason, nextRetryAtUtc, cancellationToken)).ConfigureAwait(false);
+                InboxTelemetry.Failed.Add(1, channelTag);
+                InboxTelemetry.RetryDelay.Record(delay.TotalMilliseconds, channelTag);
                 return InboxReceiveOutcome.Failed;
+            }
+        }
+
+        /// <summary>Times one <see cref="IInboxStore"/> call and records it to <see cref="InboxTelemetry.StoreOperationDuration"/> - never blocks the call itself, only wraps it.</summary>
+        private async Task<T> TimedAsync<T>(string operation, Func<Task<T>> call)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var channelTag = new KeyValuePair<string, object?>(InboxTelemetry.TagChannel, _channelKey);
+            var operationTag = new KeyValuePair<string, object?>(InboxTelemetry.TagOperation, operation);
+
+            try
+            {
+                var result = await call().ConfigureAwait(false);
+                InboxTelemetry.StoreOperationDuration.Record(stopwatch.Elapsed.TotalMilliseconds, channelTag, operationTag, new KeyValuePair<string, object?>(InboxTelemetry.TagOutcome, "success"));
+                return result;
+            }
+            catch
+            {
+                InboxTelemetry.StoreOperationDuration.Record(stopwatch.Elapsed.TotalMilliseconds, channelTag, operationTag, new KeyValuePair<string, object?>(InboxTelemetry.TagOutcome, "error"));
+                throw;
             }
         }
 

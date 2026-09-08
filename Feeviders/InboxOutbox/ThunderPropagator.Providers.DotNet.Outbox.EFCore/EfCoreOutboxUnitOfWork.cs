@@ -55,6 +55,10 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
 
             var committed = _staged.ToArray();
             _staged.Clear();
+
+            foreach (var message in committed)
+                OutboxTelemetry.Enqueued.Add(1, new KeyValuePair<string, object?>(OutboxTelemetry.TagProvider, message.ProviderKey));
+
             return committed;
         }
 
