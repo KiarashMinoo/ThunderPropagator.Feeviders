@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
 namespace ThunderPropagator.Providers.DotNet.Outbox
@@ -43,6 +44,14 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
         internal const string TagOutcome = "outcome";
 
         internal static readonly Meter Meter = new("thunderpropagator.providers.dotnet.outbox");
+
+        /// <summary>
+        /// Shared by both enqueue (<see cref="NonTransactionalOutboxUnitOfWork"/>/<c>EfCoreOutboxUnitOfWork</c>)
+        /// and relay (<c>OutboxRelayWorker</c>, in the Providers SharedKernel) - see
+        /// <see cref="OutboxTraceContext"/> for how a relay activity links back to the enqueuing trace
+        /// instead of pretending to be its synchronous child.
+        /// </summary>
+        internal static readonly ActivitySource ActivitySource = new("thunderpropagator.providers.dotnet.outbox");
 
         internal static readonly Counter<long> Enqueued = Meter.CreateCounter<long>(
             "thunderpropagator.providers.dotnet.outbox.enqueued",

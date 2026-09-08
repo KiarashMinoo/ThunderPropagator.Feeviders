@@ -247,23 +247,36 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
             var providerTag = new KeyValuePair<string, object?>(OutboxTelemetry.TagProvider, subscription.ProviderKey);
             var stopwatch = Stopwatch.StartNew();
 
+            // A relay is never a synchronous child of the enqueue span that already finished - possibly
+            // minutes or hours ago, possibly in a process that has since restarted - so this links back
+            // to it instead of parenting under it (or under whatever unrelated activity happens to be
+            // ambient on this polling loop's thread).
+            var links = OutboxTraceContext.ExtractLinks(claimed.Headers);
+            using var activity = OutboxTelemetry.ActivitySource.StartActivity("outbox.relay", ActivityKind.Producer, default(ActivityContext), links: links);
+            activity?.SetTag("outbox.provider_key", subscription.ProviderKey);
+            activity?.SetTag("outbox.message_id", claimed.MessageId);
+            activity?.SetTag("outbox.attempts", claimed.Attempts);
+
             try
             {
                 var provider = subscription.ResolveProvider(_serviceProvider);
-                await provider.PublishDirectAsync(claimed.Payload, WithMessageIdHeader(claimed), cancellationToken).ConfigureAwait(false);
+                await provider.PublishDirectAsync(claimed.Payload, WithOutgoingHeaders(claimed), cancellationToken).ConfigureAwait(false);
                 await TimedAsync(subscription.ProviderKey, "MarkPublished", () => store.MarkPublishedAsync(claimed.Id, leaseOwner, cancellationToken)).ConfigureAwait(false);
                 OutboxTelemetry.Published.Add(1, providerTag);
                 OutboxTelemetry.RelayDuration.Record(stopwatch.Elapsed.TotalMilliseconds, providerTag, new KeyValuePair<string, object?>(OutboxTelemetry.TagOutcome, "published"));
+                activity?.SetStatus(ActivityStatusCode.Ok);
                 return RelayOutcome.Published;
             }
             catch (OutboxNonRetryableException exception)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, exception.GetType().Name);
                 await DeadLetterAsync(resolved, claimed, leaseOwner, exception.Message, exception, attemptsExhausted: false, cancellationToken).ConfigureAwait(false);
                 OutboxTelemetry.RelayDuration.Record(stopwatch.Elapsed.TotalMilliseconds, providerTag, new KeyValuePair<string, object?>(OutboxTelemetry.TagOutcome, "dead_lettered"));
                 return RelayOutcome.DeadLettered;
             }
             catch (Exception exception)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, exception.GetType().Name);
                 var reason = SanitizeFailureReason(exception);
 
                 if (claimed.Attempts >= subscription.Options.MaxRetryAttempts)
@@ -285,12 +298,16 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
         /// Stamps <see cref="OutboxHeaderNames.MessageId"/> with <see cref="OutboxMessage.MessageId"/> on
         /// every publish attempt, overriding any value already present under that key - a downstream
         /// consumer's deduplication key must always be this Outbox's own stable identifier, never
-        /// whatever the enqueuing call site happened to put there.
+        /// whatever the enqueuing call site happened to put there. Also refreshes the trace context
+        /// headers to the current "outbox.relay" activity (<see cref="Activity.Current"/>) rather than
+        /// forwarding the stale enqueue-time one persisted on <see cref="OutboxMessage.Headers"/> - a
+        /// downstream broker consumer should continue from the trace that is actually publishing right
+        /// now, not from however long ago this entry was originally enqueued.
         /// </summary>
-        private static IReadOnlyDictionary<string, string> WithMessageIdHeader(OutboxMessage claimed)
+        private static IReadOnlyDictionary<string, string> WithOutgoingHeaders(OutboxMessage claimed)
         {
             var headers = new Dictionary<string, string>(claimed.Headers) { [OutboxHeaderNames.MessageId] = claimed.MessageId };
-            return headers;
+            return OutboxTraceContext.WithCurrentTraceContext(headers)!;
         }
 
         private async Task DeadLetterAsync(ResolvedSubscription resolved, OutboxMessage claimed, string leaseOwner, string reason, Exception exception, bool attemptsExhausted, CancellationToken cancellationToken)

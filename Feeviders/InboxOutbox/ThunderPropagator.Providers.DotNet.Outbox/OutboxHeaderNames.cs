@@ -14,5 +14,18 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
         /// legitimately arrive more than once.
         /// </summary>
         public const string MessageId = "x-outbox-message-id";
+
+        /// <summary>
+        /// The <see href="https://www.w3.org/TR/trace-context/">W3C Trace Context</see> <c>traceparent</c>
+        /// value captured when this entry was enqueued - this library's own persisted record of it,
+        /// restored later by the relay worker to link back to the enqueuing trace rather than pretending
+        /// an asynchronous relay is a synchronous child span. A relay attempt stamps a fresh traceparent
+        /// of its own on the outgoing broker message (see <c>OutboxRelayWorker</c>) - that is a separate
+        /// concern from this persisted-at-enqueue-time value.
+        /// </summary>
+        public const string TraceParent = "traceparent";
+
+        /// <summary>The corresponding W3C <c>tracestate</c> value, if one was present. Optional - many traces never set one.</summary>
+        public const string TraceState = "tracestate";
     }
 }

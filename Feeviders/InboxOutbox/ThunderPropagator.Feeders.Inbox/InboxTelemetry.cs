@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 
 namespace ThunderPropagator.Feeders.Inbox
@@ -40,6 +41,14 @@ namespace ThunderPropagator.Feeders.Inbox
         internal const string TagOutcome = "outcome";
 
         internal static readonly Meter Meter = new("thunderpropagator.feeders.inbox");
+
+        /// <summary>
+        /// Shared by both the live receive path (<c>InboxReceiveCoordinator</c>, in the Feeders
+        /// SharedKernel) and the retry path (<see cref="InboxRetryWorker"/>, here) - see
+        /// <see cref="InboxTraceContext"/> for how a retry activity links back to the original receive's
+        /// trace instead of pretending to be its synchronous child.
+        /// </summary>
+        internal static readonly ActivitySource ActivitySource = new("thunderpropagator.feeders.inbox");
 
         /// <summary>A brand-new message was durably claimed for the first time (not a retry reclaim, not a duplicate).</summary>
         internal static readonly Counter<long> Received = Meter.CreateCounter<long>(

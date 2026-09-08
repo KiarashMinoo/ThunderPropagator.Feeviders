@@ -227,19 +227,32 @@ namespace ThunderPropagator.Feeders.Inbox
 
             var claimed = claim.Message!;
 
+            // A retry is never a synchronous child of the receive span that already finished - possibly
+            // minutes or hours ago, possibly in a process that has since restarted - so this links back
+            // to it instead of parenting under it (or under whatever unrelated activity happens to be
+            // ambient on this polling loop's thread).
+            var links = InboxTraceContext.ExtractLinks(claimed.Headers);
+            using var activity = InboxTelemetry.ActivitySource.StartActivity("inbox.retry", ActivityKind.Internal, default(ActivityContext), links: links);
+            activity?.SetTag("inbox.channel_key", channelKey);
+            activity?.SetTag("inbox.message_id", claimed.MessageId);
+            activity?.SetTag("inbox.attempt_count", claimed.AttemptCount);
+
             try
             {
                 var handler = subscription.CreateHandler(_serviceProvider);
                 await handler.HandleAsync(claimed, cancellationToken).ConfigureAwait(false);
                 await TimedAsync(channelKey, "Complete", () => store.CompleteAsync(claimed.Id, leaseOwner, cancellationToken)).ConfigureAwait(false);
                 InboxTelemetry.Processed.Add(1, new KeyValuePair<string, object?>(InboxTelemetry.TagChannel, channelKey));
+                activity?.SetStatus(ActivityStatusCode.Ok);
             }
             catch (InboxNonRetryableException exception)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, exception.GetType().Name);
                 await DeadLetterAsync(resolved, claimed, leaseOwner, exception.Message, exception, attemptsExhausted: false, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception exception)
             {
+                activity?.SetStatus(ActivityStatusCode.Error, exception.GetType().Name);
                 var reason = SanitizeFailureReason(exception);
 
                 if (claimed.AttemptCount >= subscription.Options.MaxRetryAttempts)

@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace ThunderPropagator.Providers.DotNet.Outbox
 {
     /// <summary>
@@ -24,7 +26,16 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
         public void Enqueue(OutboxEnqueueRequest request)
         {
             ArgumentNullException.ThrowIfNull(request);
-            _staged.Add(request);
+
+            // "outbox.enqueue" is anchored to this call, not to CommitAsync's later store write - it
+            // represents the caller's own decision to enqueue, so it naturally nests under whatever
+            // business-transaction activity is ambient here. Its own trace context (not its parent's) is
+            // what gets persisted, so a relay attempt links back to this exact span.
+            using var activity = OutboxTelemetry.ActivitySource.StartActivity("outbox.enqueue", ActivityKind.Internal);
+            activity?.SetTag("outbox.provider_key", request.ProviderKey);
+            activity?.SetTag("outbox.message_id", request.MessageId);
+
+            _staged.Add(request with { Headers = OutboxTraceContext.WithCurrentTraceContext(request.Headers) });
         }
 
         /// <inheritdoc/>
