@@ -55,7 +55,7 @@ namespace ThunderPropagator.Providers.DotNet.Outbox.MongoDB
     /// over raw throughput.
     /// </para>
     /// </remarks>
-    public sealed class MongoOutboxStore : IOutboxStore, IHealthCheck
+    public sealed class MongoOutboxStore : IOutboxStore, IHealthCheck, IOutboxStoreInitializer
     {
         /// <summary>Default message collection name - see <see cref="MongoOutboxStoreServiceCollectionExtensions.AddMongoOutboxStore"/> for overriding it.</summary>
         public const string DefaultCollectionName = "__TP_Outbox";
@@ -63,32 +63,49 @@ namespace ThunderPropagator.Providers.DotNet.Outbox.MongoDB
         /// <summary>Default ordering-sequence-counter collection name - see <see cref="MongoOutboxStoreServiceCollectionExtensions.AddMongoOutboxStore"/> for overriding it.</summary>
         public const string DefaultSequenceCollectionName = "__TP_Outbox_Sequence";
 
+        /// <summary>Default schema-version metadata collection name - see <see cref="MongoOutboxStoreServiceCollectionExtensions.AddMongoOutboxStore"/> for overriding it.</summary>
+        public const string DefaultMetaCollectionName = "__TP_Outbox_Meta";
+
         /// <summary><see cref="OutboxSequenceDocument.Id"/>/partition-filter stand-in for the <see langword="null"/> partition, which cannot be a document <c>_id</c> value.</summary>
         internal const string NullPartitionId = "~~null-partition~~";
 
+        /// <summary>
+        /// This store's document-shape/index layout version - see <see cref="InitializeAsync"/>. Bump
+        /// whenever a change here would make an older version of this class misread existing documents.
+        /// </summary>
+        private const int RequiredSchemaVersion = 1;
+
+        private const int MaxCasAttempts = 20;
+        private const string SchemaDocId = "schema";
+
         private readonly IMongoCollection<OutboxMessageDocument> _collection;
         private readonly IMongoCollection<OutboxSequenceDocument> _sequenceCollection;
+        private readonly IMongoCollection<SchemaVersionDocument> _metaCollection;
         private readonly TimeProvider _timeProvider;
         private readonly TimeSpan? _terminalEntryTtl;
 
         /// <param name="database">Owned by the caller - never disposed by this store.</param>
         /// <param name="collectionName">Message collection this instance reads/writes. Defaults to <see cref="DefaultCollectionName"/>.</param>
         /// <param name="sequenceCollectionName">Ordering-sequence-counter collection. Defaults to <see cref="DefaultSequenceCollectionName"/>.</param>
+        /// <param name="metaCollectionName">Schema-version metadata collection - see <see cref="InitializeAsync"/>. Defaults to <see cref="DefaultMetaCollectionName"/>.</param>
         /// <param name="timeProvider">Clock used for timestamps and lease/retry expiry. Defaults to <see cref="TimeProvider.System"/>.</param>
         /// <param name="terminalEntryTtl">Passive-safety-net TTL applied once an entry becomes terminal. <see langword="null"/> (default) disables it. Only takes effect once <see cref="EnsureIndexesAsync"/> has run.</param>
         public MongoOutboxStore(
             IMongoDatabase database,
             string collectionName = DefaultCollectionName,
             string sequenceCollectionName = DefaultSequenceCollectionName,
+            string metaCollectionName = DefaultMetaCollectionName,
             TimeProvider? timeProvider = null,
             TimeSpan? terminalEntryTtl = null)
         {
             ArgumentNullException.ThrowIfNull(database);
             ArgumentException.ThrowIfNullOrWhiteSpace(collectionName);
             ArgumentException.ThrowIfNullOrWhiteSpace(sequenceCollectionName);
+            ArgumentException.ThrowIfNullOrWhiteSpace(metaCollectionName);
 
             _collection = database.GetCollection<OutboxMessageDocument>(collectionName);
             _sequenceCollection = database.GetCollection<OutboxSequenceDocument>(sequenceCollectionName);
+            _metaCollection = database.GetCollection<SchemaVersionDocument>(metaCollectionName);
             _timeProvider = timeProvider ?? TimeProvider.System;
             _terminalEntryTtl = terminalEntryTtl;
         }
@@ -119,6 +136,89 @@ namespace ThunderPropagator.Providers.DotNet.Outbox.MongoDB
 
             await _collection.Indexes.CreateManyAsync(models, cancellationToken).ConfigureAwait(false);
         }
+
+        /// <summary>
+        /// Ensures the collection's indexes exist and reconciles the persisted schema-version document
+        /// against <see cref="RequiredSchemaVersion"/> - see <c>MongoInboxStore.InitializeAsync</c>'s
+        /// remarks for the full design (no distributed lock needed; a compare-and-set loop mirroring
+        /// <see cref="ClaimBatchAsync"/>'s own CAS pattern; nothing to actually migrate yet since version
+        /// 1 is this backend's first-ever schema).
+        /// </summary>
+        public async Task<StoreInitializationResult> InitializeAsync(StoreInitializationMode mode = StoreInitializationMode.Apply, CancellationToken cancellationToken = default)
+        {
+            if (mode == StoreInitializationMode.VerifyOnly)
+                return await VerifySchemaAsync(cancellationToken).ConfigureAwait(false);
+
+            try
+            {
+                await EnsureIndexesAsync(cancellationToken).ConfigureAwait(false);
+
+                var upsert = await _metaCollection.UpdateOneAsync(
+                    Builders<SchemaVersionDocument>.Filter.Eq(x => x.Id, SchemaDocId),
+                    Builders<SchemaVersionDocument>.Update.SetOnInsert(x => x.Version, RequiredSchemaVersion),
+                    new UpdateOptions { IsUpsert = true },
+                    cancellationToken).ConfigureAwait(false);
+
+                if (upsert.UpsertedId is not null)
+                    return Result(StoreInitializationOutcome.Upgraded, null, $"MongoDB schema initialized at version {RequiredSchemaVersion}.");
+
+                for (var attempt = 0; attempt < MaxCasAttempts; attempt++)
+                {
+                    var doc = await _metaCollection.Find(x => x.Id == SchemaDocId).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+                    if (doc is null)
+                        continue; // Deleted between the upsert above and this read - vanishingly rare; retry from the top.
+
+                    if (doc.Version == RequiredSchemaVersion)
+                        return Result(StoreInitializationOutcome.Ready, doc.Version, "MongoDB schema already at the required version.");
+
+                    if (doc.Version > RequiredSchemaVersion)
+                        return Result(StoreInitializationOutcome.IncompatibleVersion, doc.Version,
+                            $"Persisted MongoDB schema version {doc.Version} is newer than this code's version {RequiredSchemaVersion} - this code is too old to talk to this database safely.");
+
+                    var filter = Builders<SchemaVersionDocument>.Filter.Eq(x => x.Id, SchemaDocId) & Builders<SchemaVersionDocument>.Filter.Eq(x => x.Version, doc.Version);
+                    var update = Builders<SchemaVersionDocument>.Update.Set(x => x.Version, RequiredSchemaVersion);
+                    var result = await _metaCollection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken).ConfigureAwait(false);
+                    if (result.MatchedCount == 1)
+                        return Result(StoreInitializationOutcome.Upgraded, doc.Version, $"MongoDB schema upgraded from version {doc.Version} to {RequiredSchemaVersion}.");
+                    // Else: another replica already changed it since our read - retry the whole cycle.
+                }
+
+                throw new InvalidOperationException(
+                    $"Exceeded {MaxCasAttempts} attempts reconciling the Outbox schema version - this indicates pathological concurrency, not a normal outcome.");
+            }
+            catch (MongoException exception)
+            {
+                return Result(StoreInitializationOutcome.InsufficientPermissions, null, "MongoDB rejected a read/write needed to initialize the schema.", exception);
+            }
+        }
+
+        private async Task<StoreInitializationResult> VerifySchemaAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var doc = await _metaCollection.Find(x => x.Id == SchemaDocId).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+                if (doc is null)
+                    return Result(StoreInitializationOutcome.IncompatibleVersion, null,
+                        "No MongoDB schema-version document found - this database has never been initialized, and VerifyOnly mode never creates one.");
+
+                return doc.Version == RequiredSchemaVersion
+                    ? Result(StoreInitializationOutcome.VerifiedCompatible, doc.Version, "MongoDB schema verified compatible.")
+                    : Result(StoreInitializationOutcome.IncompatibleVersion, doc.Version, $"Persisted version {doc.Version} does not match required version {RequiredSchemaVersion}.");
+            }
+            catch (MongoException exception)
+            {
+                return Result(StoreInitializationOutcome.InsufficientPermissions, null, "MongoDB rejected the read needed to verify the schema.", exception);
+            }
+        }
+
+        private static StoreInitializationResult Result(StoreInitializationOutcome outcome, int? persisted, string message, Exception? error = null) => new()
+        {
+            Outcome = outcome,
+            RequiredSchemaVersion = RequiredSchemaVersion,
+            PersistedSchemaVersion = persisted,
+            Message = message,
+            Error = error,
+        };
 
         /// <inheritdoc/>
         public Task<OutboxMessage> EnqueueAsync(OutboxEnqueueRequest request, CancellationToken cancellationToken = default) =>

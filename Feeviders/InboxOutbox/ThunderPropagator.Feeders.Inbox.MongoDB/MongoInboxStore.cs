@@ -50,10 +50,13 @@ namespace ThunderPropagator.Feeders.Inbox.MongoDB
     /// never expire out from under an in-flight claim or an unretried failure, however long that takes.
     /// </para>
     /// <para>
-    /// <b>Indexes are not created automatically.</b> Call <see cref="EnsureIndexesAsync"/> once at
-    /// startup (idempotent - safe to call every time the process starts) before using this store; nothing
-    /// here creates the dedup/status/TTL indexes lazily on first use, the same way the EF Core backend
-    /// relies on a migration having already run.
+    /// <b>Indexes/schema are not created automatically.</b> Call <see cref="InitializeAsync"/> once at
+    /// startup (idempotent and safe under concurrent replicas - see its own remarks) before using this
+    /// store; nothing here creates the dedup/status/TTL indexes or the schema-version document lazily on
+    /// first use, the same way the EF Core backend relies on its own initializer having already run.
+    /// <see cref="EnsureIndexesAsync"/> remains available directly for a caller that only wants the
+    /// indexes (e.g. a test fixture) without the schema-version bookkeeping <see cref="InitializeAsync"/>
+    /// also does.
     /// </para>
     /// <para>
     /// <b>Reconnects.</b> This store does not itself manage connectivity - it uses whatever
@@ -64,7 +67,7 @@ namespace ThunderPropagator.Feeders.Inbox.MongoDB
     /// exception handling already treats an unexpected exception as transient and retries with backoff.
     /// </para>
     /// </remarks>
-    public sealed class MongoInboxStore : IInboxStore, IHealthCheck
+    public sealed class MongoInboxStore : IInboxStore, IHealthCheck, IInboxStoreInitializer
     {
         /// <summary>Default collection name - see <see cref="MongoInboxStoreServiceCollectionExtensions.AddMongoInboxStore"/> for overriding it.</summary>
         public const string DefaultCollectionName = "__TP_Inbox";
@@ -77,20 +80,40 @@ namespace ThunderPropagator.Feeders.Inbox.MongoDB
         /// </summary>
         private const int MaxCasAttempts = 20;
 
+        /// <summary>Default schema-version metadata collection name - see <see cref="MongoInboxStoreServiceCollectionExtensions.AddMongoInboxStore"/> for overriding it.</summary>
+        public const string DefaultMetaCollectionName = "__TP_Inbox_Meta";
+
+        /// <summary>
+        /// This store's document-shape/index layout version - see <see cref="InitializeAsync"/>. Bump
+        /// whenever a change here would make an older version of this class misread existing documents.
+        /// </summary>
+        private const int RequiredSchemaVersion = 1;
+
+        private const string SchemaDocId = "schema";
+
         private readonly IMongoCollection<InboxMessageDocument> _collection;
+        private readonly IMongoCollection<SchemaVersionDocument> _metaCollection;
         private readonly TimeProvider _timeProvider;
         private readonly TimeSpan? _terminalEntryTtl;
 
         /// <param name="database">Owned by the caller - never disposed by this store.</param>
         /// <param name="collectionName">Collection this instance reads/writes. Defaults to <see cref="DefaultCollectionName"/>; override to run more than one named store against the same database.</param>
+        /// <param name="metaCollectionName">Schema-version metadata collection - see <see cref="InitializeAsync"/>. Defaults to <see cref="DefaultMetaCollectionName"/>.</param>
         /// <param name="timeProvider">Clock used for timestamps and lease/retry expiry. Defaults to <see cref="TimeProvider.System"/>.</param>
         /// <param name="terminalEntryTtl">Passive-safety-net TTL applied once an entry becomes terminal - see the class remarks. <see langword="null"/> (default) disables it, relying solely on explicit <see cref="PurgeAsync"/> calls. Only takes effect once <see cref="EnsureIndexesAsync"/> has run.</param>
-        public MongoInboxStore(IMongoDatabase database, string collectionName = DefaultCollectionName, TimeProvider? timeProvider = null, TimeSpan? terminalEntryTtl = null)
+        public MongoInboxStore(
+            IMongoDatabase database,
+            string collectionName = DefaultCollectionName,
+            string metaCollectionName = DefaultMetaCollectionName,
+            TimeProvider? timeProvider = null,
+            TimeSpan? terminalEntryTtl = null)
         {
             ArgumentNullException.ThrowIfNull(database);
             ArgumentException.ThrowIfNullOrWhiteSpace(collectionName);
+            ArgumentException.ThrowIfNullOrWhiteSpace(metaCollectionName);
 
             _collection = database.GetCollection<InboxMessageDocument>(collectionName);
+            _metaCollection = database.GetCollection<SchemaVersionDocument>(metaCollectionName);
             _timeProvider = timeProvider ?? TimeProvider.System;
             _terminalEntryTtl = terminalEntryTtl;
         }
@@ -121,6 +144,102 @@ namespace ThunderPropagator.Feeders.Inbox.MongoDB
 
             await _collection.Indexes.CreateManyAsync(models, cancellationToken).ConfigureAwait(false);
         }
+
+        /// <summary>
+        /// Ensures the collection's indexes exist (via <see cref="EnsureIndexesAsync"/>, itself idempotent
+        /// and safe under concurrent replicas - MongoDB's <c>createIndexes</c> converges without error for
+        /// concurrent, identically-specified calls) and reconciles the persisted schema-version document
+        /// at <c>{metaCollectionName}/schema</c> against <see cref="RequiredSchemaVersion"/>.
+        /// </summary>
+        /// <remarks>
+        /// No distributed lock is needed here (contrast the EF Core backend's advisory lock, or the Redis
+        /// backend's <c>SET ... NX</c> mutual exclusion): the version reconciliation is itself a
+        /// compare-and-set loop - <see cref="StoreInitializationMode.Apply"/>'s "first ever start" case
+        /// uses an atomic <c>$setOnInsert</c> upsert (only one concurrent caller's insert actually takes
+        /// effect; the rest observe the document already existing) and its "needs upgrading" case
+        /// CAS-guards the update on the exact old version it read, retrying (bounded by
+        /// <see cref="MaxCasAttempts"/>) if another replica already moved it - the same pattern
+        /// <see cref="TryClaimAsync"/> itself uses for a claim. There is no document/index-layout change
+        /// to actually migrate yet (version 1 is this backend's first-ever schema) - an upgrade today is
+        /// only ever the version document's own creation or bump; a future version bump that does change
+        /// the persisted document/index shape would apply its migration steps here, before writing the
+        /// new version.
+        /// </remarks>
+        public async Task<StoreInitializationResult> InitializeAsync(StoreInitializationMode mode = StoreInitializationMode.Apply, CancellationToken cancellationToken = default)
+        {
+            if (mode == StoreInitializationMode.VerifyOnly)
+                return await VerifySchemaAsync(cancellationToken).ConfigureAwait(false);
+
+            try
+            {
+                await EnsureIndexesAsync(cancellationToken).ConfigureAwait(false);
+
+                var upsert = await _metaCollection.UpdateOneAsync(
+                    Builders<SchemaVersionDocument>.Filter.Eq(x => x.Id, SchemaDocId),
+                    Builders<SchemaVersionDocument>.Update.SetOnInsert(x => x.Version, RequiredSchemaVersion),
+                    new UpdateOptions { IsUpsert = true },
+                    cancellationToken).ConfigureAwait(false);
+
+                if (upsert.UpsertedId is not null)
+                    return Result(StoreInitializationOutcome.Upgraded, null, $"MongoDB schema initialized at version {RequiredSchemaVersion}.");
+
+                for (var attempt = 0; attempt < MaxCasAttempts; attempt++)
+                {
+                    var doc = await _metaCollection.Find(x => x.Id == SchemaDocId).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+                    if (doc is null)
+                        continue; // Deleted between the upsert above and this read - vanishingly rare; retry from the top.
+
+                    if (doc.Version == RequiredSchemaVersion)
+                        return Result(StoreInitializationOutcome.Ready, doc.Version, "MongoDB schema already at the required version.");
+
+                    if (doc.Version > RequiredSchemaVersion)
+                        return Result(StoreInitializationOutcome.IncompatibleVersion, doc.Version,
+                            $"Persisted MongoDB schema version {doc.Version} is newer than this code's version {RequiredSchemaVersion} - this code is too old to talk to this database safely.");
+
+                    var filter = Builders<SchemaVersionDocument>.Filter.Eq(x => x.Id, SchemaDocId) & Builders<SchemaVersionDocument>.Filter.Eq(x => x.Version, doc.Version);
+                    var update = Builders<SchemaVersionDocument>.Update.Set(x => x.Version, RequiredSchemaVersion);
+                    var result = await _metaCollection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken).ConfigureAwait(false);
+                    if (result.MatchedCount == 1)
+                        return Result(StoreInitializationOutcome.Upgraded, doc.Version, $"MongoDB schema upgraded from version {doc.Version} to {RequiredSchemaVersion}.");
+                    // Else: another replica already changed it since our read - retry the whole cycle.
+                }
+
+                throw new InvalidOperationException(
+                    $"Exceeded {MaxCasAttempts} attempts reconciling the Inbox schema version - this indicates pathological concurrency, not a normal outcome.");
+            }
+            catch (MongoException exception)
+            {
+                return Result(StoreInitializationOutcome.InsufficientPermissions, null, "MongoDB rejected a read/write needed to initialize the schema.", exception);
+            }
+        }
+
+        private async Task<StoreInitializationResult> VerifySchemaAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var doc = await _metaCollection.Find(x => x.Id == SchemaDocId).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+                if (doc is null)
+                    return Result(StoreInitializationOutcome.IncompatibleVersion, null,
+                        "No MongoDB schema-version document found - this database has never been initialized, and VerifyOnly mode never creates one.");
+
+                return doc.Version == RequiredSchemaVersion
+                    ? Result(StoreInitializationOutcome.VerifiedCompatible, doc.Version, "MongoDB schema verified compatible.")
+                    : Result(StoreInitializationOutcome.IncompatibleVersion, doc.Version, $"Persisted version {doc.Version} does not match required version {RequiredSchemaVersion}.");
+            }
+            catch (MongoException exception)
+            {
+                return Result(StoreInitializationOutcome.InsufficientPermissions, null, "MongoDB rejected the read needed to verify the schema.", exception);
+            }
+        }
+
+        private static StoreInitializationResult Result(StoreInitializationOutcome outcome, int? persisted, string message, Exception? error = null) => new()
+        {
+            Outcome = outcome,
+            RequiredSchemaVersion = RequiredSchemaVersion,
+            PersistedSchemaVersion = persisted,
+            Message = message,
+            Error = error,
+        };
 
         /// <inheritdoc/>
         public async Task<InboxClaimResult> TryClaimAsync(InboxClaimRequest request, CancellationToken cancellationToken = default)

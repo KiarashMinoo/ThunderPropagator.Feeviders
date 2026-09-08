@@ -54,7 +54,7 @@ namespace ThunderPropagator.Feeders.Inbox.Redis
     /// that never had the script loaded) - no manual script-cache management needed.
     /// </para>
     /// </remarks>
-    public sealed class RedisInboxStore : IInboxStore, IHealthCheck
+    public sealed class RedisInboxStore : IInboxStore, IHealthCheck, IInboxStoreInitializer
     {
         /// <summary>
         /// Upper bound on how many times a version-CAS conflict during <see cref="TryClaimAsync"/>
@@ -63,6 +63,25 @@ namespace ThunderPropagator.Feeders.Inbox.Redis
         /// resolves in one or two attempts.
         /// </summary>
         private const int MaxCasAttempts = 20;
+
+        /// <summary>
+        /// This store's key/hash-field layout version - see <see cref="InitializeAsync"/>. Bump whenever
+        /// a change here would make an older version of this class misread an existing keyspace (a
+        /// renamed/removed hash field, a changed key-naming scheme, etc.).
+        /// </summary>
+        private const int RequiredSchemaVersion = 1;
+
+        private const int MaxLockAcquireAttempts = 50;
+        private static readonly TimeSpan LockAcquireRetryDelay = TimeSpan.FromMilliseconds(200);
+        private static readonly TimeSpan LockTtl = TimeSpan.FromSeconds(30);
+
+        private static readonly LuaScript ReleaseLockScript = LuaScript.Prepare(
+            """
+            if redis.call('GET', @lockKey) == @owner then
+              return redis.call('DEL', @lockKey)
+            end
+            return 0
+            """);
 
         // StackExchange.Redis's LuaScript named-parameter binding only supports scalar (RedisKey/RedisValue)
         // parameters, not arrays - every variable-length field/value list below travels as one JSON-encoded
@@ -153,6 +172,112 @@ namespace ThunderPropagator.Feeders.Inbox.Redis
         }
 
         private IDatabase Database => _connectionMultiplexer.GetDatabase();
+
+        /// <summary>
+        /// Ensures this instance's <see cref="RequiredSchemaVersion"/> is compatible with whatever is
+        /// already persisted at <see cref="RedisKeyNamespace.SchemaVersion"/>, the one key every replica
+        /// touching this keyspace agrees to check/write. <see cref="StoreInitializationMode.Apply"/>
+        /// serializes concurrent replicas via a <c>SET ... NX PX</c> mutual-exclusion lock at
+        /// <see cref="RedisKeyNamespace.SchemaLock"/> (retried with a fixed delay up to
+        /// <see cref="MaxLockAcquireAttempts"/> times, throwing <see cref="TimeoutException"/> if none
+        /// ever succeeds - a genuinely exceptional, not-modeled-as-a-result condition, since it means
+        /// another replica appears stuck rather than merely slow); <see cref="StoreInitializationMode.VerifyOnly"/>
+        /// never mutates anything and therefore never needs the lock at all. There is no key/hash-field
+        /// layout to actually migrate yet (version 1 is this backend's first-ever schema) - an upgrade
+        /// today is only ever the version marker's own creation or bump; a future version bump that does
+        /// change key/field layout would apply its migration steps here, before writing the new version.
+        /// </summary>
+        public async Task<StoreInitializationResult> InitializeAsync(StoreInitializationMode mode = StoreInitializationMode.Apply, CancellationToken cancellationToken = default)
+        {
+            var db = Database;
+
+            if (mode == StoreInitializationMode.VerifyOnly)
+                return await VerifySchemaAsync(db).ConfigureAwait(false);
+
+            var owner = Guid.NewGuid().ToString("N");
+            var acquired = false;
+            for (var attempt = 0; attempt < MaxLockAcquireAttempts; attempt++)
+            {
+                acquired = await db.StringSetAsync(_keys.SchemaLock, owner, LockTtl, When.NotExists).ConfigureAwait(false);
+                if (acquired)
+                    break;
+
+                await Task.Delay(LockAcquireRetryDelay, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (!acquired)
+                throw new TimeoutException(
+                    $"Could not acquire the Inbox schema initialization lock '{_keys.SchemaLock}' within {MaxLockAcquireAttempts * LockAcquireRetryDelay.TotalSeconds:F0}s - another replica appears to be stuck holding it.");
+
+            try
+            {
+                return await ApplySchemaAsync(db).ConfigureAwait(false);
+            }
+            finally
+            {
+                await db.ScriptEvaluateAsync(ReleaseLockScript, new { lockKey = (RedisKey)_keys.SchemaLock, owner }).ConfigureAwait(false);
+            }
+        }
+
+        private async Task<StoreInitializationResult> ApplySchemaAsync(IDatabase db)
+        {
+            try
+            {
+                var persistedValue = await db.StringGetAsync(_keys.SchemaVersion).ConfigureAwait(false);
+
+                if (persistedValue.IsNull)
+                {
+                    await db.StringSetAsync(_keys.SchemaVersion, RequiredSchemaVersion.ToString()).ConfigureAwait(false);
+                    return Result(StoreInitializationOutcome.Upgraded, null, "Redis key/script layout initialized at version " + RequiredSchemaVersion + ".");
+                }
+
+                var persisted = (int)persistedValue;
+                if (persisted == RequiredSchemaVersion)
+                    return Result(StoreInitializationOutcome.Ready, persisted, "Redis key/script layout already at the required version.");
+
+                if (persisted < RequiredSchemaVersion)
+                {
+                    await db.StringSetAsync(_keys.SchemaVersion, RequiredSchemaVersion.ToString()).ConfigureAwait(false);
+                    return Result(StoreInitializationOutcome.Upgraded, persisted, $"Redis key/script layout upgraded from version {persisted} to {RequiredSchemaVersion}.");
+                }
+
+                return Result(StoreInitializationOutcome.IncompatibleVersion, persisted,
+                    $"Persisted Redis key/script layout version {persisted} is newer than this code's version {RequiredSchemaVersion} - this code is too old to talk to this keyspace safely.");
+            }
+            catch (RedisException exception)
+            {
+                return Result(StoreInitializationOutcome.InsufficientPermissions, null, "Redis rejected a read/write needed to initialize the schema version key.", exception);
+            }
+        }
+
+        private async Task<StoreInitializationResult> VerifySchemaAsync(IDatabase db)
+        {
+            try
+            {
+                var persistedValue = await db.StringGetAsync(_keys.SchemaVersion).ConfigureAwait(false);
+                if (persistedValue.IsNull)
+                    return Result(StoreInitializationOutcome.IncompatibleVersion, null,
+                        "No Redis schema-version key found - this keyspace has never been initialized, and VerifyOnly mode never creates one.");
+
+                var persisted = (int)persistedValue;
+                return persisted == RequiredSchemaVersion
+                    ? Result(StoreInitializationOutcome.VerifiedCompatible, persisted, "Redis key/script layout verified compatible.")
+                    : Result(StoreInitializationOutcome.IncompatibleVersion, persisted, $"Persisted version {persisted} does not match required version {RequiredSchemaVersion}.");
+            }
+            catch (RedisException exception)
+            {
+                return Result(StoreInitializationOutcome.InsufficientPermissions, null, "Redis rejected the read needed to verify the schema version key.", exception);
+            }
+        }
+
+        private static StoreInitializationResult Result(StoreInitializationOutcome outcome, int? persisted, string message, Exception? error = null) => new()
+        {
+            Outcome = outcome,
+            RequiredSchemaVersion = RequiredSchemaVersion,
+            PersistedSchemaVersion = persisted,
+            Message = message,
+            Error = error,
+        };
 
         /// <inheritdoc/>
         public async Task<InboxClaimResult> TryClaimAsync(InboxClaimRequest request, CancellationToken cancellationToken = default)

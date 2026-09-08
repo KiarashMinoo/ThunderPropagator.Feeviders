@@ -480,6 +480,49 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
             Assert.Equal(OutboxMessageStatus.Published, (await Get(store, "m1")).Status);
         }
 
+        [Fact]
+        public async Task StartAsync_StoreInitializationNotReady_ShouldThrowAndNeverStartPolling()
+        {
+            var store = Substitute.For<IOutboxStore, IOutboxStoreInitializer>();
+            ((IOutboxStoreInitializer)store).InitializeAsync(Arg.Any<StoreInitializationMode>(), Arg.Any<CancellationToken>())
+                .Returns(new StoreInitializationResult
+                {
+                    Outcome = StoreInitializationOutcome.IncompatibleVersion,
+                    RequiredSchemaVersion = 1,
+                    PersistedSchemaVersion = 2,
+                    Message = "too new",
+                });
+            var storeFactory = Substitute.For<IOutboxStoreFactory>();
+            storeFactory.GetStore(StoreName, OutboxStoreType.InMemory).Returns(store);
+            var subscription = new OutboxRelaySubscription { ProviderKey = ProviderKey, Options = RelayOptions(), ResolveProvider = _ => DelegateProvider.Success() };
+            var worker = new OutboxRelayWorker([subscription], storeFactory, Substitute.For<IServiceProvider>());
+
+            var exception = await Assert.ThrowsAsync<OutboxStoreInitializationFailedException>(() => worker.StartAsync());
+
+            Assert.Equal(ProviderKey, exception.ProviderKey);
+            Assert.Equal(StoreInitializationOutcome.IncompatibleVersion, exception.Result.Outcome);
+            await store.DidNotReceiveWithAnyArgs().GetClaimablePartitionKeysAsync(default);
+        }
+
+        [Fact]
+        public async Task StartAsync_StoreInitializationReady_ShouldInitializeBeforePolling()
+        {
+            var store = Substitute.For<IOutboxStore, IOutboxStoreInitializer>();
+            ((IOutboxStoreInitializer)store).InitializeAsync(Arg.Any<StoreInitializationMode>(), Arg.Any<CancellationToken>())
+                .Returns(new StoreInitializationResult { Outcome = StoreInitializationOutcome.Ready, RequiredSchemaVersion = 1, PersistedSchemaVersion = 1, Message = "ok" });
+            store.GetClaimablePartitionKeysAsync(Arg.Any<CancellationToken>()).Returns([]);
+            var storeFactory = Substitute.For<IOutboxStoreFactory>();
+            storeFactory.GetStore(StoreName, OutboxStoreType.InMemory).Returns(store);
+            var options = RelayOptions() with { RelayPollingInterval = TimeSpan.FromMilliseconds(10) };
+            var subscription = new OutboxRelaySubscription { ProviderKey = ProviderKey, Options = options, ResolveProvider = _ => DelegateProvider.Success() };
+            var worker = new OutboxRelayWorker([subscription], storeFactory, Substitute.For<IServiceProvider>());
+
+            await worker.StartAsync();
+            await worker.StopAsync(TimeSpan.FromSeconds(5));
+
+            await ((IOutboxStoreInitializer)store).Received(1).InitializeAsync(Arg.Any<StoreInitializationMode>(), Arg.Any<CancellationToken>());
+        }
+
         private static OutboxRelayWorker BuildWorker(
             ReferenceOutboxStore store, TimeProvider timeProvider, IProvider provider, OutboxOptions? options = null, Random? random = null)
         {

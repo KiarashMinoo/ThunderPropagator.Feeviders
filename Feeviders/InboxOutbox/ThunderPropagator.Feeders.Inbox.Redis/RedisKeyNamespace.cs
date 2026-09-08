@@ -42,5 +42,11 @@ namespace ThunderPropagator.Feeders.Inbox.Redis
         /// timestamp it became terminal - backs <see cref="RedisInboxStore.PurgeAsync"/>.
         /// </summary>
         public string Terminal(Guid channelKey) => $"{_tag}:inbox:terminal:{channelKey:N}";
+
+        /// <summary>String key holding this store's persisted key/script layout version - see <see cref="RedisInboxStore.InitializeAsync"/>.</summary>
+        public string SchemaVersion => $"{_tag}:inbox:schema-version";
+
+        /// <summary>Mutual-exclusion key <see cref="RedisInboxStore.InitializeAsync"/> holds for the duration of one initialization attempt.</summary>
+        public string SchemaLock => $"{_tag}:inbox:schema-lock";
     }
 }

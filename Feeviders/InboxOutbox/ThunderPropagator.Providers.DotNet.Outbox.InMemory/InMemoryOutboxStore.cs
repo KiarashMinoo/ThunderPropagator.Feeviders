@@ -18,7 +18,7 @@ namespace ThunderPropagator.Providers.DotNet.Outbox.InMemory
     /// isolation for free by simply constructing a fresh instance instead of needing to reset or clear
     /// one.
     /// </remarks>
-    public sealed class InMemoryOutboxStore(TimeProvider? timeProvider = null) : IOutboxStore
+    public sealed class InMemoryOutboxStore(TimeProvider? timeProvider = null) : IOutboxStore, IOutboxStoreInitializer
     {
         // OutboxMessage.PartitionKey is nullable; this dictionary key must not be, so the null
         // partition is tracked under a sentinel that can never collide with a real partition key
@@ -29,6 +29,21 @@ namespace ThunderPropagator.Providers.DotNet.Outbox.InMemory
         private readonly object _gate = new();
         private readonly Dictionary<Guid, OutboxMessage> _byId = [];
         private readonly Dictionary<string, long> _nextOrderingSequenceByPartition = [];
+
+        /// <summary>
+        /// Trivially always ready: a process-local dictionary has no persisted schema to create/verify,
+        /// and (per the class remarks) is never shared across replicas, so there is nothing to race
+        /// over either. Implemented only so callers never need to special-case this backend - see
+        /// <see cref="IOutboxStoreInitializer"/>'s remarks.
+        /// </summary>
+        public Task<StoreInitializationResult> InitializeAsync(StoreInitializationMode mode = StoreInitializationMode.Apply, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new StoreInitializationResult
+            {
+                Outcome = mode == StoreInitializationMode.VerifyOnly ? StoreInitializationOutcome.VerifiedCompatible : StoreInitializationOutcome.Ready,
+                RequiredSchemaVersion = 1,
+                PersistedSchemaVersion = 1,
+                Message = "In-memory store has no persisted schema.",
+            });
 
         /// <inheritdoc/>
         public Task<OutboxMessage> EnqueueAsync(OutboxEnqueueRequest request, CancellationToken cancellationToken = default)
