@@ -374,6 +374,10 @@
       <Platform Solution="*|ARM64" Project="ARM64" />
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />
+      <Build Solution="*|ARM64" Project="false" />
+      <Build Solution="*|x64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+      <Build Solution="Release|Any CPU" Project="false" />
     </Project>
   </Folder>
   <Folder Name="/Tests/UnitTests/">
