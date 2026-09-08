@@ -1,5 +1,5 @@
-## [1.0.1-beta.81] — 2026-09-08
+## [1.0.1-beta.82] — 2026-09-08
 
 ### 🏠 Chores
 
-- Add idempotent schema, index, and migration initialization `(cc87e32)` — Kiarash Minoo
+- Define dead-letter records, policies, and handler pipeline `(4b9c3e2)` — Kiarash Minoo
