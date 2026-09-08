@@ -33,7 +33,11 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
             var enqueued = new List<OutboxMessage>(_staged.Count);
 
             foreach (var request in _staged)
-                enqueued.Add(await store.EnqueueAsync(request, cancellationToken).ConfigureAwait(false));
+            {
+                var message = await store.EnqueueAsync(request, cancellationToken).ConfigureAwait(false);
+                enqueued.Add(message);
+                OutboxTelemetry.Enqueued.Add(1, new KeyValuePair<string, object?>(OutboxTelemetry.TagProvider, message.ProviderKey));
+            }
 
             _staged.Clear();
             return enqueued;

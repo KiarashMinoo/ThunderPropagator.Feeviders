@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ThunderPropagator.Providers.DotNet.Outbox;
 
 namespace ThunderPropagator.Providers.DotNet.SharedKernel
@@ -190,7 +191,16 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
 
         private async Task ProcessSubscriptionAsync(ResolvedSubscription resolved, CancellationToken cancellationToken)
         {
-            var partitionKeys = await resolved.Store.GetClaimablePartitionKeysAsync(cancellationToken).ConfigureAwait(false);
+            var providerKey = resolved.Subscription.ProviderKey;
+
+            // Depth/age are read once per poll here (not inside an ObservableGauge callback, which must
+            // be synchronous) and cached in OutboxTelemetry - see its remarks on why the gauges themselves
+            // never call the store.
+            var depth = await TimedAsync(providerKey, "GetDepth", () => resolved.Store.GetDepthAsync(null, cancellationToken)).ConfigureAwait(false);
+            var oldestPendingAge = await TimedAsync(providerKey, "GetOldestPendingAge", () => resolved.Store.GetOldestPendingAgeAsync(null, _timeProvider, cancellationToken)).ConfigureAwait(false);
+            OutboxTelemetry.ReportDepthSnapshot(providerKey, depth, oldestPendingAge);
+
+            var partitionKeys = await TimedAsync(providerKey, "GetClaimablePartitionKeys", () => resolved.Store.GetClaimablePartitionKeysAsync(cancellationToken)).ConfigureAwait(false);
             if (partitionKeys.Count == 0)
                 return;
 
@@ -207,7 +217,7 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
                 var (subscription, store) = resolved;
                 var leaseOwner = Guid.NewGuid().ToString("N");
 
-                var batch = await store.ClaimBatchAsync(partitionKey, subscription.Options.RelayBatchSize, leaseOwner, subscription.Options.ClaimLeaseDuration, cancellationToken)
+                var batch = await TimedAsync(subscription.ProviderKey, "ClaimBatch", () => store.ClaimBatchAsync(partitionKey, subscription.Options.RelayBatchSize, leaseOwner, subscription.Options.ClaimLeaseDuration, cancellationToken))
                     .ConfigureAwait(false);
 
                 for (var i = 0; i < batch.Count; i++)
@@ -220,7 +230,7 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
                     // failed - releasing them (instead of publishing them now) keeps this partition's
                     // published order matching its enqueue order once the failed entry is retried.
                     for (var j = i + 1; j < batch.Count; j++)
-                        await store.ReleaseAsync(batch[j].Id, leaseOwner, cancellationToken).ConfigureAwait(false);
+                        await TimedAsync(subscription.ProviderKey, "Release", () => store.ReleaseAsync(batch[j].Id, leaseOwner, cancellationToken)).ConfigureAwait(false);
 
                     break;
                 }
@@ -234,17 +244,22 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
         private async Task<RelayOutcome> PublishOneAsync(ResolvedSubscription resolved, OutboxMessage claimed, string leaseOwner, CancellationToken cancellationToken)
         {
             var (subscription, store) = resolved;
+            var providerTag = new KeyValuePair<string, object?>(OutboxTelemetry.TagProvider, subscription.ProviderKey);
+            var stopwatch = Stopwatch.StartNew();
 
             try
             {
                 var provider = subscription.ResolveProvider(_serviceProvider);
                 await provider.PublishDirectAsync(claimed.Payload, WithMessageIdHeader(claimed), cancellationToken).ConfigureAwait(false);
-                await store.MarkPublishedAsync(claimed.Id, leaseOwner, cancellationToken).ConfigureAwait(false);
+                await TimedAsync(subscription.ProviderKey, "MarkPublished", () => store.MarkPublishedAsync(claimed.Id, leaseOwner, cancellationToken)).ConfigureAwait(false);
+                OutboxTelemetry.Published.Add(1, providerTag);
+                OutboxTelemetry.RelayDuration.Record(stopwatch.Elapsed.TotalMilliseconds, providerTag, new KeyValuePair<string, object?>(OutboxTelemetry.TagOutcome, "published"));
                 return RelayOutcome.Published;
             }
             catch (OutboxNonRetryableException exception)
             {
                 await DeadLetterAsync(resolved, claimed, leaseOwner, exception.Message, exception, attemptsExhausted: false, cancellationToken).ConfigureAwait(false);
+                OutboxTelemetry.RelayDuration.Record(stopwatch.Elapsed.TotalMilliseconds, providerTag, new KeyValuePair<string, object?>(OutboxTelemetry.TagOutcome, "dead_lettered"));
                 return RelayOutcome.DeadLettered;
             }
             catch (Exception exception)
@@ -254,11 +269,14 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
                 if (claimed.Attempts >= subscription.Options.MaxRetryAttempts)
                 {
                     await DeadLetterAsync(resolved, claimed, leaseOwner, reason, exception, attemptsExhausted: true, cancellationToken).ConfigureAwait(false);
+                    OutboxTelemetry.RelayDuration.Record(stopwatch.Elapsed.TotalMilliseconds, providerTag, new KeyValuePair<string, object?>(OutboxTelemetry.TagOutcome, "dead_lettered"));
                     return RelayOutcome.DeadLettered;
                 }
 
                 var nextRetryAtUtc = _timeProvider.GetUtcNow() + OutboxRetryBackoff.Compute(subscription.Options, claimed.Attempts, _random);
-                await store.MarkFailedAsync(claimed.Id, leaseOwner, reason, nextRetryAtUtc, cancellationToken).ConfigureAwait(false);
+                await TimedAsync(subscription.ProviderKey, "MarkFailed", () => store.MarkFailedAsync(claimed.Id, leaseOwner, reason, nextRetryAtUtc, cancellationToken)).ConfigureAwait(false);
+                OutboxTelemetry.Failed.Add(1, providerTag);
+                OutboxTelemetry.RelayDuration.Record(stopwatch.Elapsed.TotalMilliseconds, providerTag, new KeyValuePair<string, object?>(OutboxTelemetry.TagOutcome, "failed"));
                 return RelayOutcome.FailedRetryable;
             }
         }
@@ -277,15 +295,20 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
 
         private async Task DeadLetterAsync(ResolvedSubscription resolved, OutboxMessage claimed, string leaseOwner, string reason, Exception exception, bool attemptsExhausted, CancellationToken cancellationToken)
         {
-            var deadLettered = await resolved.Store.MarkDeadLetterAsync(claimed.Id, leaseOwner, reason, cancellationToken).ConfigureAwait(false);
+            var providerKey = resolved.Subscription.ProviderKey;
+            var deadLettered = await TimedAsync(providerKey, "MarkDeadLetter", () => resolved.Store.MarkDeadLetterAsync(claimed.Id, leaseOwner, reason, cancellationToken)).ConfigureAwait(false);
             if (deadLettered is null)
                 return;
+
+            var category = OutboxFailureClassifier.Classify(exception, attemptsExhausted);
+            OutboxTelemetry.DeadLettered.Add(1,
+                new KeyValuePair<string, object?>(OutboxTelemetry.TagProvider, providerKey),
+                new KeyValuePair<string, object?>(OutboxTelemetry.TagCategory, category.ToString()));
 
             var handlers = resolved.Subscription.CreateDeadLetterHandlers;
             if (handlers.Count == 0)
                 return;
 
-            var category = OutboxFailureClassifier.Classify(exception, attemptsExhausted);
             var context = OutboxDeadLetterContextFactory.Create(deadLettered, category, resolved.Subscription.DeadLetterPayloadPolicy);
             var pipeline = new OutboxDeadLetterPipeline([.. handlers.Select(create => create(_serviceProvider))]);
 
@@ -293,6 +316,26 @@ namespace ThunderPropagator.Providers.DotNet.SharedKernel
             // above - OutboxDeadLetterPipeline itself isolates one handler's failure from every other, so
             // the only thing left to do with its result here is let it complete; nothing to recover.
             await pipeline.RunAsync(context, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>Times one <see cref="IOutboxStore"/> call and records it to <see cref="OutboxTelemetry.StoreOperationDuration"/> - never blocks the call itself, only wraps it.</summary>
+        private static async Task<T> TimedAsync<T>(string providerKey, string operation, Func<Task<T>> call)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var providerTag = new KeyValuePair<string, object?>(OutboxTelemetry.TagProvider, providerKey);
+            var operationTag = new KeyValuePair<string, object?>(OutboxTelemetry.TagOperation, operation);
+
+            try
+            {
+                var result = await call().ConfigureAwait(false);
+                OutboxTelemetry.StoreOperationDuration.Record(stopwatch.Elapsed.TotalMilliseconds, providerTag, operationTag, new KeyValuePair<string, object?>(OutboxTelemetry.TagOutcome, "success"));
+                return result;
+            }
+            catch
+            {
+                OutboxTelemetry.StoreOperationDuration.Record(stopwatch.Elapsed.TotalMilliseconds, providerTag, operationTag, new KeyValuePair<string, object?>(OutboxTelemetry.TagOutcome, "error"));
+                throw;
+            }
         }
 
         /// <summary>

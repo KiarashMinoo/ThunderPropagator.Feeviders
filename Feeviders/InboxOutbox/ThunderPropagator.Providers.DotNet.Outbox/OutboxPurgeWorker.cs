@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace ThunderPropagator.Providers.DotNet.Outbox
 {
     /// <summary>
@@ -166,6 +168,7 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
                     ? null
                     : await holdSource.GetHeldEntryIdsAsync(cancellationToken).ConfigureAwait(false);
 
+                var stopwatch = Stopwatch.StartNew();
                 var result = await store.PurgeAsync(new OutboxPurgeRequest
                 {
                     PublishedOlderThanUtc = publishedCutoff,
@@ -174,8 +177,10 @@ namespace ThunderPropagator.Providers.DotNet.Outbox
                     ExcludedIds = excludedIds,
                 }, cancellationToken).ConfigureAwait(false);
 
-                OutboxPurgeTelemetry.BatchesRun.Add(1, new KeyValuePair<string, object?>("provider", subscription.ProviderKey));
-                OutboxPurgeTelemetry.EntriesPurged.Add(result.PurgedCount, new KeyValuePair<string, object?>("provider", subscription.ProviderKey));
+                var providerTag = new KeyValuePair<string, object?>("provider", subscription.ProviderKey);
+                OutboxPurgeTelemetry.BatchesRun.Add(1, providerTag);
+                OutboxPurgeTelemetry.EntriesPurged.Add(result.PurgedCount, providerTag);
+                OutboxPurgeTelemetry.BatchDuration.Record(stopwatch.Elapsed.TotalMilliseconds, providerTag);
 
                 if (!result.HasMore)
                     return;

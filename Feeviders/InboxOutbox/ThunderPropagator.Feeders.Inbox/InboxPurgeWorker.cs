@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace ThunderPropagator.Feeders.Inbox
 {
     /// <summary>
@@ -166,6 +168,7 @@ namespace ThunderPropagator.Feeders.Inbox
                     ? null
                     : await holdSource.GetHeldEntryIdsAsync(subscription.ChannelKey, cancellationToken).ConfigureAwait(false);
 
+                var stopwatch = Stopwatch.StartNew();
                 var result = await store.PurgeAsync(new InboxPurgeRequest
                 {
                     ChannelKey = subscription.ChannelKey,
@@ -175,8 +178,10 @@ namespace ThunderPropagator.Feeders.Inbox
                     ExcludedIds = excludedIds,
                 }, cancellationToken).ConfigureAwait(false);
 
-                InboxPurgeTelemetry.BatchesRun.Add(1, new KeyValuePair<string, object?>("channel", subscription.ChannelKey));
-                InboxPurgeTelemetry.EntriesPurged.Add(result.PurgedCount, new KeyValuePair<string, object?>("channel", subscription.ChannelKey));
+                var channelTag = new KeyValuePair<string, object?>("channel", subscription.ChannelKey);
+                InboxPurgeTelemetry.BatchesRun.Add(1, channelTag);
+                InboxPurgeTelemetry.EntriesPurged.Add(result.PurgedCount, channelTag);
+                InboxPurgeTelemetry.BatchDuration.Record(stopwatch.Elapsed.TotalMilliseconds, channelTag);
 
                 if (!result.HasMore)
                     return;

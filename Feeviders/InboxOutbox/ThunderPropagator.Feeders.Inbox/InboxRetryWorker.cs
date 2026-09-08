@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace ThunderPropagator.Feeders.Inbox
 {
     /// <summary>
@@ -167,8 +169,9 @@ namespace ThunderPropagator.Feeders.Inbox
 
         private async Task ProcessBatchAsync(ResolvedSubscription resolved, CancellationToken cancellationToken)
         {
-            var candidates = await resolved.Store
-                .QueryRetryableAsync(resolved.Subscription.ChannelKey, resolved.Subscription.Options.RetryBatchSize, cancellationToken)
+            var channelKey = resolved.Subscription.ChannelKey;
+            var candidates = await TimedAsync(channelKey, "QueryRetryable", () => resolved.Store
+                .QueryRetryableAsync(channelKey, resolved.Subscription.Options.RetryBatchSize, cancellationToken))
                 .ConfigureAwait(false);
 
             if (candidates.Count == 0)
@@ -195,9 +198,10 @@ namespace ThunderPropagator.Feeders.Inbox
         private async Task ClaimAndReprocessAsync(ResolvedSubscription resolved, InboxMessage candidate, CancellationToken cancellationToken)
         {
             var (subscription, store) = resolved;
+            var channelKey = candidate.ChannelKey;
             var leaseOwner = Guid.NewGuid().ToString("N");
 
-            var claim = await store.TryClaimAsync(new InboxClaimRequest
+            var claim = await TimedAsync(channelKey, "TryClaim", () => store.TryClaimAsync(new InboxClaimRequest
             {
                 MessageId = candidate.MessageId,
                 ChannelKey = candidate.ChannelKey,
@@ -209,12 +213,17 @@ namespace ThunderPropagator.Feeders.Inbox
                 Headers = candidate.Headers,
                 LeaseOwner = leaseOwner,
                 LeaseDuration = subscription.Options.ClaimLeaseDuration,
-            }, cancellationToken).ConfigureAwait(false);
+            }, cancellationToken)).ConfigureAwait(false);
 
             // Anything other than Claimed means another worker (or this same one, on a later poll)
             // already owns or resolved it since QueryRetryableAsync listed it - nothing to do.
             if (claim.Outcome != InboxClaimOutcome.Claimed)
+            {
+                if (claim.Outcome == InboxClaimOutcome.ClaimedByAnotherOwner)
+                    InboxTelemetry.ClaimContention.Add(1, new KeyValuePair<string, object?>(InboxTelemetry.TagChannel, channelKey));
+
                 return;
+            }
 
             var claimed = claim.Message!;
 
@@ -222,7 +231,8 @@ namespace ThunderPropagator.Feeders.Inbox
             {
                 var handler = subscription.CreateHandler(_serviceProvider);
                 await handler.HandleAsync(claimed, cancellationToken).ConfigureAwait(false);
-                await store.CompleteAsync(claimed.Id, leaseOwner, cancellationToken).ConfigureAwait(false);
+                await TimedAsync(channelKey, "Complete", () => store.CompleteAsync(claimed.Id, leaseOwner, cancellationToken)).ConfigureAwait(false);
+                InboxTelemetry.Processed.Add(1, new KeyValuePair<string, object?>(InboxTelemetry.TagChannel, channelKey));
             }
             catch (InboxNonRetryableException exception)
             {
@@ -238,23 +248,31 @@ namespace ThunderPropagator.Feeders.Inbox
                 }
                 else
                 {
-                    var nextRetryAtUtc = _timeProvider.GetUtcNow() + InboxRetryBackoff.Compute(subscription.Options, claimed.AttemptCount, _random);
-                    await store.FailAsync(claimed.Id, leaseOwner, reason, nextRetryAtUtc, cancellationToken).ConfigureAwait(false);
+                    var delay = InboxRetryBackoff.Compute(subscription.Options, claimed.AttemptCount, _random);
+                    var nextRetryAtUtc = _timeProvider.GetUtcNow() + delay;
+                    await TimedAsync(channelKey, "Fail", () => store.FailAsync(claimed.Id, leaseOwner, reason, nextRetryAtUtc, cancellationToken)).ConfigureAwait(false);
+                    InboxTelemetry.Failed.Add(1, new KeyValuePair<string, object?>(InboxTelemetry.TagChannel, channelKey));
+                    InboxTelemetry.RetryDelay.Record(delay.TotalMilliseconds, new KeyValuePair<string, object?>(InboxTelemetry.TagChannel, channelKey));
                 }
             }
         }
 
         private async Task DeadLetterAsync(ResolvedSubscription resolved, InboxMessage claimed, string leaseOwner, string reason, Exception exception, bool attemptsExhausted, CancellationToken cancellationToken)
         {
-            var deadLettered = await resolved.Store.DeadLetterAsync(claimed.Id, leaseOwner, reason, cancellationToken).ConfigureAwait(false);
+            var channelKey = claimed.ChannelKey;
+            var deadLettered = await TimedAsync(channelKey, "DeadLetter", () => resolved.Store.DeadLetterAsync(claimed.Id, leaseOwner, reason, cancellationToken)).ConfigureAwait(false);
             if (deadLettered is null)
                 return;
+
+            var category = InboxFailureClassifier.Classify(exception, attemptsExhausted);
+            InboxTelemetry.DeadLettered.Add(1,
+                new KeyValuePair<string, object?>(InboxTelemetry.TagChannel, channelKey),
+                new KeyValuePair<string, object?>(InboxTelemetry.TagCategory, category.ToString()));
 
             var handlers = resolved.Subscription.CreateDeadLetterHandlers;
             if (handlers.Count == 0)
                 return;
 
-            var category = InboxFailureClassifier.Classify(exception, attemptsExhausted);
             var context = InboxDeadLetterContextFactory.Create(deadLettered, category, resolved.Subscription.DeadLetterPayloadPolicy);
             var pipeline = new InboxDeadLetterPipeline([.. handlers.Select(create => create(_serviceProvider))]);
 
@@ -262,6 +280,30 @@ namespace ThunderPropagator.Feeders.Inbox
             // above - InboxDeadLetterPipeline itself isolates one handler's failure from every other, so
             // the only thing left to do with its result here is let it complete; nothing to recover.
             await pipeline.RunAsync(context, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Times one <see cref="IInboxStore"/> call and records it to
+        /// <see cref="InboxTelemetry.StoreOperationDuration"/>, tagged with <paramref name="operation"/>
+        /// and whether it threw - never blocks the call itself, only wraps it.
+        /// </summary>
+        private static async Task<T> TimedAsync<T>(Guid channelKey, string operation, Func<Task<T>> call)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var channelTag = new KeyValuePair<string, object?>(InboxTelemetry.TagChannel, channelKey);
+            var operationTag = new KeyValuePair<string, object?>(InboxTelemetry.TagOperation, operation);
+
+            try
+            {
+                var result = await call().ConfigureAwait(false);
+                InboxTelemetry.StoreOperationDuration.Record(stopwatch.Elapsed.TotalMilliseconds, channelTag, operationTag, new KeyValuePair<string, object?>(InboxTelemetry.TagOutcome, "success"));
+                return result;
+            }
+            catch
+            {
+                InboxTelemetry.StoreOperationDuration.Record(stopwatch.Elapsed.TotalMilliseconds, channelTag, operationTag, new KeyValuePair<string, object?>(InboxTelemetry.TagOutcome, "error"));
+                throw;
+            }
         }
 
         /// <summary>
