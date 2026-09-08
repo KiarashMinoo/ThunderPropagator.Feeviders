@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.86] — 2026-09-08
+
+### 🏠 Chores
+
+- Add OpenTelemetry activities and context propagation `(3479709)` — Kiarash Minoo
+
 ## [1.0.1-beta.85] — 2026-09-08
 
 ### 🏠 Chores
