@@ -1,5 +1,5 @@
-## [1.0.1-beta.89] — 2026-09-09
+## [1.0.1-beta.90] — 2026-09-09
 
 ### 🏠 Chores
 
-- Add Kafka Inbox integration and verify duplicate discard `(6e871cb)` — Kiarash Minoo
+- Verify RabbitMQ outage and recovery with SQL Outbox `(90a5b66)` — Kiarash Minoo

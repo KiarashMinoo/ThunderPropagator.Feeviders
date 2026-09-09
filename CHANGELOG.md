@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.90] — 2026-09-09
+
+### 🏠 Chores
+
+- Verify RabbitMQ outage and recovery with SQL Outbox `(90a5b66)` — Kiarash Minoo
+
 ## [1.0.1-beta.89] — 2026-09-09
 
 ### 🏠 Chores
