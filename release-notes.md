@@ -1,5 +1,5 @@
-## [1.0.1-beta.90] — 2026-09-09
+## [1.0.1-beta.91] — 2026-09-09
 
-### 🏠 Chores
+### 🧪 Tests
 
-- Verify RabbitMQ outage and recovery with SQL Outbox `(90a5b66)` — Kiarash Minoo
+- Verify disabled compatibility and crash-recovery guarantees `(b647191)` — Kiarash Minoo
