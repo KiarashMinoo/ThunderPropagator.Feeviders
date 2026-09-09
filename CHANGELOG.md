@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.88] — 2026-09-09
+
+### ⚙️ CI / Tooling
+
+- update publish jobs to enforce sequential execution and improve token management `(645dfd6)` — Kiarash Minoo
+
+### 🧪 Tests
+
+- Add dedicated OutboxRetryBackoff unit tests `(362b76c)` — Kiarash Minoo
+
 ## [1.0.1-beta.87] — 2026-09-08
 
 ### 🏠 Chores

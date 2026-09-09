@@ -1,5 +1,9 @@
-## [1.0.1-beta.87] — 2026-09-08
+## [1.0.1-beta.88] — 2026-09-09
 
-### 🏠 Chores
+### ⚙️ CI / Tooling
 
-- Report store connectivity, backlog depth, and oldest-message age `(db764fe)` — Kiarash Minoo
+- update publish jobs to enforce sequential execution and improve token management `(645dfd6)` — Kiarash Minoo
+
+### 🧪 Tests
+
+- Add dedicated OutboxRetryBackoff unit tests `(362b76c)` — Kiarash Minoo
