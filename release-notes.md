@@ -1,9 +1,5 @@
-## [1.0.1-beta.88] — 2026-09-09
+## [1.0.1-beta.89] — 2026-09-09
 
-### ⚙️ CI / Tooling
+### 🏠 Chores
 
-- update publish jobs to enforce sequential execution and improve token management `(645dfd6)` — Kiarash Minoo
-
-### 🧪 Tests
-
-- Add dedicated OutboxRetryBackoff unit tests `(362b76c)` — Kiarash Minoo
+- Add Kafka Inbox integration and verify duplicate discard `(6e871cb)` — Kiarash Minoo

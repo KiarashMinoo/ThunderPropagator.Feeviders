@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.89] — 2026-09-09
+
+### 🏠 Chores
+
+- Add Kafka Inbox integration and verify duplicate discard `(6e871cb)` — Kiarash Minoo
+
 ## [1.0.1-beta.88] — 2026-09-09
 
 ### ⚙️ CI / Tooling
