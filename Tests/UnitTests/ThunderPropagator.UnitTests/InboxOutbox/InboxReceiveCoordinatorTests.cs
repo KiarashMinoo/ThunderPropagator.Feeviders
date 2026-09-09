@@ -50,6 +50,50 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
         }
 
         [Fact]
+        public async Task ReceiveAsync_ProcessCrashesDuringHandler_ShouldLetASubsequentReceiveReclaimAndComplete()
+        {
+            // A real, stateful store (not a substitute) is required here - the whole point is that the
+            // second call reclaims the exact same durable entry the first call abandoned.
+            var timeProvider = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+            var store = new ReferenceInboxStore(timeProvider);
+            var options = EnabledOptions() with
+            {
+                ClaimLeaseDuration = TimeSpan.FromMinutes(1),
+                MessageIdResolution = new MessageIdResolverOptions { Strategy = InboxMessageIdStrategy.PayloadHash },
+            };
+
+            // First "process": claims and acknowledges through the real coordinator, then the handler
+            // hangs forever - the call is deliberately never awaited to completion, so it never reaches
+            // CompleteAsync/FailAsync, exactly like the process dying mid-handler.
+            var firstAcknowledged = false;
+            var crashedCall = BuildCoordinator(options, store).ReceiveAsync(
+                Payload, "application/octet-stream", headers: null, partitionKey: null,
+                invokeHandlerAsync: _ => new ValueTask(new TaskCompletionSource().Task),
+                acknowledgeAsync: _ => { firstAcknowledged = true; return ValueTask.CompletedTask; });
+
+            Assert.True(firstAcknowledged);
+            Assert.False(crashedCall.IsCompleted);
+
+            timeProvider.Advance(TimeSpan.FromMinutes(2));
+
+            // A brand-new coordinator instance, mirroring a restarted process, shares only the durable
+            // store - it must reclaim the lease the first call abandoned and complete the message.
+            var handlerInvoked = false;
+            var outcome = await BuildCoordinator(options, store).ReceiveAsync(
+                Payload, "application/octet-stream", headers: null, partitionKey: null,
+                invokeHandlerAsync: _ => { handlerInvoked = true; return ValueTask.CompletedTask; },
+                acknowledgeAsync: _ => ValueTask.CompletedTask);
+
+            Assert.Equal(InboxReceiveOutcome.Processed, outcome);
+            Assert.True(handlerInvoked);
+
+            var messageId = new MessageIdResolver(options.MessageIdResolution)
+                .Resolve(new MessageIdResolutionRequest { Headers = null, Payload = Payload }).MessageId;
+            var message = await store.GetAsync(messageId, ChannelKey, null);
+            Assert.Equal(InboxMessageStatus.Processed, message!.Status);
+        }
+
+        [Fact]
         public async Task ReceiveAsync_ClaimedAndHandlerThrows_BelowMaxRetryAttempts_ShouldFailWithSanitizedReason()
         {
             var claimed = BuildClaimedMessage(attemptCount: 1);
