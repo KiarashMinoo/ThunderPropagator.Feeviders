@@ -22,7 +22,12 @@ internal sealed class KafkaDeserializer<T>(
             if (typeof(T) == typeof(Ignore))
                 throw new NotSupportedException("Not Supported.");
 
-            return Task.FromResult(formatDeserializerInvoker(serializerType).Deserialize<T>(data.ToArray()) ?? throw new SerializationException());
+            var message = formatDeserializerInvoker(serializerType).Deserialize<T>(data.ToArray()) ?? throw new SerializationException();
+
+            if (message is KafkaFeederMessage feederMessage)
+                feederMessage.RawPayload = data.ToArray();
+
+            return Task.FromResult(message);
         }
         catch (Exception exception)
         {

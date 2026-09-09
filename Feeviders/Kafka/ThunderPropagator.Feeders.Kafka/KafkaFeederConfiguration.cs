@@ -2,6 +2,7 @@
 using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
 using ThunderPropagator.BuildingBlocks.Application.Serializations.Json;
+using ThunderPropagator.Feeders.Inbox;
 
 namespace ThunderPropagator.Feeders.Kafka
 {
@@ -89,6 +90,15 @@ namespace ThunderPropagator.Feeders.Kafka
             get => TimeSpan.TryParse(Get("memory.pressure.polling.interval"), out var value) ? value : TimeSpan.FromSeconds(5);
             set => Set("memory.pressure.polling.interval", value.ToString());
         }
+
+        /// <summary>
+        /// Opt-in transactional Inbox configuration for this Feevider. Disabled by default. Held as a
+        /// plain property rather than routed through the librdkafka-facing string dictionary the other
+        /// properties above use - <see cref="InboxOptions"/> is a ThunderPropagator-only setting, not a
+        /// librdkafka one, and <see cref="MessageIdResolverOptions.PayloadCanonicalizer"/> is a delegate
+        /// that cannot be flattened into a config string anyway.
+        /// </summary>
+        public InboxOptions Inbox { get; set; } = new();
 
         protected KafkaFeederConfiguration()
         {

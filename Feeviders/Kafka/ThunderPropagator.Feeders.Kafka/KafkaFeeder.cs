@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using System.Text;
 using Confluent.Kafka;
 using Confluent.Kafka.SyncOverAsync;
 using Confluent.SchemaRegistry;
@@ -10,6 +11,8 @@ using OpenTelemetry;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using ThunderPropagator.Feeders.Inbox;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.Feeders.Kafka
@@ -51,10 +54,14 @@ namespace ThunderPropagator.Feeders.Kafka
 
             [LoggerMessage(EventId = 4010, Level = LogLevel.Warning, Message = "Exception while disposing schema registry.")]
             public static partial void DisposeSchemaRegistryException(ILogger logger, Exception exception);
+
+            [LoggerMessage(EventId = 4011, Level = LogLevel.Error, Message = "Inbox processing on topic(s) {TopicNames} ended as {Outcome}.")]
+            public static partial void InboxProcessingFailed(ILogger logger, string[] topicNames, string outcome);
         }
 
         private readonly IConsumer<string, TKafkaFeederMessage>? _consumer;
         private readonly TKafkaFeederConfiguration _kafkaFeederConfiguration;
+        private readonly InboxReceiveCoordinator _inboxCoordinator;
         private CachedSchemaRegistryClient? _schemaRegistry;
 
         private ISchemaRegistryClient SchemaRegistryClient
@@ -72,6 +79,8 @@ namespace ThunderPropagator.Feeders.Kafka
             : base(channel, kafkaFeederConfiguration, feederHandler, serviceProvider)
         {
             _kafkaFeederConfiguration = kafkaFeederConfiguration;
+            _inboxCoordinator = new InboxReceiveCoordinator(
+                kafkaFeederConfiguration.Inbox, ChannelKey, Id, serviceProvider.GetService<IInboxStoreFactory>());
 
             if (!_kafkaFeederConfiguration.IsEnabled)
             {
@@ -83,6 +92,11 @@ namespace ThunderPropagator.Feeders.Kafka
             HealthTags = [.. HealthTags, nameof(Kafka), .. _kafkaFeederConfiguration.TopicNames];
 
             var consumerConfig = _kafkaFeederConfiguration.ToConsumerConfig();
+            if (_inboxCoordinator.InboxEnabled)
+                // Inbox claims/acks ownership of the offset explicitly (see ReceiveAsync/CommitAsync
+                // below) - the background auto-committer must not race ahead of the durable claim.
+                consumerConfig.EnableAutoCommit = false;
+
             var formatDeserializerInvoker = serviceProvider.GetRequiredService<FormatDeserializerInvoker>();
 
             _consumer = KafkaFeederInitializer.Initialize(
@@ -143,33 +157,39 @@ namespace ThunderPropagator.Feeders.Kafka
                         activity?.SetTag("messaging.destination.name", consumeResult.Topic);
                         activity?.SetTag("messaging.operation", "receive");
 
-                        var receiveTimestamp = Stopwatch.GetTimestamp();
-                        FeederReceivedMessage<TKafkaFeederMessage> receivedMessage;
-                        try
+                        var additionalData = new Dictionary<string, object?>
                         {
-                            receivedMessage = new FeederReceivedMessage<TKafkaFeederMessage>(message,
-                                activityContext,
-                                baggage,
-                                new Dictionary<string, object?>
-                                {
-                                    { nameof(consumeResult.Topic), consumeResult.Topic },
-                                    { nameof(consumeResult.Offset), consumeResult.Offset },
-                                });
+                            { nameof(consumeResult.Topic), consumeResult.Topic },
+                            { nameof(consumeResult.Offset), consumeResult.Offset },
+                        };
 
-                            KafkaFeederExtensions.MessagesReceived.Add(1);
-                        }
-                        catch (Exception ex)
+                        if (_inboxCoordinator.InboxEnabled)
                         {
-                            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                            KafkaFeederExtensions.MessagesReceiveFailed.Add(1);
-                            throw;
+                            await ReceiveThroughInboxAsync(consumeResult, message, activityContext, baggage, additionalData, cancellationToken).ConfigureAwait(false);
                         }
-                        finally
+                        else
                         {
-                            KafkaFeederExtensions.ReceiveDuration.Record(Stopwatch.GetElapsedTime(receiveTimestamp).TotalMilliseconds);
-                        }
+                            var receiveTimestamp = Stopwatch.GetTimestamp();
+                            FeederReceivedMessage<TKafkaFeederMessage> receivedMessage;
+                            try
+                            {
+                                receivedMessage = new FeederReceivedMessage<TKafkaFeederMessage>(message, activityContext, baggage, additionalData);
 
-                        yield return receivedMessage;
+                                KafkaFeederExtensions.MessagesReceived.Add(1);
+                            }
+                            catch (Exception ex)
+                            {
+                                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                                KafkaFeederExtensions.MessagesReceiveFailed.Add(1);
+                                throw;
+                            }
+                            finally
+                            {
+                                KafkaFeederExtensions.ReceiveDuration.Record(Stopwatch.GetElapsedTime(receiveTimestamp).TotalMilliseconds);
+                            }
+
+                            yield return receivedMessage;
+                        }
                     }
                     else
                         await Task.Yield();
@@ -177,6 +197,87 @@ namespace ThunderPropagator.Feeders.Kafka
             }
             else
                 await Task.Yield();
+        }
+
+        /// <summary>
+        /// Wraps one claimed-or-not record through <see cref="InboxReceiveCoordinator.ReceiveAsync"/>
+        /// instead of yielding it to the base class's dispatch loop, which knows nothing about
+        /// claims/commits. Mirrors <c>RabbitMQFeeder.HandleReceivedAsync</c>'s outcome handling, adapted
+        /// to Kafka's commit-based (rather than per-message ack/nack) acknowledgement model.
+        /// </summary>
+        private async Task ReceiveThroughInboxAsync(
+            ConsumeResult<string, TKafkaFeederMessage> consumeResult,
+            TKafkaFeederMessage message,
+            ActivityContext? activityContext,
+            Baggage? baggage,
+            IReadOnlyDictionary<string, object?> additionalData,
+            CancellationToken cancellationToken)
+        {
+            var payload = message.RawPayload ?? [];
+            var headers = ExtractHeaders(consumeResult.Message.Headers);
+            // Kafka has no application-level message-ID header of its own - topic/partition/offset
+            // is the natural stable identity, so it is synthesized as a header the BrokerHeader
+            // MessageIdResolver strategy can read (see KafkaFeederConfiguration.Inbox.MessageIdResolution).
+            headers["kafka-offset"] = consumeResult.Offset.Value.ToString();
+            var partitionKey = $"{consumeResult.Topic}#{consumeResult.Partition.Value}";
+
+            var outcome = await _inboxCoordinator.ReceiveAsync(
+                payload,
+                "application/octet-stream",
+                headers,
+                partitionKey,
+                invokeHandlerAsync: ct => ReceiveAsync(message, activityContext, baggage, additionalData, ct),
+                acknowledgeAsync: ct => CommitOffsetAsync(consumeResult, ct),
+                cancellationToken).ConfigureAwait(false);
+
+            switch (outcome)
+            {
+                case InboxReceiveOutcome.Processed:
+                    KafkaFeederExtensions.MessagesReceived.Add(1);
+                    break;
+
+                case InboxReceiveOutcome.Duplicate:
+                case InboxReceiveOutcome.AlreadyDeadLettered:
+                    // Already committed by the coordinator - a duplicate/dead-lettered delivery is
+                    // not a fault, just nothing new to do.
+                    break;
+
+                case InboxReceiveOutcome.InProgress:
+                    // Not committed by the coordinator - another owner holds the claim. Unlike a
+                    // broker-level nack/requeue, Kafka does not redeliver mid-session on an
+                    // uncommitted offset; the Inbox's own lease-expiry/retry-worker path owns
+                    // recovery from here.
+                    break;
+
+                case InboxReceiveOutcome.Failed:
+                case InboxReceiveOutcome.DeadLettered:
+                    // Already committed by the coordinator immediately after the durable claim -
+                    // the Inbox retry worker owns recovery from here, not broker redelivery.
+                    KafkaFeederExtensions.MessagesReceiveFailed.Add(1);
+                    Log.InboxProcessingFailed(Logger, _kafkaFeederConfiguration.TopicNames, outcome.ToString());
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Commits <paramref name="consumeResult"/>'s offset synchronously via librdkafka - run on a
+        /// dedicated long-running thread (<see cref="BlockingOperationRunner"/>) for the same reason
+        /// <see cref="_consumer"/>.Consume itself is: it is a blocking client call.
+        /// </summary>
+        private async ValueTask CommitOffsetAsync(ConsumeResult<string, TKafkaFeederMessage> consumeResult, CancellationToken cancellationToken) =>
+            await BlockingOperationRunner.RunAsync(() =>
+            {
+                _consumer!.Commit(consumeResult);
+                return true;
+            }, cancellationToken).ConfigureAwait(false);
+
+        private static Dictionary<string, string> ExtractHeaders(Headers headers)
+        {
+            var result = new Dictionary<string, string>(headers.Count);
+            foreach (var header in headers)
+                result[header.Key] = Encoding.UTF8.GetString(header.GetValueBytes());
+
+            return result;
         }
 
         protected override async Task<bool> HandleExceptionAsync(Exception exception, CancellationToken cancellationToken = default)
