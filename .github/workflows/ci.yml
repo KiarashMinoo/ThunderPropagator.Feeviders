@@ -140,6 +140,25 @@ jobs:
       gh-token: ${{ secrets.GITHUB_TOKEN }}
       push-token: ${{ secrets.ADMIN_PUSH_TOKEN }}
 
+  # The four publish jobs below run SEQUENTIALLY, not in parallel -- each `needs:` the
+  # previous one and checks its result, forming a strict chain (sharedkernel -> feeders
+  # -> providers -> inboxoutbox). A failure partway through stops the rest from running
+  # (fail-fast; re-running the workflow after a fix re-pushes only what --skip-duplicate
+  # lets through). Each is still its own separate GitHub Actions job (own runner, own
+  # `environment:`), which is required for the multi-policy quota split to keep working
+  # -- a GitHub Actions `environment:` (and therefore which nuget.org Trusted Publishing
+  # policy applies) is a job-level concept only, so these can't be collapsed into one
+  # job's sequential steps without losing the separate quota buckets entirely.
+  #
+  # Token freshness: every one of these jobs calls NuGet/login@v1 itself (inside the
+  # nuget-oidc-publish composite action), which performs its own fresh OIDC token
+  # exchange with nuget.org on every invocation -- there is no caching of that exchange,
+  # here or in NuGet/login itself. Serializing the jobs via `needs:` doesn't change this:
+  # GitHub Actions jobs are hermetic (separate runner VMs), and nothing here passes
+  # `steps.login.outputs.NUGET_API_KEY` or any other job output downstream via
+  # `needs.<job>.outputs`, so a later job has no way to see, let alone reuse, an earlier
+  # job's temporary API key even if it wanted to. Each push in this chain is
+  # authenticated with its own independently-minted, single-use token.
   publish-nuget-oidc-sharedkernel:
     name: Publish packages (OIDC Trusted Publishing) — SharedKernel
     needs: [beta-ci, manual-ci]
@@ -163,8 +182,8 @@ jobs:
 
   publish-nuget-oidc-feeders:
     name: Publish packages (OIDC Trusted Publishing) — Feeders
-    needs: [beta-ci, manual-ci]
-    if: always() && (needs.beta-ci.result == 'success' || needs.manual-ci.result == 'success')
+    needs: [beta-ci, manual-ci, publish-nuget-oidc-sharedkernel]
+    if: always() && (needs.beta-ci.result == 'success' || needs.manual-ci.result == 'success') && needs.publish-nuget-oidc-sharedkernel.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: nuget-feeders
@@ -185,8 +204,8 @@ jobs:
 
   publish-nuget-oidc-providers:
     name: Publish packages (OIDC Trusted Publishing) — Providers
-    needs: [beta-ci, manual-ci]
-    if: always() && (needs.beta-ci.result == 'success' || needs.manual-ci.result == 'success')
+    needs: [beta-ci, manual-ci, publish-nuget-oidc-feeders]
+    if: always() && (needs.beta-ci.result == 'success' || needs.manual-ci.result == 'success') && needs.publish-nuget-oidc-feeders.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: nuget-providers
@@ -205,8 +224,8 @@ jobs:
 
   publish-nuget-oidc-inboxoutbox:
     name: Publish packages (OIDC Trusted Publishing) — InboxOutbox
-    needs: [beta-ci, manual-ci]
-    if: always() && (needs.beta-ci.result == 'success' || needs.manual-ci.result == 'success')
+    needs: [beta-ci, manual-ci, publish-nuget-oidc-providers]
+    if: always() && (needs.beta-ci.result == 'success' || needs.manual-ci.result == 'success') && needs.publish-nuget-oidc-providers.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: nuget-inboxoutbox
