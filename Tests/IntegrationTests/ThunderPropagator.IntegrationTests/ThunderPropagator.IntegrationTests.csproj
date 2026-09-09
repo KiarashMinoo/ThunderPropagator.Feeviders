@@ -7,18 +7,21 @@
     <EnablePreviewFeatures>true</EnablePreviewFeatures>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Confluent.Kafka" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="MongoDB.Driver" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="StackExchange.Redis" />
     <PackageReference Include="Testcontainers" />
+    <PackageReference Include="Testcontainers.Kafka" />
     <PackageReference Include="Testcontainers.MongoDb" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Feeviders\GcpPubSub\ThunderPropagator.Providers.DotNet.GcpPubSub\ThunderPropagator.Providers.DotNet.GcpPubSub.csproj" />
+    <ProjectReference Include="..\..\..\Feeviders\SharedKernel\ThunderPropagator.Feeders.SharedKernel\ThunderPropagator.Feeders.SharedKernel.csproj" />
     <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Feeders.Inbox.Redis\ThunderPropagator.Feeders.Inbox.Redis.csproj" />
     <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Providers.DotNet.Outbox.Redis\ThunderPropagator.Providers.DotNet.Outbox.Redis.csproj" />
     <ProjectReference Include="..\..\..\Feeviders\InboxOutbox\ThunderPropagator.Feeders.Inbox.EFCore\ThunderPropagator.Feeders.Inbox.EFCore.csproj" />
