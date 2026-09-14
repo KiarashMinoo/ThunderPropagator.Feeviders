@@ -1,11 +1,9 @@
 # CLAUDE.md
 
-Guidance for working in this repository.
-
 ## Commands
 
 ```bash
-dotnet restore    # fetches shared build configuration on first use
+dotnet restore    # fetches shared build config on first use
 dotnet build
 dotnet build -c Release
 dotnet test
@@ -16,29 +14,29 @@ dotnet clean      # also clears the downloaded shared build cache
 
 ## Architecture
 
-Reusable libraries for real-time data streaming: message consumption ("feeders") and message publishing ("providers") across many external messaging systems, each behind the same pair of abstractions.
+Real-time data streaming: message consumption ("feeders") and publishing ("providers") across many external messaging systems, each behind the same pair of abstractions.
 
-- A shared-kernel area defines the cross-transport abstractions: a feeder interface, a provider interface, a channel interface, and a dictionary-backed message base.
-- Every transport is a sibling area with its own feeder project, provider project, and (where the client library needs shared plumbing) its own transport-scoped shared kernel building on the top-level one.
+- Shared-kernel area: cross-transport feeder/provider/channel interfaces + dictionary-backed message base.
+- Every transport is a sibling area with its own feeder project, provider project, and (if needed) its own transport-scoped shared kernel building on the top-level one.
 
-Consumption-side and publish-side projects are named to make the direction obvious at a glance; a transport's own shared kernel is named after that transport plus a shared-kernel suffix.
+Consumption/publish-side projects are named to make direction obvious; a transport's own shared kernel is named after that transport plus a shared-kernel suffix.
 
 ## Conventions
 
-- All library projects multi-target the same three frameworks; solution configurations cover both architecture-neutral and architecture-specific platforms.
-- Package versions are centrally managed; `Microsoft.Extensions.*` versions float per target framework — never pin a version on an individual package reference.
-- Private fields `_camelCase`; telemetry activity names `{ClassName}_{MethodName}`; 4-space indent (2 for structured-data formats), LF endings, UTF-8, braces required.
+- All library projects multi-target the same three frameworks; solution configs cover architecture-neutral and architecture-specific platforms.
+- Package versions centrally managed; `Microsoft.Extensions.*` floats per TFM — never pin per-reference.
+- Private fields `_camelCase`; telemetry activity names `{ClassName}_{MethodName}`; braces required even for single-line blocks.
 
-## Adding a transport
+## Adding a Transport
 
-New area under the transport root → its own feeder project implementing the feeder interface → its own provider project implementing the provider interface → a transport-scoped shared kernel only if the client library needs shared connection/serialization plumbing → unit tests referencing the new projects → an architecture-test row asserting the new transport's namespace stays isolated from every sibling transport.
+New area under the transport root → feeder project (implements feeder interface) → provider project (implements provider interface) → transport-scoped shared kernel only if connection/serialization plumbing is needed → unit tests → architecture-test row asserting namespace isolation from every sibling transport.
 
 ## Testing
 
-xUnit + NSubstitute + a fake-data generator library for test data. A separate architecture-test project enforces namespace/layer isolation between transports and between the shared kernel and any one transport. A load-test project and a small integration-test console project also exist; the unit-test project is the one referenced by every transport.
+xUnit + NSubstitute + a fake-data generator library. Architecture-test project enforces namespace/layer isolation between transports and the shared kernel. A load-test project and a small integration-test console project also exist; the unit-test project is referenced by every transport.
 
-## Build & versioning
+## Build & Versioning
 
-Version and target frameworks are centralized; CI bumps automatically. Restore fetches shared build configuration into a local, gitignored cache — a clean removes it, the next restore refetches it.
+Version/TFMs centralized; CI bumps automatically. Restore fetches shared build config into a local, gitignored cache — `dotnet clean` removes it, next restore refetches.
 
-CI publishes on two branch patterns: a beta channel that bumps and publishes a prerelease on every push, and a release channel that finalizes the version and publishes a stable release.
+CI: beta channel bumps + publishes a prerelease on every push; release channel finalizes the version and publishes a stable release.
