@@ -1,9 +1,5 @@
-## [1.0.1-beta.94] — 2026-09-14
+## [1.0.1-beta.95] — 2026-09-14
 
-### 📦 Dependencies
+### 🏠 Chores
 
-| Package | Old | New |
-|---------|-----|-----|
-| AWSSDK.SimpleNotificationService | 4.0.100.12 | 4.0.100.13 |
-
-- Bump AWSSDK.SimpleNotificationService from 4.0.100.12 to 4.0.100.13 `(a833abe)` — dependabot[bot]
+- ThunderPropagator.Feeviders: Trim CLAUDE.md and un-ignore .claude/rules `(8f8c681)` — Kiarash Minoo
