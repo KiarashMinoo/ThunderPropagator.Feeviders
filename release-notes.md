@@ -1,5 +1,10 @@
-## [1.0.1-beta.95] — 2026-09-14
+## [1.0.1-beta.96] — 2026-09-14
 
-### 🏠 Chores
+### 📦 Dependencies
 
-- ThunderPropagator.Feeviders: Trim CLAUDE.md and un-ignore .claude/rules `(8f8c681)` — Kiarash Minoo
+| Package | Old | New |
+|---------|-----|-----|
+| $(BuildingBlocksPackageId) | 1.0.1-beta.130 | 1.0.1-beta.131 |
+| $(ThunderPropagatorPackageId) | 1.0.1-beta.216 | 1.0.1-beta.218 |
+
+- ThunderPropagator.Feeviders: Bump shared build package versions `(eede764)` — Kiarash Minoo

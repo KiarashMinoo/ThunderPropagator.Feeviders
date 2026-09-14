@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.96] — 2026-09-14
+
+### 📦 Dependencies
+
+| Package | Old | New |
+|---------|-----|-----|
+| $(BuildingBlocksPackageId) | 1.0.1-beta.130 | 1.0.1-beta.131 |
+| $(ThunderPropagatorPackageId) | 1.0.1-beta.216 | 1.0.1-beta.218 |
+
+- ThunderPropagator.Feeviders: Bump shared build package versions `(eede764)` — Kiarash Minoo
+
 ## [1.0.1-beta.95] — 2026-09-14
 
 ### 🏠 Chores
