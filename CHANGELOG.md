@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.95] — 2026-09-14
+
+### 🏠 Chores
+
+- ThunderPropagator.Feeviders: Trim CLAUDE.md and un-ignore .claude/rules `(8f8c681)` — Kiarash Minoo
+
 ## [1.0.1-beta.94] — 2026-09-14
 
 ### 📦 Dependencies
