@@ -77,10 +77,10 @@
     <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.100.12" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.20.2" />
-    <PackageVersion Include="Confluent.Kafka" Version="2.15.0" />
-    <PackageVersion Include="Confluent.SchemaRegistry" Version="2.15.0" />
-    <PackageVersion Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.15.0" />
-    <PackageVersion Include="Confluent.SchemaRegistry.Serdes.Json" Version="2.15.0" />
+    <PackageVersion Include="Confluent.Kafka" Version="2.15.1" />
+    <PackageVersion Include="Confluent.SchemaRegistry" Version="2.15.1" />
+    <PackageVersion Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.15.1" />
+    <PackageVersion Include="Confluent.SchemaRegistry.Serdes.Json" Version="2.15.1" />
     <PackageVersion Include="Google.Cloud.PubSub.V1" Version="3.37.0" />
     <PackageVersion Include="Google.Protobuf" Version="3.36.1" />
     <PackageVersion Include="Grpc.Net.Client" Version="2.83.0" />
