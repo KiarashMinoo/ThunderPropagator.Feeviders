@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.98] — 2026-09-15
+
+### ⚙️ CI / Tooling
+
+- ThunderPropagator.Feeviders: Consolidate SharedKernel projects and fix queue-mode cleanup order `(0cb9f20)` — Kiarash Minoo
+
 ## [1.0.1-beta.97] — 2026-09-15
 
 ### ⚙️ CI / Tooling
