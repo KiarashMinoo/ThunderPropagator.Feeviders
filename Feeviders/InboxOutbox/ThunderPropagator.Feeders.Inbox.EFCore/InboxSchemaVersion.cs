@@ -1,4 +1,4 @@
-namespace ThunderPropagator.Feeders.Inbox
+namespace ThunderPropagator.Feeders.Inbox.EFCore
 {
     /// <summary>
     /// Backs <see cref="EfCoreInboxStore.InitializeAsync"/>'s persisted schema-version tracking - a

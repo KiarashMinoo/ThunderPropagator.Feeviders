@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace ThunderPropagator.Providers.DotNet.Outbox
+namespace ThunderPropagator.Providers.DotNet.Outbox.EFCore
 {
     public static class EfCoreOutboxStoreServiceCollectionExtensions
     {

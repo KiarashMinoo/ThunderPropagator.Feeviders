@@ -2,7 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using ThunderPropagator.Feeders.Inbox;
+using ThunderPropagator.Feeders.Inbox.EFCore;
 using ThunderPropagator.Providers.DotNet.Outbox;
+using ThunderPropagator.Providers.DotNet.Outbox.EFCore;
 
 namespace ThunderPropagator.IntegrationTests;
 

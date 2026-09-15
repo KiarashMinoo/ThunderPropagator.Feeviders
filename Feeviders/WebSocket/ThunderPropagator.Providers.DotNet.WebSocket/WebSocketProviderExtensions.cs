@@ -3,8 +3,8 @@ using System.Diagnostics.Metrics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
+using ThunderPropagator.Feeviders.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Providers.DotNet.WebSocket
 {

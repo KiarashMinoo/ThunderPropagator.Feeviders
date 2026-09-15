@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace ThunderPropagator.Providers.DotNet.Outbox
+namespace ThunderPropagator.Providers.DotNet.Outbox.EFCore
 {
     /// <summary>
     /// Acquires/releases a session-scoped advisory lock, keyed by an arbitrary string name, on whichever

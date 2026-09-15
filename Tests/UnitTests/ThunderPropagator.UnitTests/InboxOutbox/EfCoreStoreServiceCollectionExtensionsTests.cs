@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using ThunderPropagator.Feeders.Inbox;
+using ThunderPropagator.Feeders.Inbox.EFCore;
 using ThunderPropagator.Providers.DotNet.Outbox;
+using ThunderPropagator.Providers.DotNet.Outbox.EFCore;
 
 namespace ThunderPropagator.UnitTests.InboxOutbox
 {

@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
-using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.Providers.DotNet.Kafka

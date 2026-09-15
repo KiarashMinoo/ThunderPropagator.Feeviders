@@ -1,4 +1,4 @@
-namespace ThunderPropagator.Providers.DotNet.Outbox
+namespace ThunderPropagator.Providers.DotNet.Outbox.EFCore
 {
     /// <summary>
     /// Provider-specific SQL for <see cref="EfCoreOutboxStore.ClaimBatchAsync"/>'s locking read: select

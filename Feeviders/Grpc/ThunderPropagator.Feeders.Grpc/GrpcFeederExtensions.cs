@@ -7,10 +7,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
-using ThunderPropagator.Feeders.SharedKernel;
-using ThunderPropagator.Feeviders.Grpc.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel.Extensions;
 using ThunderPropagator.Infrastructure.Extensions;
-using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.Grpc
 {
@@ -48,7 +46,7 @@ namespace ThunderPropagator.Feeders.Grpc
             where TGrpcFeederMessage : GrpcFeederMessage
             where TGrpcFeederConfiguration : GrpcFeederConfiguration, new()
         {
-            SharedKernel.Extensions.AddChannelFeederResolver<TChannel,
+            SharedKernel.Extensions.ThunderPropagatorExtensions.AddChannelFeederResolver<TChannel,
                 GrpcFeeder<TChannel, TGrpcFeederMessage, TGrpcFeederConfiguration>,
                 TGrpcFeederMessage,
                 TGrpcFeederConfiguration>(services, (serviceProvider, channel, grpcFeederConfiguration, feederHandler) =>

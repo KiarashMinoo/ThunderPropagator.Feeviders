@@ -8,8 +8,8 @@ using NATS.Client.JetStream.Models;
 using NATS.Net;
 using OpenTelemetry;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
-using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.NATS.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.Providers.DotNet.NATS

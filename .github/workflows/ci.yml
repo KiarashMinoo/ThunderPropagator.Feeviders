@@ -217,6 +217,14 @@ jobs:
         with:
           mode: queue
           nuget-package-include-pattern: '\.Feeviders\.[^.]+\.SharedKernel\.'
+          # This is the FIRST of four sequential jobs sharing the same run-wide
+          # pkg-*/symbols-* artifacts (reusable-ci.yml packs every family's packages
+          # into ONE artifact per build leg, not one per family) -- deleting them here
+          # would leave nothing for feeders/providers/inboxoutbox to download, and each
+          # would silently log "nothing to queue" instead of actually queueing its own
+          # slice. Only the LAST job (inboxoutbox) deletes, once every slice is safely
+          # queued. See delete-raw-artifacts' own description in nuget-oidc-publish.
+          delete-raw-artifacts: false
 
   publish-nuget-oidc-feeders:
     name: Publish packages (OIDC Trusted Publishing) — Feeders
@@ -249,6 +257,8 @@ jobs:
         with:
           mode: queue
           nuget-package-include-pattern: '\.Feeders\.'
+          # Not the last job in the chain -- see the sharedkernel job's identical comment.
+          delete-raw-artifacts: false
 
   publish-nuget-oidc-providers:
     name: Publish packages (OIDC Trusted Publishing) — Providers
@@ -279,6 +289,8 @@ jobs:
         with:
           mode: queue
           nuget-package-include-pattern: '\.Providers\.'
+          # Not the last job in the chain -- see the sharedkernel job's identical comment.
+          delete-raw-artifacts: false
 
   publish-nuget-oidc-inboxoutbox:
     name: Publish packages (OIDC Trusted Publishing) — InboxOutbox
@@ -310,3 +322,7 @@ jobs:
         with:
           mode: queue
           nuget-package-include-pattern: '\.InboxOutbox\.'
+          # This IS the last job in the chain -- delete-raw-artifacts left at its
+          # default ('true') on purpose, so the shared pkg-*/symbols-* artifacts are
+          # only ever deleted here, after all four jobs have safely queued their own
+          # slice. See the sharedkernel job's comment for the full reasoning.

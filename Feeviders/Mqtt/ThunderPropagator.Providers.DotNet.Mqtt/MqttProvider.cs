@@ -5,8 +5,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MQTTnet;
-using ThunderPropagator.BuildingBlocks.Application.Serializations;
-using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.Providers.DotNet.Mqtt

@@ -4,8 +4,7 @@ using System.Reflection;
 using DotPulsar;
 using DotPulsar.Abstractions;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
-using ThunderPropagator.Feeders.SharedKernel;
-using ThunderPropagator.Providers.DotNet.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel;
 
 namespace ThunderPropagator.Feeviders.Pulsar.SharedKernel
 {

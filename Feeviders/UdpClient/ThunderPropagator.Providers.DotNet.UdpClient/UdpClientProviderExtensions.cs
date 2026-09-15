@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel.Extensions;
 using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Providers.DotNet.UdpClient
@@ -17,7 +17,11 @@ namespace ThunderPropagator.Providers.DotNet.UdpClient
             configuration.GetSection(sectionName).Bind(udpClientProviderConfiguration);
             services.TryAddSingleton(udpClientProviderConfiguration);
 
-            services.AddChannelProvider<UdpClientProvider<TUdpClientProviderMessage, TUdpClientProviderConfiguration>, TUdpClientProviderMessage, TUdpClientProviderConfiguration>();
+            services.AddChannelProvider<
+                UdpClientProvider<TUdpClientProviderMessage, TUdpClientProviderConfiguration>,
+                TUdpClientProviderMessage,
+                TUdpClientProviderConfiguration>();
+
             services.AddFormatSerializerInvoker();
             services.AddFormatDeserializerInvoker();
 

@@ -1,7 +1,7 @@
 ﻿using System.Buffers;
 using NATS.Client.Core;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
-using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel;
 
 namespace ThunderPropagator.Feeviders.NATS.SharedKernel
 {

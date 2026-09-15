@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace ThunderPropagator.Providers.DotNet.Outbox
+namespace ThunderPropagator.Providers.DotNet.Outbox.EFCore
 {
     /// <summary>
     /// <see cref="IOutboxStore"/> backed by a relational database via EF Core - SQL Server, PostgreSQL,

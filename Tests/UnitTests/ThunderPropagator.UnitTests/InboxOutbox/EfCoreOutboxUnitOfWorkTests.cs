@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using ThunderPropagator.Providers.DotNet.Outbox;
+using ThunderPropagator.Providers.DotNet.Outbox.EFCore;
 
 namespace ThunderPropagator.UnitTests.InboxOutbox
 {

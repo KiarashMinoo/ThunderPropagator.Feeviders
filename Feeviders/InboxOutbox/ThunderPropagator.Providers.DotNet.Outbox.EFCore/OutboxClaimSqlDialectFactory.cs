@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace ThunderPropagator.Providers.DotNet.Outbox
+namespace ThunderPropagator.Providers.DotNet.Outbox.EFCore
 {
     /// <summary>
     /// Resolves the <see cref="IOutboxClaimSqlDialect"/> matching a <see cref="DbContext"/>'s active

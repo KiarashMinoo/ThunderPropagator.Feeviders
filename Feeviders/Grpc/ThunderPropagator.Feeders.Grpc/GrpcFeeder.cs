@@ -4,14 +4,12 @@ using Grpc.Net.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
-using OpenTelemetry;
-using ThunderPropagator.Application;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Features;
 using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.Feeviders.Grpc.SharedKernel;
 using ThunderPropagator.Feeviders.Grpc.SharedKernel.Protos;
-using ThunderPropagator.Providers.DotNet.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel;
 
 namespace ThunderPropagator.Feeders.Grpc
 {

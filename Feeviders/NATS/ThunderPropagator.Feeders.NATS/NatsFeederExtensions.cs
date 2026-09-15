@@ -7,9 +7,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
-using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel.Extensions;
 using ThunderPropagator.Infrastructure.Extensions;
-using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.NATS
 {
@@ -53,7 +52,7 @@ namespace ThunderPropagator.Feeders.NATS
             where TNatsFeederMessage : NatsFeederMessage
             where TNatsFeederConfiguration : NatsFeederConfiguration, new()
         {
-            SharedKernel.Extensions.AddChannelFeederResolver<TChannel,
+            SharedKernel.Extensions.ThunderPropagatorExtensions.AddChannelFeederResolver<TChannel,
                 NatsFeeder<TChannel, TNatsFeederMessage, TNatsFeederConfiguration>,
                 TNatsFeederMessage,
                 TNatsFeederConfiguration>(services, (serviceProvider, channel, natsFeederConfiguration, feederHandler) =>

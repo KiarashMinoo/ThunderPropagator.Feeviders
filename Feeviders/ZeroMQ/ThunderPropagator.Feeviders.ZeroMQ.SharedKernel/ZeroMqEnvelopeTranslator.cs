@@ -4,7 +4,7 @@ using OpenTelemetry;
 using ThunderPropagator.BuildingBlocks.Application;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
-using ThunderPropagator.Providers.DotNet.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel;
 
 namespace ThunderPropagator.Feeviders.ZeroMQ.SharedKernel
 {

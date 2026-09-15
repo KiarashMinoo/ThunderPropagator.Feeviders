@@ -10,6 +10,7 @@ using RabbitMQ.Client.Exceptions;
 using ThunderPropagator.BuildingBlocks.Application;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
 using ThunderPropagator.Providers.DotNet.Outbox;
+using ThunderPropagator.Providers.DotNet.Outbox.EFCore;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 using Xunit;
 

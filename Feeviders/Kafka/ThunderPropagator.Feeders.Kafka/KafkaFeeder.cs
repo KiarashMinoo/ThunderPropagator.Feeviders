@@ -13,7 +13,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using ThunderPropagator.Feeders.Inbox;
 using ThunderPropagator.Feeders.SharedKernel;
-using ThunderPropagator.Providers.DotNet.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel;
 
 namespace ThunderPropagator.Feeders.Kafka
 {

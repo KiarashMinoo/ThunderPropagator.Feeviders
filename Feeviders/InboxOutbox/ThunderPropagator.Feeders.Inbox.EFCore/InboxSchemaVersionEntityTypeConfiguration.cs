@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace ThunderPropagator.Feeders.Inbox
+namespace ThunderPropagator.Feeders.Inbox.EFCore
 {
     /// <summary>
     /// Maps <see cref="InboxSchemaVersion"/>. Apply alongside <see cref="InboxMessageEntityTypeConfiguration"/> -

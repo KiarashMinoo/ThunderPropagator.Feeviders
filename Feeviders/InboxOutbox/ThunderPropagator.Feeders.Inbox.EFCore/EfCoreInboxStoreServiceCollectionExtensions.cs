@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace ThunderPropagator.Feeders.Inbox
+namespace ThunderPropagator.Feeders.Inbox.EFCore
 {
     public static class EfCoreInboxStoreServiceCollectionExtensions
     {

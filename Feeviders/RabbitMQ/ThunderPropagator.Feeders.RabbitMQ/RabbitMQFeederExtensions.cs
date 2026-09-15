@@ -7,9 +7,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
-using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel.Extensions;
 using ThunderPropagator.Infrastructure.Extensions;
-using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.RabbitMQ
 {
@@ -51,7 +50,7 @@ namespace ThunderPropagator.Feeders.RabbitMQ
             where TRabbitMQFeederMessage : RabbitMQFeederMessage
             where TRabbitMQFeederConfiguration : RabbitMQFeederConfiguration, new()
         {
-            SharedKernel.Extensions.AddChannelFeederResolver<TChannel,
+            SharedKernel.Extensions.ThunderPropagatorExtensions.AddChannelFeederResolver<TChannel,
                 RabbitMQFeeder<TChannel, TRabbitMQFeederMessage, TRabbitMQFeederConfiguration>,
                 TRabbitMQFeederMessage,
                 TRabbitMQFeederConfiguration>(services, (serviceProvider, channel, rabbitMqFeederConfiguration, feederHandler) =>

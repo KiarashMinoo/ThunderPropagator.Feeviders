@@ -5,9 +5,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
-using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel.Extensions;
 using ThunderPropagator.Infrastructure.Extensions;
-using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.AwsSqs
 {
@@ -27,6 +26,7 @@ namespace ThunderPropagator.Feeders.AwsSqs
                 SqsFeeder<TChannel, TSqsFeederMessage, TSqsFeederConfiguration>,
                 TSqsFeederMessage,
                 TSqsFeederConfiguration>();
+
             services.AddFormatSerializerInvoker();
             services.AddFormatDeserializerInvoker();
 
@@ -39,7 +39,7 @@ namespace ThunderPropagator.Feeders.AwsSqs
             where TSqsFeederMessage : SqsFeederMessage
             where TSqsFeederConfiguration : SqsFeederConfiguration, new()
         {
-            SharedKernel.Extensions.AddChannelFeederResolver<TChannel,
+            SharedKernel.Extensions.ThunderPropagatorExtensions.AddChannelFeederResolver<TChannel,
                 SqsFeeder<TChannel, TSqsFeederMessage, TSqsFeederConfiguration>,
                 TSqsFeederMessage,
                 TSqsFeederConfiguration>(services, (serviceProvider, channel, sqsFeederConfiguration, feederHandler) =>

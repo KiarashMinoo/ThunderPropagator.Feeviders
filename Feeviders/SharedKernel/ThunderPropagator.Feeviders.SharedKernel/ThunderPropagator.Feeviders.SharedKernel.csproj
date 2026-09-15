@@ -1,0 +1,9 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="$(ThunderPropagatorPackageId)"/>
+    <PackageReference Include="JetBrains.Annotations" />
+    <PackageReference Include="OpenTelemetry.Api"/>
+  </ItemGroup>
+
+</Project>

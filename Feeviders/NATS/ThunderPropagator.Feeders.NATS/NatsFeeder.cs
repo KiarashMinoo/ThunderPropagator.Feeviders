@@ -1,20 +1,17 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
 using NATS.Net;
 using OpenTelemetry;
-using ThunderPropagator.Application;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Features;
 using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
-using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.NATS.SharedKernel;
-using ThunderPropagator.Providers.DotNet.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel;
 
 namespace ThunderPropagator.Feeders.NATS
 {

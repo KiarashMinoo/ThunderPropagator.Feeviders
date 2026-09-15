@@ -1,13 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-    
-    <ItemGroup>
-        <PackageReference Include="JetBrains.Annotations" />
-        <PackageReference Include="Microsoft.Extensions.Http.Resilience"/>
-    </ItemGroup>
 
-    <ItemGroup>
-        <ProjectReference Include="..\..\SharedKernel\ThunderPropagator.Providers.DotNet.SharedKernel\ThunderPropagator.Providers.DotNet.SharedKernel.csproj"/>
-        <ProjectReference Include="..\..\SharedKernel\ThunderPropagator.Feeders.SharedKernel\ThunderPropagator.Feeders.SharedKernel.csproj" />
-    </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations"/>
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\SharedKernel\ThunderPropagator.Providers.DotNet.SharedKernel\ThunderPropagator.Providers.DotNet.SharedKernel.csproj"/>
+    <ProjectReference Include="..\..\SharedKernel\ThunderPropagator.Feeviders.SharedKernel\ThunderPropagator.Feeviders.SharedKernel.csproj"/>
+  </ItemGroup>
+
 
 </Project>

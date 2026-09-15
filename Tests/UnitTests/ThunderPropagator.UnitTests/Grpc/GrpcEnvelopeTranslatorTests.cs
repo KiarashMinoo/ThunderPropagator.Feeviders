@@ -5,6 +5,7 @@ using ThunderPropagator.BuildingBlocks.Application;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
 using ThunderPropagator.BuildingBlocks.Application.Serializations.Json;
+using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.Grpc.SharedKernel;
 using ThunderPropagator.Feeviders.Grpc.SharedKernel.Protos;
 using ThunderPropagator.Providers.DotNet.SharedKernel;

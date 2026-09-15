@@ -1,4 +1,4 @@
-namespace ThunderPropagator.Providers.DotNet.Outbox
+namespace ThunderPropagator.Providers.DotNet.Outbox.EFCore
 {
     /// <summary>
     /// SQL Server: <c>WITH (UPDLOCK, ROWLOCK, READPAST)</c> - <c>READPAST</c> is SQL Server's skip-locked

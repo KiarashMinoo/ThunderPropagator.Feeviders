@@ -6,13 +6,11 @@ using Microsoft.Extensions.Logging;
 using NetMQ;
 using NetMQ.Monitoring;
 using NetMQ.Sockets;
-using OpenTelemetry;
-using ThunderPropagator.Application;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Features;
 using ThunderPropagator.Application.Feeders;
+using ThunderPropagator.Feeviders.SharedKernel;
 using ThunderPropagator.Feeviders.ZeroMQ.SharedKernel;
-using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.Feeders.ZeroMQ
 {

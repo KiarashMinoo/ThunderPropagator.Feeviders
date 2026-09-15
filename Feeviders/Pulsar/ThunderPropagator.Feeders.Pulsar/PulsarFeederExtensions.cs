@@ -7,10 +7,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
-using ThunderPropagator.Feeders.SharedKernel;
-using ThunderPropagator.Feeviders.Pulsar.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel.Extensions;
 using ThunderPropagator.Infrastructure.Extensions;
-using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.Pulsar
 {
@@ -48,7 +46,7 @@ namespace ThunderPropagator.Feeders.Pulsar
             where TPulsarFeederMessage : PulsarFeederMessage
             where TPulsarFeederConfiguration : PulsarFeederConfiguration, new()
         {
-            SharedKernel.Extensions.AddChannelFeederResolver<TChannel,
+            SharedKernel.Extensions.ThunderPropagatorExtensions.AddChannelFeederResolver<TChannel,
                 PulsarFeeder<TChannel, TPulsarFeederMessage, TPulsarFeederConfiguration>,
                 TPulsarFeederMessage,
                 TPulsarFeederConfiguration>(services, (serviceProvider, channel, pulsarFeederConfiguration, feederHandler) =>

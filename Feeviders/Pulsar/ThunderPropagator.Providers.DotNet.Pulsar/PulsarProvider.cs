@@ -7,8 +7,8 @@ using DotPulsar;
 using DotPulsar.Abstractions;
 using DotPulsar.Extensions;
 using Microsoft.Extensions.DependencyInjection;
-using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.Pulsar.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel;
 
 namespace ThunderPropagator.Providers.DotNet.Pulsar
 {

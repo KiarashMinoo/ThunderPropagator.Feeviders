@@ -9,9 +9,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
-using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel.Extensions;
 using ThunderPropagator.Infrastructure.Extensions;
-using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.WebSocket
 {
@@ -60,7 +59,7 @@ namespace ThunderPropagator.Feeders.WebSocket
             where TWebSocketFeederMessage : WebSocketFeederMessage
             where TWebSocketFeederConfiguration : WebSocketFeederConfiguration, new()
         {
-            SharedKernel.Extensions.AddChannelFeederResolver<TChannel,
+            SharedKernel.Extensions.ThunderPropagatorExtensions.AddChannelFeederResolver<TChannel,
                 WebSocketFeeder<TChannel, TWebSocketFeederMessage, TWebSocketFeederConfiguration>,
                 TWebSocketFeederMessage,
                 TWebSocketFeederConfiguration>(services, (serviceProvider, channel, webSocketFeederConfiguration, feederHandler) =>

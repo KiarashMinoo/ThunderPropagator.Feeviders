@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace ThunderPropagator.Feeders.Inbox
+namespace ThunderPropagator.Feeders.Inbox.EFCore
 {
     /// <summary>
     /// Maps <see cref="InboxMessage"/> directly as an EF Core entity - there is no separate mutable

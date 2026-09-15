@@ -1,4 +1,4 @@
-namespace ThunderPropagator.Providers.DotNet.Outbox
+namespace ThunderPropagator.Providers.DotNet.Outbox.EFCore
 {
     /// <summary>PostgreSQL: <c>FOR UPDATE SKIP LOCKED</c>, supported since PostgreSQL 9.5.</summary>
     internal sealed class PostgreSqlOutboxClaimSqlDialect : IOutboxClaimSqlDialect

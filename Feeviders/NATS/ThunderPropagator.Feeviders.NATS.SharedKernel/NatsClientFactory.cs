@@ -2,8 +2,7 @@
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
 using NATS.Net;
-using ThunderPropagator.Feeders.SharedKernel;
-using ThunderPropagator.Providers.DotNet.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel;
 
 namespace ThunderPropagator.Feeviders.NATS.SharedKernel
 {

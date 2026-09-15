@@ -1,6 +1,6 @@
 ﻿using Confluent.Kafka;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
-using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.Providers.DotNet.Kafka;

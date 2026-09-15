@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace ThunderPropagator.Feeders.Inbox
+namespace ThunderPropagator.Feeders.Inbox.EFCore
 {
     /// <summary>
     /// Acquires/releases a session-scoped advisory lock, keyed by an arbitrary string name, on whichever

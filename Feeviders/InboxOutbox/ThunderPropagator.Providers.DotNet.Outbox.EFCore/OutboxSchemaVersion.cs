@@ -1,4 +1,4 @@
-namespace ThunderPropagator.Providers.DotNet.Outbox
+namespace ThunderPropagator.Providers.DotNet.Outbox.EFCore
 {
     /// <summary>
     /// Backs <see cref="EfCoreOutboxStore.InitializeAsync"/>'s persisted schema-version tracking - a

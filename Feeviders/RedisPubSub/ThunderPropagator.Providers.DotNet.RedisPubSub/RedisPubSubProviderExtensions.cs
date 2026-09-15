@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel.Extensions;
 using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Providers.DotNet.RedisPubSub
@@ -18,8 +18,11 @@ namespace ThunderPropagator.Providers.DotNet.RedisPubSub
             configuration.GetSection(sectionName).Bind(redisPubSubProviderConfiguration);
             services.TryAddSingleton(redisPubSubProviderConfiguration);
 
-            services.AddChannelProvider<RedisPubSubProvider<TRedisPubSubProviderMessage, TRedisPubSubProviderConfiguration>, TRedisPubSubProviderMessage,
+            services.AddChannelProvider<
+                RedisPubSubProvider<TRedisPubSubProviderMessage, TRedisPubSubProviderConfiguration>,
+                TRedisPubSubProviderMessage,
                 TRedisPubSubProviderConfiguration>();
+
             services.AddFormatSerializerInvoker();
             services.AddFormatDeserializerInvoker();
 

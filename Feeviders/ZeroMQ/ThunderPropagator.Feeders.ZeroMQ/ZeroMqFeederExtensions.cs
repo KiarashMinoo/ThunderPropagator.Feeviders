@@ -7,10 +7,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
-using ThunderPropagator.Feeders.SharedKernel;
-using ThunderPropagator.Feeviders.ZeroMQ.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel.Extensions;
 using ThunderPropagator.Infrastructure.Extensions;
-using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.ZeroMQ
 {
@@ -48,7 +46,7 @@ namespace ThunderPropagator.Feeders.ZeroMQ
             where TZeroMqFeederMessage : ZeroMqFeederMessage
             where TZeroMqFeederConfiguration : ZeroMqFeederConfiguration, new()
         {
-            SharedKernel.Extensions.AddChannelFeederResolver<TChannel,
+            SharedKernel.Extensions.ThunderPropagatorExtensions.AddChannelFeederResolver<TChannel,
                 ZeroMqFeeder<TChannel, TZeroMqFeederMessage, TZeroMqFeederConfiguration>,
                 TZeroMqFeederMessage,
                 TZeroMqFeederConfiguration>(services, (serviceProvider, channel, zeroMqFeederConfiguration, feederHandler) =>

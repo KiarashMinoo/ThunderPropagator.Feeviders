@@ -5,7 +5,7 @@ using ThunderPropagator.BuildingBlocks.Application;
 using ThunderPropagator.BuildingBlocks.Application.Helpers;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
 using ThunderPropagator.Feeviders.Grpc.SharedKernel.Protos;
-using ThunderPropagator.Providers.DotNet.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel;
 
 namespace ThunderPropagator.Feeviders.Grpc.SharedKernel
 {
@@ -34,7 +34,7 @@ namespace ThunderPropagator.Feeviders.Grpc.SharedKernel
             where TFeederMessage : FeederMessage
         {
             var message = formatDeserializerInvoker(serializerType).Deserialize<TFeederMessage>(envelope.Payload.ToByteArray())
-                ?? throw new InvalidOperationException($"Failed to deserialize a {typeof(TFeederMessage).Name} from the received GrpcEnvelope payload.");
+                          ?? throw new InvalidOperationException($"Failed to deserialize a {typeof(TFeederMessage).Name} from the received GrpcEnvelope payload.");
 
             ActivityContext? activityContext = null;
             if (envelope.Headers.TryGetValue(nameof(ActivityContext), out var activityContextStr))

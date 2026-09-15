@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using ThunderPropagator.Feeders.Inbox;
+using ThunderPropagator.Feeders.Inbox.EFCore;
 using ThunderPropagator.Providers.DotNet.Outbox;
+using ThunderPropagator.Providers.DotNet.Outbox.EFCore;
 using Xunit;
 using InboxMode = ThunderPropagator.Feeders.Inbox.StoreInitializationMode;
 using InboxOutcome = ThunderPropagator.Feeders.Inbox.StoreInitializationOutcome;

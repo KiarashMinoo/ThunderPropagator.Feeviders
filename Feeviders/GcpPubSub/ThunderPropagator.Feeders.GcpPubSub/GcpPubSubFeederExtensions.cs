@@ -5,9 +5,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
-using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel.Extensions;
 using ThunderPropagator.Infrastructure.Extensions;
-using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.GcpPubSub;
 
@@ -32,7 +31,7 @@ public static class GcpPubSubFeederExtensions
     public static IServiceCollection AddGcpPubSubFeederResolver<TChannel, TMessage, TConfiguration>(this IServiceCollection services)
         where TChannel : class, IChannel where TMessage : PubSubFeederMessage where TConfiguration : PubSubFeederConfiguration, new()
     {
-        ThunderPropagator.Feeders.SharedKernel.Extensions.AddChannelFeederResolver<TChannel, PubSubFeeder<TChannel, TMessage, TConfiguration>, TMessage, TConfiguration>(services,
+        SharedKernel.Extensions.ThunderPropagatorExtensions.AddChannelFeederResolver<TChannel, PubSubFeeder<TChannel, TMessage, TConfiguration>, TMessage, TConfiguration>(services,
             (serviceProvider, channel, feederConfiguration, feederHandler) => new PubSubFeeder<TChannel, TMessage, TConfiguration>(channel, feederConfiguration, feederHandler, serviceProvider));
         services.AddFormatSerializerInvoker();
         services.AddFormatDeserializerInvoker();

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 
-namespace ThunderPropagator.Providers.DotNet.Outbox
+namespace ThunderPropagator.Providers.DotNet.Outbox.EFCore
 {
     /// <summary>
     /// The <see cref="OutboxTransactionMode.Enlisted"/> <see cref="IOutboxUnitOfWork"/>: stages Outbox

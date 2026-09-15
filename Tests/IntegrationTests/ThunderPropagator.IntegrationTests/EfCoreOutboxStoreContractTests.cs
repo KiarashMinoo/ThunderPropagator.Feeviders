@@ -1,4 +1,5 @@
 using ThunderPropagator.Providers.DotNet.Outbox;
+using ThunderPropagator.Providers.DotNet.Outbox.EFCore;
 using ThunderPropagator.UnitTests.InboxOutbox;
 using Xunit;
 

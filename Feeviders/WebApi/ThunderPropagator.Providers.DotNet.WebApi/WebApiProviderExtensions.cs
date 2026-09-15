@@ -6,8 +6,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
-using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
+using ThunderPropagator.Feeviders.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Providers.DotNet.WebApi
 {

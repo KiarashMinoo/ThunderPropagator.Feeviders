@@ -5,9 +5,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
-using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel.Extensions;
 using ThunderPropagator.Infrastructure.Extensions;
-using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.AzureServiceBus;
 
@@ -44,7 +43,7 @@ public static class AzureServiceBusFeederExtensions
         where TMessage : ServiceBusFeederMessage
         where TConfiguration : ServiceBusFeederConfiguration, new()
     {
-        ThunderPropagator.Feeders.SharedKernel.Extensions.AddChannelFeederResolver<TChannel, ServiceBusFeeder<TChannel, TMessage, TConfiguration>, TMessage, TConfiguration>(
+        SharedKernel.Extensions.ThunderPropagatorExtensions.AddChannelFeederResolver<TChannel, ServiceBusFeeder<TChannel, TMessage, TConfiguration>, TMessage, TConfiguration>(
             services,
             (serviceProvider, channel, feederConfiguration, feederHandler) =>
                 new ServiceBusFeeder<TChannel, TMessage, TConfiguration>(channel, feederConfiguration, feederHandler, serviceProvider));

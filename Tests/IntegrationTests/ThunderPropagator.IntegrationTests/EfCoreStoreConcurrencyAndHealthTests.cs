@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using ThunderPropagator.Feeders.Inbox;
+using ThunderPropagator.Feeders.Inbox.EFCore;
 using ThunderPropagator.Providers.DotNet.Outbox;
+using ThunderPropagator.Providers.DotNet.Outbox.EFCore;
 using Xunit;
 
 namespace ThunderPropagator.IntegrationTests;

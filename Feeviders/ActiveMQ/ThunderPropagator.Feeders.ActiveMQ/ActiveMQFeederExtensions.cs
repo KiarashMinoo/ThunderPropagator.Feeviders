@@ -5,9 +5,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using ThunderPropagator.Application.Channels;
 using ThunderPropagator.Application.Feeders;
-using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel.Extensions;
 using ThunderPropagator.Infrastructure.Extensions;
-using ThunderPropagator.Providers.DotNet.SharedKernel.Extensions;
 
 namespace ThunderPropagator.Feeders.ActiveMQ
 {
@@ -39,7 +38,7 @@ namespace ThunderPropagator.Feeders.ActiveMQ
             where TActiveMQFeederMessage : ActiveMQFeederMessage
             where TActiveMQFeederConfiguration : ActiveMQFeederConfiguration, new()
         {
-            SharedKernel.Extensions.AddChannelFeederResolver<TChannel,
+            SharedKernel.Extensions.ThunderPropagatorExtensions.AddChannelFeederResolver<TChannel,
                 ActiveMQFeeder<TChannel, TActiveMQFeederMessage, TActiveMQFeederConfiguration>,
                 TActiveMQFeederMessage,
                 TActiveMQFeederConfiguration>(services, (serviceProvider, channel, activeMQFeederConfiguration, feederHandler) =>

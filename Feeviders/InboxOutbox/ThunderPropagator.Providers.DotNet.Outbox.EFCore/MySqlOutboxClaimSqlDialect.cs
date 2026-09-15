@@ -1,4 +1,4 @@
-namespace ThunderPropagator.Providers.DotNet.Outbox
+namespace ThunderPropagator.Providers.DotNet.Outbox.EFCore
 {
     /// <summary>
     /// MySQL/MariaDB (via the official <c>MySql.EntityFrameworkCore</c> provider): <c>FOR UPDATE SKIP LOCKED</c>,
