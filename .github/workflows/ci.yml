@@ -12,6 +12,20 @@ on:
           - beta
           - release
         default: beta
+      publish-mode:
+        description: >
+          NuGet publish mode for this manual run -- 'push' (default, unchanged: each of
+          the four publish jobs below pushes directly under its own
+          environment-scoped OIDC identity) or 'queue' (same path an automated run
+          takes: each job uploads its own filtered slice as a compressed payload for
+          KiarashMinoo/.github's nuget-queue-relay.yml to pick up instead of pushing
+          here -- lets you test the relay pipeline on demand without waiting for a
+          real push to develop).
+        type: choice
+        options:
+          - push
+          - queue
+        default: push
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -34,6 +48,20 @@ jobs:
   # Owner=KiarashMinoo, Repository=ThunderPropagator.Feeviders, Workflow File=ci.yml.
   # Requires a NUGET_USER repo secret (the nuget.org username the policy is attached
   # to) -- Settings > Secrets and variables > Actions > Secrets.
+  #
+  # Manual vs. automated (added 2026-09-14): a manual workflow_dispatch run pushes
+  # directly by default, per job, under that job's own environment-scoped OIDC identity
+  # (publish-mode: push, unchanged -- this is what the multi-environment/multi-policy
+  # quota split below is for). An automated push-triggered run always queues instead --
+  # each job uploads its own filtered slice (mode: queue, same
+  # nuget-package-include-pattern per job) for KiarashMinoo/.github's
+  # nuget-queue-relay.yml to pull and push on a 20-minute cron -- see
+  # nuget-oidc-publish/action.yml's header comment for why. Queue mode never logs in via
+  # OIDC, so the four jobs' separate `environment:`/policy split only matters for direct
+  # pushes; the relay pushes everything under its own single identity instead (still
+  # safely paced via the shared --skip-duplicate + FIFO ordering, not via these four
+  # quota buckets). A manual run can also opt into the queue path itself by setting the
+  # publish-mode input to 'queue' -- useful for testing the relay pipeline on demand.
   #
   # This repo publishes EVERY Configuration x Platform variant (no nuget-filter-enabled
   # trimming) because it deliberately ships platform-specific libraries -- so with 53
@@ -169,8 +197,11 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      actions: write # queue mode deletes the now-redundant raw pkg-*/symbols-* artifacts it just folded into the payload
     steps:
-      - uses: KiarashMinoo/.github/.github/actions/nuget-oidc-publish@main
+      - name: Push directly
+        if: github.event_name == 'workflow_dispatch' && inputs.publish-mode == 'push'
+        uses: KiarashMinoo/.github/.github/actions/nuget-oidc-publish@main
         with:
           nuget-user: ${{ secrets.NUGET_USER }}
           # Per-transport Feeviders shared kernels only (ThunderPropagator.Feeviders.{Transport}.SharedKernel,
@@ -178,6 +209,13 @@ jobs:
           # which now publish from the feeders/providers jobs below instead (they're conceptually part of
           # those families, and ".Feeders."/".Providers." never accidentally matches a "Feeviders.*" name so
           # there's no overlap either way).
+          nuget-package-include-pattern: '\.Feeviders\.[^.]+\.SharedKernel\.'
+
+      - name: Queue for relay
+        if: github.event_name != 'workflow_dispatch' || inputs.publish-mode == 'queue'
+        uses: KiarashMinoo/.github/.github/actions/nuget-oidc-publish@main
+        with:
+          mode: queue
           nuget-package-include-pattern: '\.Feeviders\.[^.]+\.SharedKernel\.'
 
   publish-nuget-oidc-feeders:
@@ -190,8 +228,11 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      actions: write # queue mode deletes the now-redundant raw pkg-*/symbols-* artifacts it just folded into the payload
     steps:
-      - uses: KiarashMinoo/.github/.github/actions/nuget-oidc-publish@main
+      - name: Push directly
+        if: github.event_name == 'workflow_dispatch' && inputs.publish-mode == 'push'
+        uses: KiarashMinoo/.github/.github/actions/nuget-oidc-publish@main
         with:
           nuget-user: ${{ secrets.NUGET_USER }}
           # The nuget.org Trusted Publishing policy on this job's environment (nuget-feeders) is
@@ -200,6 +241,13 @@ jobs:
           # now pushes all 18 Feeders.* packages, matching exactly what the policy authorizes (a
           # push outside that glob would just get rejected by nuget.org regardless of what this
           # workflow attempts, so the include pattern and the policy glob must stay in lockstep).
+          nuget-package-include-pattern: '\.Feeders\.'
+
+      - name: Queue for relay
+        if: github.event_name != 'workflow_dispatch' || inputs.publish-mode == 'queue'
+        uses: KiarashMinoo/.github/.github/actions/nuget-oidc-publish@main
+        with:
+          mode: queue
           nuget-package-include-pattern: '\.Feeders\.'
 
   publish-nuget-oidc-providers:
@@ -212,14 +260,24 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      actions: write # queue mode deletes the now-redundant raw pkg-*/symbols-* artifacts it just folded into the payload
     steps:
-      - uses: KiarashMinoo/.github/.github/actions/nuget-oidc-publish@main
+      - name: Push directly
+        if: github.event_name == 'workflow_dispatch' && inputs.publish-mode == 'push'
+        uses: KiarashMinoo/.github/.github/actions/nuget-oidc-publish@main
         with:
           nuget-user: ${{ secrets.NUGET_USER }}
           # Same reasoning as the feeders job above: the nuget-providers policy is scoped to glob
           # "ThunderPropagator.Providers.DotNet.*", which covers every Providers.DotNet.* package --
           # including Providers.DotNet.SharedKernel AND Providers.DotNet.Outbox -- so no exclude is
           # needed; this job pushes all 18 Providers.DotNet.* packages.
+          nuget-package-include-pattern: '\.Providers\.'
+
+      - name: Queue for relay
+        if: github.event_name != 'workflow_dispatch' || inputs.publish-mode == 'queue'
+        uses: KiarashMinoo/.github/.github/actions/nuget-oidc-publish@main
+        with:
+          mode: queue
           nuget-package-include-pattern: '\.Providers\.'
 
   publish-nuget-oidc-inboxoutbox:
@@ -232,8 +290,11 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      actions: write # queue mode deletes the now-redundant raw pkg-*/symbols-* artifacts it just folded into the payload
     steps:
-      - uses: KiarashMinoo/.github/.github/actions/nuget-oidc-publish@main
+      - name: Push directly
+        if: github.event_name == 'workflow_dispatch' && inputs.publish-mode == 'push'
+        uses: KiarashMinoo/.github/.github/actions/nuget-oidc-publish@main
         with:
           nuget-user: ${{ secrets.NUGET_USER }}
           # The nuget-inboxoutbox policy is scoped to glob "ThunderPropagator.InboxOutbox.*" only --
@@ -241,4 +302,11 @@ jobs:
           # feeders/providers jobs above instead, since their own policies' globs already cover
           # them). Narrowed from the old 3-prefix pattern to match: this job only pushes the 4
           # InboxOutbox.{EFCore,InMemory,MongoDB,Redis} packages.
+          nuget-package-include-pattern: '\.InboxOutbox\.'
+
+      - name: Queue for relay
+        if: github.event_name != 'workflow_dispatch' || inputs.publish-mode == 'queue'
+        uses: KiarashMinoo/.github/.github/actions/nuget-oidc-publish@main
+        with:
+          mode: queue
           nuget-package-include-pattern: '\.InboxOutbox\.'
