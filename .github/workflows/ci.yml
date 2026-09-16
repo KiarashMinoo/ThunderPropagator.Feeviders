@@ -77,9 +77,10 @@ jobs:
   # nuget-oidc-publish/action.yml for that input's semantics) -- each mints an
   # independent temporary API key with its own quota bucket, worst case ~288 pushes for
   # Feeders/Providers (18 packages each x 16 legs), comfortably under 350. sharedkernel
-  # covers only the 13 per-transport ThunderPropagator.Feeviders.{Transport}.SharedKernel
-  # packages (208 pushes); inboxoutbox covers only the 4 InboxOutbox.* packages (64
-  # pushes) -- the two top-level shared kernels (Feeders.SharedKernel,
+  # covers the 13 per-transport ThunderPropagator.Feeviders.{Transport}.SharedKernel
+  # packages PLUS the single top-level, cross-transport ThunderPropagator.Feeviders.SharedKernel
+  # package (14 packages, 224 pushes); inboxoutbox covers only the 4 InboxOutbox.*
+  # packages (64 pushes) -- the two top-level *family* shared kernels (Feeders.SharedKernel,
   # Providers.DotNet.SharedKernel) AND Feeders.Inbox / Providers.DotNet.Outbox all publish
   # from the feeders/providers jobs instead, since each nuget.org Trusted Publishing
   # policy's own glob scope already covers them there (see each job's inline comment) --
@@ -96,10 +97,17 @@ jobs:
   #   2. nuget.org: account > Trusted Publishing > Add, once per environment above --
   #      Repository Owner=KiarashMinoo, Repository=ThunderPropagator.Feeviders,
   #      Workflow File=ci.yml, Environment=<that job's environment name>, Glob Pattern=
-  #      ThunderPropagator.Feeviders.*.SharedKernel (sharedkernel) /
+  #      ThunderPropagator.Feeviders.* (sharedkernel -- covers both the per-transport
+  #      ThunderPropagator.Feeviders.{Transport}.SharedKernel packages and the top-level
+  #      ThunderPropagator.Feeviders.SharedKernel package) /
   #      ThunderPropagator.Feeders.* (feeders) / ThunderPropagator.Providers.DotNet.*
   #      (providers) / ThunderPropagator.InboxOutbox.* (inboxoutbox). Four separate
   #      policies, same repo+file, only the Environment (and matching glob) differs.
+  #      NOTE: if the nuget-sharedkernel environment's existing policy was created with
+  #      the old narrower glob (ThunderPropagator.Feeviders.*.SharedKernel), it must be
+  #      widened by hand on nuget.org to ThunderPropagator.Feeviders.* -- the workflow
+  #      include-pattern change below is not sufficient on its own, pushes for
+  #      ThunderPropagator.Feeviders.SharedKernel will 403 until the policy glob matches.
   #   3. The existing NUGET_USER repo secret is reused by all four jobs -- no new
   #      secrets needed, since Trusted Publishing never stores a long-lived key at all.
   #
@@ -204,19 +212,21 @@ jobs:
         uses: KiarashMinoo/.github/.github/actions/nuget-oidc-publish@main
         with:
           nuget-user: ${{ secrets.NUGET_USER }}
-          # Per-transport Feeviders shared kernels only (ThunderPropagator.Feeviders.{Transport}.SharedKernel,
-          # 13 packages) -- NOT the two top-level ones (Feeders.SharedKernel, Providers.DotNet.SharedKernel),
-          # which now publish from the feeders/providers jobs below instead (they're conceptually part of
-          # those families, and ".Feeders."/".Providers." never accidentally matches a "Feeviders.*" name so
-          # there's no overlap either way).
-          nuget-package-include-pattern: '\.Feeviders\.[^.]+\.SharedKernel\.'
+          # Every ThunderPropagator.Feeviders.* package: the 13 per-transport shared kernels
+          # (ThunderPropagator.Feeviders.{Transport}.SharedKernel) PLUS the single top-level,
+          # cross-transport ThunderPropagator.Feeviders.SharedKernel package -- NOT the two
+          # top-level *family* shared kernels (Feeders.SharedKernel, Providers.DotNet.SharedKernel),
+          # which publish from the feeders/providers jobs below instead (they're conceptually part
+          # of those families, and ".Feeders."/".Providers." never accidentally matches a
+          # "Feeviders.*" name so there's no overlap either way).
+          nuget-package-include-pattern: '\.Feeviders\.'
 
       - name: Queue for relay
         if: github.event_name != 'workflow_dispatch' || inputs.publish-mode == 'queue'
         uses: KiarashMinoo/.github/.github/actions/nuget-oidc-publish@main
         with:
           mode: queue
-          nuget-package-include-pattern: '\.Feeviders\.[^.]+\.SharedKernel\.'
+          nuget-package-include-pattern: '\.Feeviders\.'
           # This is the FIRST of four sequential jobs sharing the same run-wide
           # pkg-*/symbols-* artifacts (reusable-ci.yml packs every family's packages
           # into ONE artifact per build leg, not one per family) -- deleting them here
