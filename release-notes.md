@@ -1,5 +1,5 @@
-## [1.0.1-beta.98] — 2026-09-15
+## [1.0.1-beta.99] — 2026-09-16
 
-### ⚙️ CI / Tooling
+### 🧪 Tests
 
-- ThunderPropagator.Feeviders: Consolidate SharedKernel projects and fix queue-mode cleanup order `(0cb9f20)` — Kiarash Minoo
+- ThunderPropagator.Feeviders: Fix broken using directives after SharedKernel consolidation `(29c8289)` — Kiarash Minoo
