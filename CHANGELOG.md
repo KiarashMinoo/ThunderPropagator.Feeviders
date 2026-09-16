@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.100] — 2026-09-16
+
+### ⚙️ CI / Tooling
+
+- ThunderPropagator.Feeviders: Fix ci.yml missing top-level Feeviders.SharedKernel from NuGet publish `(21c43ca)` — Kiarash Minoo
+
 ## [1.0.1-beta.99] — 2026-09-16
 
 ### 🧪 Tests
