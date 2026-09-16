@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.101] — 2026-09-16
+
+### 🐛 Bug Fixes
+
+- ThunderPropagator.Feeviders: Fix missing x86/x64/ARM64 platform mappings for top-level Feeviders.SharedKernel `(cdfdbc6)` — Kiarash Minoo
+
 ## [1.0.1-beta.100] — 2026-09-16
 
 ### ⚙️ CI / Tooling
