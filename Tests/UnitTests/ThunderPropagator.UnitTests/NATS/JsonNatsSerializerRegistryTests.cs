@@ -2,6 +2,7 @@ using ThunderPropagator.BuildingBlocks.Application.Serializations;
 using ThunderPropagator.BuildingBlocks.Application.Serializations.Json;
 using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.NATS.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 using Xunit.Abstractions;
 

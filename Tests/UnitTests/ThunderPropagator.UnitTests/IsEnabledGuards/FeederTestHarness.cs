@@ -7,6 +7,7 @@ using ThunderPropagator.Application.Feeders;
 using ThunderPropagator.BuildingBlocks.Application;
 using ThunderPropagator.BuildingBlocks.Application.Serializations;
 using ThunderPropagator.Feeders.SharedKernel;
+using ThunderPropagator.Feeviders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.UnitTests.IsEnabledGuards

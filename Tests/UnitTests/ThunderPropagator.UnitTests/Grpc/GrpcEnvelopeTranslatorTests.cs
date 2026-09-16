@@ -8,6 +8,7 @@ using ThunderPropagator.BuildingBlocks.Application.Serializations.Json;
 using ThunderPropagator.Feeders.SharedKernel;
 using ThunderPropagator.Feeviders.Grpc.SharedKernel;
 using ThunderPropagator.Feeviders.Grpc.SharedKernel.Protos;
+using ThunderPropagator.Feeviders.SharedKernel;
 using ThunderPropagator.Providers.DotNet.SharedKernel;
 
 namespace ThunderPropagator.UnitTests.Grpc

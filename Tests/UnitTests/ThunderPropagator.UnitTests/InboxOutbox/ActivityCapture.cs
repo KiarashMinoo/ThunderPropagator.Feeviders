@@ -5,7 +5,7 @@ namespace ThunderPropagator.UnitTests.InboxOutbox
     /// <summary>
     /// Captures every completed <see cref="Activity"/> started on one named <see cref="ActivitySource"/>,
     /// using the BCL's own <see cref="ActivityListener"/> - no extra package needed. Activities are
-    /// recorded on <see cref="ActivityStopped"/> (not started) so every tag/status the operation sets
+    /// recorded on <see cref="ActivityListener.ActivityStopped"/> (not started) so every tag/status the operation sets
     /// during its own lifetime is already present by the time a test inspects it.
     /// </summary>
     internal sealed class ActivityCapture : IDisposable
