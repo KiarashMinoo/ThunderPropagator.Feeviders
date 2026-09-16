@@ -268,7 +268,11 @@
       <Platform Solution="*|x64" Project="x64" />
       <Platform Solution="*|x86" Project="x86" />
     </Project>
-    <Project Path="Feeviders/SharedKernel/ThunderPropagator.Feeviders.SharedKernel/ThunderPropagator.Feeviders.SharedKernel.csproj" />
+    <Project Path="Feeviders/SharedKernel/ThunderPropagator.Feeviders.SharedKernel/ThunderPropagator.Feeviders.SharedKernel.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
     <Project Path="Feeviders/SharedKernel/ThunderPropagator.Providers.DotNet.SharedKernel/ThunderPropagator.Providers.DotNet.SharedKernel.csproj">
       <Platform Solution="*|ARM64" Project="ARM64" />
       <Platform Solution="*|x64" Project="x64" />
