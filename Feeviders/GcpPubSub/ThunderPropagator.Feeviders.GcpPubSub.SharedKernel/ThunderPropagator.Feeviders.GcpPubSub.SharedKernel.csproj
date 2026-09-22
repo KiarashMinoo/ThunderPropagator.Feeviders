@@ -3,6 +3,7 @@
   <ItemGroup>
     <PackageReference Include="$(BuildingBlocksPackageId)" />
     <PackageReference Include="Google.Cloud.PubSub.V1" />
+    <PackageReference Include="Google.Protobuf" VersionOverride="3.36.2" />
     <PackageReference Include="JetBrains.Annotations" />
     <PackageReference Include="OpenTelemetry.Api" />
   </ItemGroup>

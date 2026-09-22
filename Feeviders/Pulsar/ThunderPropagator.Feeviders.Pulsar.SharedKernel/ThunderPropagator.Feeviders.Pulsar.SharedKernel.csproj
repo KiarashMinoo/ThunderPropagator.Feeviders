@@ -3,6 +3,7 @@
   <ItemGroup>
     <PackageReference Include="$(BuildingBlocksPackageId)"/>
     <PackageReference Include="DotPulsar"/>
+    <PackageReference Include="Google.Protobuf" />
     <PackageReference Include="JetBrains.Annotations"/>
   </ItemGroup>
 
