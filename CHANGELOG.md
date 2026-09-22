@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.106] — 2026-09-22
+
+### 🏠 Chores
+
+- Bump Google.Protobuf to 3.36.2 `(5de734c)` — dependabot[bot]
+
 ## [1.0.1-beta.105] — 2026-09-22
 
 ### 📦 Dependencies

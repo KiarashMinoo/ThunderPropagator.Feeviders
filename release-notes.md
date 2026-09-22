@@ -1,9 +1,5 @@
-## [1.0.1-beta.105] — 2026-09-22
+## [1.0.1-beta.106] — 2026-09-22
 
-### 📦 Dependencies
+### 🏠 Chores
 
-| Package | Old | New |
-|---------|-----|-----|
-| AWSSDK.SQS | 4.0.100.12 | 4.0.100.14 |
-
-- Bump AWSSDK.SQS from 4.0.100.12 to 4.0.100.14 `(9ebab47)` — dependabot[bot]
+- Bump Google.Protobuf to 3.36.2 `(5de734c)` — dependabot[bot]
