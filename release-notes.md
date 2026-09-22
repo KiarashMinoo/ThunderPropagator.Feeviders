@@ -1,9 +1,11 @@
-## [1.0.1-beta.103] — 2026-09-22
+## [1.0.1-beta.104] — 2026-09-22
 
 ### 📦 Dependencies
 
 | Package | Old | New |
 |---------|-----|-----|
-| Google.Cloud.PubSub.V1 | 3.37.0 | 3.38.0 |
+| Grpc.Tools | 2.83.0 | 2.84.0 |
+| MongoDB.Driver | 3.11.1 | 3.12.0 |
 
-- Bump Google.Cloud.PubSub.V1 from 3.37.0 to 3.38.0 `(bac7027)` — dependabot[bot]
+- Bump Grpc.Tools from 2.83.0 to 2.84.0 `(31e3392)` — dependabot[bot]
+- Bump MongoDB.Driver from 3.11.1 to 3.12.0 `(05a29a4)` — dependabot[bot]
