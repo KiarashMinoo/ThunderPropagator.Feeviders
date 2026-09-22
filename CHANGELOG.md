@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.1-beta.105] — 2026-09-22
+
+### 📦 Dependencies
+
+| Package | Old | New |
+|---------|-----|-----|
+| AWSSDK.SQS | 4.0.100.12 | 4.0.100.14 |
+
+- Bump AWSSDK.SQS from 4.0.100.12 to 4.0.100.14 `(9ebab47)` — dependabot[bot]
+
 ## [1.0.1-beta.104] — 2026-09-22
 
 ### 📦 Dependencies
