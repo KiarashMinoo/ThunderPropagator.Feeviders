@@ -1,5 +1,9 @@
-## [1.0.1-beta.101] — 2026-09-16
+## [1.0.1-beta.103] — 2026-09-22
 
-### 🐛 Bug Fixes
+### 📦 Dependencies
 
-- ThunderPropagator.Feeviders: Fix missing x86/x64/ARM64 platform mappings for top-level Feeviders.SharedKernel `(cdfdbc6)` — Kiarash Minoo
+| Package | Old | New |
+|---------|-----|-----|
+| Google.Cloud.PubSub.V1 | 3.37.0 | 3.38.0 |
+
+- Bump Google.Cloud.PubSub.V1 from 3.37.0 to 3.38.0 `(bac7027)` — dependabot[bot]
