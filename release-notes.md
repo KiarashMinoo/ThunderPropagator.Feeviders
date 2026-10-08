@@ -1,5 +1,5 @@
-## [1.0.1-beta.106] — 2026-09-22
+## [1.0.1-beta.107] — 2026-10-08
 
-### 🏠 Chores
+### 📝 Documentation
 
-- Bump Google.Protobuf to 3.36.2 `(5de734c)` — dependabot[bot]
+- Add architecture diagram badge to README `(56cf837)` — Kiarash Minoo
