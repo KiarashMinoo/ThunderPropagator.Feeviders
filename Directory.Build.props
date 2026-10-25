@@ -21,6 +21,6 @@
   </PropertyGroup>
   <!-- Version is bumped by CI per branch — never hand-edit this. -->
   <PropertyGroup Label="Versioning">
-    <Version>$(ThunderPropagatorBaseVersion)-beta.107</Version>
+    <Version>$(ThunderPropagatorBaseVersion)-beta.108</Version>
   </PropertyGroup>
 </Project>

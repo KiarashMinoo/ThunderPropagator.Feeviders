@@ -1,5 +1,5 @@
-## [1.0.1-beta.107] — 2026-10-08
+## [1.0.1-beta.108] — 2026-10-25
 
-### 📝 Documentation
+### ⚙️ CI / Tooling
 
-- Add architecture diagram badge to README `(56cf837)` — Kiarash Minoo
+- ThunderPropagator.Feeviders: Float family package versions and add third-party updater mode `(8ac5f07)` — Kiarash Minoo
