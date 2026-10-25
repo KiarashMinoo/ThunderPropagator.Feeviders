@@ -1,11 +1,11 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="$(BuildingBlocksPackageId)" Version="1.0.1-beta.135" />
-    <PackageVersion Include="$(ThunderPropagatorPackageId)" Version="1.0.1-beta.219" />
+    <PackageVersion Include="$(BuildingBlocksPackageId)" Version="$(ThunderPropagatorFloatingVersion)" />
+    <PackageVersion Include="$(ThunderPropagatorPackageId)" Version="$(ThunderPropagatorFloatingVersion)" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'" Label="Microsoft.Extensions">
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="8.*" />
@@ -69,48 +69,48 @@
   </ItemGroup>
   <ItemGroup>
     <PackageVersion Include="Bogus" Version="35.6.5" />
-    <PackageVersion Include="NodaTime" Version="3.2.2" />
-    <PackageVersion Include="OpenTelemetry.Api" Version="1.18.0" />
+    <PackageVersion Include="NodaTime" Version="3.3.6" />
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.20.1" />
     <PackageVersion Include="Apache.NMS" Version="2.2.0" />
-    <PackageVersion Include="Apache.NMS.ActiveMQ" Version="2.2.0" />
-    <PackageVersion Include="AWSSDK.SQS" Version="4.0.100.14" />
-    <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.100.15" />
+    <PackageVersion Include="Apache.NMS.ActiveMQ" Version="2.3.0" />
+    <PackageVersion Include="AWSSDK.SQS" Version="4.0.100" />
+    <PackageVersion Include="AWSSDK.SimpleNotificationService" Version="4.0.100" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
-    <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.20.2" />
-    <PackageVersion Include="Confluent.Kafka" Version="2.15.1" />
-    <PackageVersion Include="Confluent.SchemaRegistry" Version="2.15.1" />
-    <PackageVersion Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.15.1" />
-    <PackageVersion Include="Confluent.SchemaRegistry.Serdes.Json" Version="2.15.1" />
-    <PackageVersion Include="Google.Cloud.PubSub.V1" Version="3.38.0" />
+    <PackageVersion Include="Azure.Messaging.ServiceBus" Version="7.21.0" />
+    <PackageVersion Include="Confluent.Kafka" Version="2.16.0" />
+    <PackageVersion Include="Confluent.SchemaRegistry" Version="2.16.0" />
+    <PackageVersion Include="Confluent.SchemaRegistry.Serdes.Avro" Version="2.16.0" />
+    <PackageVersion Include="Confluent.SchemaRegistry.Serdes.Json" Version="2.16.0" />
+    <PackageVersion Include="Google.Cloud.PubSub.V1" Version="3.39.0" />
     <PackageVersion Include="Google.Protobuf" Version="3.36.2" />
-    <PackageVersion Include="Grpc.Net.Client" Version="2.83.0" />
+    <PackageVersion Include="Grpc.Net.Client" Version="2.84.0" />
     <PackageVersion Include="Grpc.Tools" Version="2.84.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageVersion>
     <PackageVersion Include="MQTTnet" Version="5.2.0.1603" />
     <PackageVersion Include="MQTTnet.Server" Version="5.2.0.1603" />
-    <PackageVersion Include="NATS.Net" Version="3.2.0" />
-    <PackageVersion Include="NetMQ" Version="4.0.4.3" />
-    <PackageVersion Include="DotPulsar" Version="5.3.3" />
+    <PackageVersion Include="NATS.Net" Version="3.3.1" />
+    <PackageVersion Include="NetMQ" Version="4.0.4" />
+    <PackageVersion Include="DotPulsar" Version="5.3.4" />
     <PackageVersion Include="NJsonSchema" Version="11.6.1" />
     <PackageVersion Include="NJsonSchema.Annotations" Version="11.6.1" />
     <PackageVersion Include="RabbitMQ.Client" Version="7.2.2" />
     <PackageVersion Include="JetBrains.Annotations" Version="2026.2.0" />
-    <PackageVersion Include="StackExchange.Redis" Version="3.3.0" />
-    <PackageVersion Include="MongoDB.Driver" Version="3.12.1" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageVersion Include="StackExchange.Redis" Version="3.4.20" />
+    <PackageVersion Include="MongoDB.Driver" Version="3.13.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0">
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageVersion>
-    <PackageVersion Include="Testcontainers" Version="4.15.0" />
-    <PackageVersion Include="Testcontainers.MongoDb" Version="4.15.0" />
-    <PackageVersion Include="Testcontainers.Kafka" Version="4.15.0" />
-    <PackageVersion Include="Testcontainers.RabbitMq" Version="4.15.0" />
-    <PackageVersion Include="coverlet.collector" Version="10.0.1">
+    <PackageVersion Include="Testcontainers" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.MongoDb" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.Kafka" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.RabbitMq" Version="4.16.0" />
+    <PackageVersion Include="coverlet.collector" Version="10.1.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageVersion>
