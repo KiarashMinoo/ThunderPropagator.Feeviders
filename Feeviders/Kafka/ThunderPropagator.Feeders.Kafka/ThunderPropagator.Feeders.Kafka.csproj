@@ -5,6 +5,7 @@
         <PackageReference Include="Confluent.SchemaRegistry"/>
         <PackageReference Include="Confluent.SchemaRegistry.Serdes.Avro"/>
         <PackageReference Include="Confluent.SchemaRegistry.Serdes.Json"/>
+        <PackageReference Include="NJsonSchema" VersionOverride="11.6.2" />
     </ItemGroup>
 
     <ItemGroup>
